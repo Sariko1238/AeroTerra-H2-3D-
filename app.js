@@ -381,10 +381,14 @@
   // --------------------------------------------------------------------------
   const HOTSPOTS_DATA = {
     wing: {
+      nodeNumber: 1,
       category: 'CATIA V5 / AERODYNAMICS',
       title: { ru: '🪽 Крыло Class-A (NACA 64-215)', en: '🪽 Wing Class-A (NACA 64-215)' },
-      targetPos: { x: 4.2, y: 1.2, z: 0.2 },
-      camPos: { x: 7.5, y: 3.5, z: 4.5 },
+      massKg: 86.4,
+      mtowPct: '19.2%',
+      material: { ru: 'CFRP Углепластик T800 Class-A', en: 'CFRP T800 Carbon Class-A' },
+      targetPos: { x: 4.2, y: 1.1, z: 0.1 },
+      camPos: { x: 7.2, y: 3.2, z: 4.2 },
       specs: [
         { label: { ru: 'Площадь крыла (S):', en: 'Wing Area (S):' }, val: '13.35 м²' },
         { label: { ru: 'Удлинение (AR):', en: 'Aspect Ratio (AR):' }, val: '11.5' },
@@ -393,8 +397,8 @@
       ],
       formula: 'L = 0.5 · ρ · V² · S · CL  |  CDi = CL² / (π · AR · e)',
       desc: {
-        ru: 'Высоконесущее крыло большого удлинения, спроектированное в CATIA V5 ICEM Surf по стандартам непрерывности кривизны G2/G3. Снижает индуктивное сопротивление на 24% и обеспечивает устойчивый полет на сверхнизких скоростях при обдуве от распределенных моторов.',
-        en: 'High aspect ratio laminar wing lofted in CATIA V5 ICEM Surf complying with G2/G3 curvature continuity. Reduces induced drag by 24% and delivers steady flight at ultralow speeds through blown-wing distributed propulsion.'
+        ru: 'Высоконесущее крыло большого удлинения с каплевидным профилем NACA 64-215, спроектированное в CATIA V5 ICEM Surf по стандартам непрерывности кривизны G2/G3. Снижает индуктивное сопротивление на 24% и обеспечивает устойчивый полет на сверхнизких скоростях при обдуве от распределенных моторов.',
+        en: 'High aspect ratio laminar wing with authentic NACA 64-215 teardrop airfoil lofted in CATIA V5 ICEM Surf complying with G2/G3 curvature continuity. Reduces induced drag by 24% and delivers steady flight at ultralow speeds through blown-wing distributed propulsion.'
       },
       chartData: {
         x: ['100', '140', '180', '210', '250', '290'],
@@ -403,10 +407,14 @@
       }
     },
     tank: {
+      nodeNumber: 2,
       category: 'HYDROGEN CRYOGENICS',
       title: { ru: '💧 Криогенный Водородный Бак (LH2)', en: '💧 LH2 Cryogenic Fuel Tank' },
-      targetPos: { x: 0, y: 0.6, z: -0.6 },
-      camPos: { x: 2.5, y: 2.8, z: 3.2 },
+      massKg: 42.0,
+      mtowPct: '9.3%',
+      material: { ru: 'Type IV Toray T1000 + MLI Вакуум', en: 'Type IV Toray T1000 + MLI' },
+      targetPos: { x: 0, y: 0.45, z: -0.7 },
+      camPos: { x: 2.2, y: 2.2, z: 2.6 },
       specs: [
         { label: { ru: 'Емкость водорода:', en: 'LH2 Capacity:' }, val: '38 кг (1265 кВт·ч)' },
         { label: { ru: 'Давление хранения:', en: 'Nominal Pressure:' }, val: '350 / 700 Bar' },
@@ -415,8 +423,8 @@
       ],
       formula: 'E_total = m_H2 · 120 MJ/kg  |  q_boiloff < 0.8% / 24h',
       desc: {
-        ru: 'Многослойный композитный баллон типа IV (алюминиевый лейнер + намотка углеволокном Toray T1000) с вакуумной экранно-изоляционной защитой (MLI). Обеспечивает безопасное хранение жидкого водорода и питание ТЭК без паразитного испарения.',
-        en: 'Type IV composite pressure vessel with Toray T1000 carbon fiber overwrap and multi-layer vacuum insulation (MLI). Enables cryogenic hydrogen storage and feed with boil-off under 0.8% per day.'
+        ru: 'Многослойный композитный баллон типа IV (алюминиевый лейнер + намотка углеволокном Toray T1000) с вакуумной экранно-изоляционной защитой (MLI). Виден сквозь полупрозрачную верхнюю обшивку и светится неоново-голубым изнутри фюзеляжа.',
+        en: 'Type IV composite pressure vessel with Toray T1000 carbon fiber overwrap and multi-layer vacuum insulation (MLI). Visible through the translucent upper composite skin with an interior cyan neon glow.'
       },
       chartData: {
         x: ['Li-Po', 'Kerosene', 'Green H2'],
@@ -425,10 +433,14 @@
       }
     },
     fuelcell: {
+      nodeNumber: 3,
       category: 'CLEAN PROPULSION',
       title: { ru: '⚡ ТЭК PEM Fuel Cell + Li-Po буфер', en: '⚡ PEM Fuel Cell + Li-Po Buffer' },
-      targetPos: { x: 0, y: 0.7, z: 0.8 },
-      camPos: { x: 2.8, y: 2.5, z: 3.0 },
+      massKg: 58.0,
+      mtowPct: '12.9%',
+      material: { ru: 'Графитовые биполярные пластины / Pt', en: 'Graphite Bipolar Plates / Pt' },
+      targetPos: { x: 0, y: 0.48, z: 0.85 },
+      camPos: { x: 2.4, y: 2.2, z: 2.8 },
       specs: [
         { label: { ru: 'Мощность стека:', en: 'Continuous Power:' }, val: '120 кВт (Электро)' },
         { label: { ru: 'КПД преобразования:', en: 'System Efficiency:' }, val: '58.5% (ТЭК)' },
@@ -437,8 +449,8 @@
       ],
       formula: '2 H2 + O2 -> 2 H2O + Electricity + Heat (ΔH = -286 kJ/mol)',
       desc: {
-        ru: 'Протонообменная мембрана (PEM) последнего поколения с платиновым катализатором. Вырабатывает непрерывную крейсерскую мощность 120 кВт. При взлёте STOL буферная батарея добавляет 80 кВт мощности на 90 секунд.',
-        en: 'High-density Proton Exchange Membrane (PEM) fuel cell stack providing continuous 120 kW cruise power. Buffer Li-Po battery provides instant 80 kW burst for STOL takeoff operations.'
+        ru: 'Протонообменная мембрана (PEM) последнего поколения с платиновым катализатором. Вырабатывает непрерывную крейсерскую мощность 120 кВт. Подсвечена изнутри фюзеляжа изумрудным светом и видна сквозь X-Ray обшивку.',
+        en: 'High-density Proton Exchange Membrane (PEM) fuel cell stack providing continuous 120 kW cruise power. Glowing emerald from within the fuselage, visible through the X-Ray composite canopy.'
       },
       chartData: {
         x: ['Idle', 'Cruise', 'Climb', 'STOL Max'],
@@ -447,20 +459,24 @@
       }
     },
     payload: {
+      nodeNumber: 4,
       category: 'DUAL-ROLE MISSION POD',
       title: { ru: '🔄 Быстросъемный Отсек Нагрузки', en: '🔄 Quick-Swap Modular Mission Pod' },
-      targetPos: { x: 0, y: -0.4, z: 0.2 },
-      camPos: { x: 3.5, y: -0.8, z: 3.2 },
+      massKg: 120.0,
+      mtowPct: '26.7%',
+      material: { ru: 'Композит CFRP + клапаны Salvo', en: 'CFRP Carbon + Salvo Dump Gates' },
+      targetPos: { x: 0, y: -0.45, z: 0.2 },
+      camPos: { x: 3.2, y: -0.6, z: 3.0 },
       specs: [
         { label: { ru: 'Время замены отсека:', en: 'Swap Turnaround:' }, val: '< 10 минут' },
         { label: { ru: 'Агро-конфигурация:', en: 'Agro Payload:' }, val: '600 л бак + 18м форсунки' },
         { label: { ru: 'Пожарный сброс:', en: 'Firefighting Pod:' }, val: '800 л воды/ретарданта' },
-        { label: { ru: 'Забор воды на глиссе:', en: 'Water Scooper:' }, val: '800 л за 14 сек с озера' }
+        { label: { ru: 'Створки сброса:', en: 'Salvo Bomb Doors:' }, val: '2 створки гидравлические' }
       ],
       formula: 'Flow_rate = A_valve · √(2 · g · h) = 180 L/s (Dump salvo)',
       desc: {
-        ru: 'Инженерная модульная капсула на быстросъемных замках Cam-Lock. Позволяет одному и тому же планеру утром производить высокоточное опрыскивание посевов, а в полдень тушить лесные пожары водяным залпом.',
-        en: 'Modular ventral pod with aerospace Cam-Lock latches. Enables 10-minute ground conversion between precision agricultural spraying and emergency wildfire suppression water bombing.'
+        ru: 'Инженерная модульная капсула на быстросъемных замках Cam-Lock с нижними створками пожарного водяного бомболюка и подкрыльевой штангой опрыскивания с 6 форсунками.',
+        en: 'Modular ventral pod with aerospace Cam-Lock latches, twin hydraulic water drop salvo doors on fuselage belly, and underwing spray boom with 6 visible nozzles.'
       },
       chartData: {
         x: ['Tank Empty', 'Agro 600L', 'Fire 800L'],
@@ -469,10 +485,14 @@
       }
     },
     motors: {
+      nodeNumber: 5,
       category: 'DISTRIBUTED ELECTRIC (DEP)',
       title: { ru: '🌀 4x Распределенных Мотора DEP', en: '🌀 4x Distributed Electric Propellers' },
-      targetPos: { x: 2.8, y: 1.0, z: 1.1 },
-      camPos: { x: 4.8, y: 2.2, z: 3.0 },
+      massKg: 34.0,
+      mtowPct: '7.5%',
+      material: { ru: 'Brushless Neodymium + CFRP Винты', en: 'Brushless Neodymium + CFRP Props' },
+      targetPos: { x: 2.2, y: 0.75, z: 1.2 },
+      camPos: { x: 4.2, y: 1.8, z: 2.8 },
       specs: [
         { label: { ru: 'Конфигурация:', en: 'Configuration:' }, val: '4x Brushless Outrunner' },
         { label: { ru: 'Тяга суммарная:', en: 'Total Static Thrust:' }, val: '5800 Н (590 кгс)' },
@@ -481,8 +501,8 @@
       ],
       formula: 'T = 4 · [ 0.5 · ρ · A · (V_exit² - V_inf²) ]  |  CL_blown = CL0 + ΔCL_DEP',
       desc: {
-        ru: 'Четыре бесщеточных электродвигателя с трехлопастными углепластиковыми винтами изменяемого шага. Скоростной поток от винтов обдувает верхнюю поверхность крыла, обеспечивая взлет с грунтовой полосы всего за 120 метров.',
-        en: 'Four brushless electric motors spinning carbon variable-pitch propellers. Slipstream washes over the wing suction surface, boosting CL_max by 38% for unmatched short field takeoff (STOL 120 m).'
+        ru: 'Четыре бесщеточных электродвигателя в обтекаемых мотогондолах с трехлопастными саблевидными винтами из углепластика. Скоростной поток от винтов обдувает верхнюю поверхность профиля крыла NACA, обеспечивая взлет STOL.',
+        en: 'Four brushless electric motors in streamlined nacelles spinning scimitar carbon variable-pitch propellers. Slipstream washes over the NACA airfoil suction surface, boosting CL_max by 38% for unmatched short field takeoff (STOL).'
       },
       chartData: {
         x: ['Clean Wing', 'Blown DEP'],
@@ -491,10 +511,14 @@
       }
     },
     gimbal: {
+      nodeNumber: 6,
       category: 'AI MULTISPECTRAL AVIONICS',
-      title: { ru: '👁️ Носовой Сенсорный Модуль', en: '👁️ Nose Sensor Turret & Gimbal' },
-      targetPos: { x: 0, y: 0.1, z: 3.4 },
-      camPos: { x: 1.8, y: 0.8, z: 5.2 },
+      title: { ru: '👁️ Сенсорная Турель (Под носом)', en: '👁️ Under-Nose Sensor Turret & Gimbal' },
+      massKg: 12.5,
+      mtowPct: '2.8%',
+      material: { ru: 'Авиасплав 7075-T6 + Германиевая линза', en: 'Aviation 7075-T6 + Germanium Lens' },
+      targetPos: { x: 0, y: -0.48, z: 3.2 },
+      camPos: { x: 1.8, y: -0.5, z: 4.8 },
       specs: [
         { label: { ru: 'Агро-канал:', en: 'Agro Sensor:' }, val: 'NDVI / RedEdge 5-band 48MP' },
         { label: { ru: 'Пожарный ИК-канал:', en: 'Thermal IR:' }, val: '640x512 Uncooled FLIR 15km' },
@@ -503,8 +527,8 @@
       ],
       formula: 'NDVI = (NIR - RED) / (NIR + RED)  |  Thermal Fire Detection: 3-5 μm',
       desc: {
-        ru: 'Носовая гиростабилизированная турель с искусственным интеллектом для детекции очагов возгорания сквозь дым и построения карт вегетационного индекса NDVI для дифференцированного внесения удобрений.',
-        en: 'Nose-mounted 3-axis gyro-stabilized sensor payload combining 5-band NDVI multispectral imaging for crop health with long-wave infrared thermal vision penetrating dense smoke up to 15 km.'
+        ru: 'Компактная сферическая оптическая турель, закрепленная под нижней частью носа фюзеляжа в аэродинамическом пилоне. Оснащена ИК-тепловизором FLIR и мультиспектральной камерой NDVI с искусственным интеллектом.',
+        en: 'Compact spherical optical gimbal turret mounted cleanly under the lower fuselage nose in an aerodynamic pylon fairing. Combines 5-band NDVI multispectral imaging with FLIR thermal vision.'
       },
       chartData: {
         x: ['Healthy', 'Water Stress', 'Dry / Fire'],
@@ -513,10 +537,14 @@
       }
     },
     avionics: {
+      nodeNumber: 7,
       category: 'NAVIGATION & TELEMETRY',
       title: { ru: '📡 Автопилот MAVLink / Starlink', en: '📡 Autonomous Avionics & Starlink' },
-      targetPos: { x: 0, y: 0.7, z: 2.1 },
-      camPos: { x: 2.2, y: 2.5, z: 4.0 },
+      massKg: 8.5,
+      mtowPct: '1.9%',
+      material: { ru: 'Mil-Spec Алюминий + Triple STM32H7', en: 'Mil-Spec Aluminum + Triple STM32H7' },
+      targetPos: { x: 0, y: 0.55, z: 2.2 },
+      camPos: { x: 2.0, y: 2.2, z: 3.8 },
       specs: [
         { label: { ru: 'Процессор полета:', en: 'Flight Controller:' }, val: 'Triple Redundant STM32H7' },
         { label: { ru: 'Канал связи:', en: 'Datalink:' }, val: '868 MHz + 5G + Starlink Mini' },
@@ -535,10 +563,14 @@
       }
     },
     gear: {
+      nodeNumber: 8,
       category: 'STOL ROUGH-TERRAIN GEAR',
       title: { ru: '🛬 Шасси STOL & Амфибийные Поплавки', en: '🛬 Rough-Terrain STOL Landing Gear' },
-      targetPos: { x: 1.4, y: -1.2, z: 0.2 },
-      camPos: { x: 3.5, y: -0.5, z: 2.8 },
+      massKg: 28.0,
+      mtowPct: '6.2%',
+      material: { ru: 'Титан Oleo-Pneumatic + Tundra шины', en: 'Titanium Oleo-Pneumatic + Tundra Tires' },
+      targetPos: { x: 1.5, y: -1.0, z: 0.3 },
+      camPos: { x: 3.5, y: -0.6, z: 2.6 },
       specs: [
         { label: { ru: 'Тип амортизаторов:', en: 'Shock Absorbers:' }, val: 'Азотно-масляные Oleo-Strut' },
         { label: { ru: 'Шины:', en: 'Tundra Balloon Tires:' }, val: 'Низкого давления (0.8 Bar)' },
@@ -569,8 +601,17 @@
   let cfdParticleSystem = null;
   let sprayParticleSystem = null;
   let waterDumpParticleSystem = null;
+  let waterSplashParticleSystem = null;
+  let waterBayDoorL = null, waterBayDoorR = null;
+  let sprayNozzleMeshes = [];
   let zebraMaterial = null;
   let standardMaterials = [];
+
+  // Dedicated Particle Physics Arrays for high-precision simulation
+  let cfdData = [];
+  let sprayData = [];
+  let waterDumpData = [];
+  let waterSplashData = [];
 
   function initThree() {
     const canvas = document.getElementById('webgl-canvas');
@@ -588,7 +629,7 @@
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.1;
+    renderer.toneMappingExposure = 1.15;
 
     // Scene
     scene = new THREE.Scene();
@@ -612,23 +653,26 @@
     raycaster = new THREE.Raycaster();
     mouse = new THREE.Vector2();
 
-    // Lighting
+    // Lighting (Enhanced High-Luminance Aerospace Rig)
     setupLighting();
 
     // Hangar Floor & Holographic Runway Grid
     buildHangarEnvironment();
 
-    // Procedural 3D AeroTerra H2 Aircraft
+    // Procedural 3D AeroTerra H2 Aircraft (CATIA V5 Class-A Lofting)
     buildAeroTerraModel();
 
     // 8 Interactive 3D Hotspot Sprites
     createHotspotMarkers();
 
-    // Particle Systems (CFD, Spray, Water Dump)
+    // Particle Systems (CFD, Spray 6-Nozzles, Water Dump + Splash)
     createParticleSystems();
 
     // Custom Zebra Shader for Class-A Surface Continuity
     initZebraShader();
+
+    // Select Node #1 (Wing) by default so the inspector panel is open on load
+    selectHotspot('wing');
 
     // Events
     window.addEventListener('resize', onWindowResize);
@@ -640,28 +684,43 @@
   }
 
   function setupLighting() {
-    // Ambient Light
-    const ambient = new THREE.AmbientLight(0x0e2246, 1.4);
-    scene.add(ambient);
+    // 1. Ambient Hemisphere Light (aerospace sky-to-ground natural fill)
+    const hemiLight = new THREE.HemisphereLight(0xf0f7ff, 0x0a1424, 1.8);
+    scene.add(hemiLight);
 
-    // Main Rim Sunlight
-    const sunLight = new THREE.DirectionalLight(0xe6f7ff, 2.2);
-    sunLight.position.set(12, 22, 10);
+    // 2. Main Key Directional Sunlight (sharp specular highlights on Class-A curves)
+    const sunLight = new THREE.DirectionalLight(0xffffff, 2.8);
+    sunLight.position.set(14, 24, 12);
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.width = 2048;
     sunLight.shadow.mapSize.height = 2048;
     sunLight.shadow.bias = -0.0005;
     scene.add(sunLight);
 
-    // Under-wing Cyan Hangar Uplight
-    const cyanLight = new THREE.PointLight(0x00e5ff, 2.5, 18);
-    cyanLight.position.set(0, 0.2, 0);
-    scene.add(cyanLight);
+    // 3. Cyan Rim Light from behind to highlight the aerodynamic contour silhouettes
+    const rimLight = new THREE.DirectionalLight(0x00e5ff, 2.2);
+    rimLight.position.set(-14, 10, -14);
+    scene.add(rimLight);
 
-    // Rear Emerald Accent Light
-    const emeraldLight = new THREE.PointLight(0x00ff9d, 1.8, 14);
-    emeraldLight.position.set(0, 2.5, -6);
-    scene.add(emeraldLight);
+    // 4. Soft Fill Light from front right
+    const fillLight = new THREE.DirectionalLight(0xd0e8ff, 1.4);
+    fillLight.position.set(10, 6, 14);
+    scene.add(fillLight);
+
+    // 5. Under-belly Emerald/Cyan Runway Reflection Light
+    const bellyLight = new THREE.PointLight(0x00ff9d, 1.8, 20);
+    bellyLight.position.set(0, -1.2, 0);
+    scene.add(bellyLight);
+
+    // 6. Internal Cryo-Tank Cyan Glow Light (illuminates tank through translucent dorsal composite)
+    const h2InteriorLight = new THREE.PointLight(0x00e5ff, 2.8, 4.0);
+    h2InteriorLight.position.set(0, 0.45, -0.7);
+    scene.add(h2InteriorLight);
+
+    // 7. Internal Fuel Cell Emerald Glow Light (illuminates PEM stack through translucent dorsal composite)
+    const fcInteriorLight = new THREE.PointLight(0x00ff9d, 2.4, 4.0);
+    fcInteriorLight.position.set(0, 0.45, 0.85);
+    scene.add(fcInteriorLight);
   }
 
   function buildHangarEnvironment() {
@@ -699,189 +758,496 @@
 
   // --------------------------------------------------------------------------
   // 6. PROCEDURAL 3D GEOMETRY OF AEROTERRA H2
-  // (Box-Wing, Twin-Boom STOL with CFRP Class-A Surfaces)
+  // (CATIA V5 Class-A Lofting, NACA 64-215 Airfoil, Twin-Boom STOL)
   // --------------------------------------------------------------------------
   function buildAeroTerraModel() {
     aircraftGroup = new THREE.Group();
     aircraftGroup.position.set(0, 0, 0);
     scene.add(aircraftGroup);
 
-    // Common PBR Materials
-    const carbonFuselageMat = new THREE.MeshStandardMaterial({
-      color: 0x0c1527,
-      roughness: 0.25,
-      metalness: 0.85
+    // 1. Primary Airframe: Pearl-White / Titanium Aerospace Composite (Class-A)
+    const pearlCompositeMat = new THREE.MeshStandardMaterial({
+      color: 0xf4f7fa, // Pearl white/silver titanium
+      roughness: 0.22,
+      metalness: 0.38
     });
-    const wingMat = new THREE.MeshStandardMaterial({
-      color: 0x162540,
-      roughness: 0.2,
-      metalness: 0.7
+
+    // 2. Dark Carbon Composite (for structural spars, leading edge boots, tires)
+    const carbonDarkMat = new THREE.MeshStandardMaterial({
+      color: 0x141a24,
+      roughness: 0.28,
+      metalness: 0.75
     });
+
+    // 3. Neon Cyan Aerodynamic Accent / Racing Stripe
     const cyanGlowMat = new THREE.MeshStandardMaterial({
       color: 0x00e5ff,
       emissive: 0x00e5ff,
-      emissiveIntensity: 0.6
+      emissiveIntensity: 0.65,
+      roughness: 0.2,
+      metalness: 0.4
     });
-    const glassCockpitMat = new THREE.MeshPhysicalMaterial({
-      color: 0x002b4d,
-      metalness: 0.1,
-      roughness: 0.1,
-      transmission: 0.7,
+
+    // 4. Neon Emerald Aerodynamic Accent / Wingtips
+    const emeraldGlowMat = new THREE.MeshStandardMaterial({
+      color: 0x00ff9d,
+      emissive: 0x00ff9d,
+      emissiveIntensity: 0.65,
+      roughness: 0.2,
+      metalness: 0.4
+    });
+
+    // 5. Translucent X-Ray Composite Dorsal Shell (allows viewing H2 Tank & Fuel Cell inside!)
+    const translucentDorsalMat = new THREE.MeshPhysicalMaterial({
+      color: 0x0e2438,
+      metalness: 0.2,
+      roughness: 0.12,
+      transmission: 0.68,
       transparent: true,
-      opacity: 0.75
+      opacity: 0.58,
+      ior: 1.45
     });
+
+    // 6. Polarized Aviation Cockpit Glass
+    const glassCockpitMat = new THREE.MeshPhysicalMaterial({
+      color: 0x001d36,
+      metalness: 0.3,
+      roughness: 0.08,
+      transmission: 0.75,
+      transparent: true,
+      opacity: 0.8
+    });
+
+    // 7. Aeronautical CNC 7075-T6 Titanium Alloy
     const metalMat = new THREE.MeshStandardMaterial({
-      color: 0xd0dbe5,
-      roughness: 0.3,
-      metalness: 0.95
+      color: 0xd8e2ec,
+      roughness: 0.22,
+      metalness: 0.92
     });
 
-    standardMaterials.push(carbonFuselageMat, wingMat, cyanGlowMat, metalMat);
+    const tankMat = new THREE.MeshStandardMaterial({
+      color: 0x00b4d8,
+      roughness: 0.18,
+      metalness: 0.88,
+      emissive: 0x003344
+    });
 
-    // --- Subassembly 1: FUSELAGE ---
+    const fcMat = new THREE.MeshStandardMaterial({
+      color: 0x1c2b42,
+      roughness: 0.25,
+      metalness: 0.82
+    });
+
+    standardMaterials.push(pearlCompositeMat, carbonDarkMat, cyanGlowMat, emeraldGlowMat, metalMat, tankMat, fcMat);
+
+    // ========================================================================
+    // SUBASSEMBLY 1: FUSELAGE (Smooth CATIA V5 Class-A Lofting, NO INVERTED CONE)
+    // ========================================================================
     const fuselageGroup = new THREE.Group();
     aircraftGroup.add(fuselageGroup);
     explodedGroups.fuselage = fuselageGroup;
 
-    // Streamlined aerodynamic body
-    const bodyGeo = new THREE.CylinderGeometry(0.72, 0.48, 7.8, 32);
-    bodyGeo.rotateX(Math.PI / 2);
-    const fuselage = new THREE.Mesh(bodyGeo, carbonFuselageMat);
+    // Smooth aerodynamic spline contour revolving around length axis
+    const lathePoints = [];
+    const fuselageSpline = [
+      { z: 4.40, r: 0.00 }, // Smooth parabolic nose radome tip (tangent Class-A)
+      { z: 4.35, r: 0.16 },
+      { z: 4.20, r: 0.34 },
+      { z: 3.90, r: 0.54 },
+      { z: 3.40, r: 0.70 }, // Forward nose radome
+      { z: 2.60, r: 0.79 }, // Forward cabin / avionics
+      { z: 1.20, r: 0.82 }, // Fuel cell section
+      { z: -0.50, r: 0.82 }, // Cryo-tank section
+      { z: -1.80, r: 0.76 }, // Mission payload bay
+      { z: -2.80, r: 0.64 }, // Tail boom transition
+      { z: -3.60, r: 0.42 }, // Aft fuselage taper
+      { z: -4.10, r: 0.18 }, // Aft tail cone
+      { z: -4.25, r: 0.02 }  // Tail cone apex
+    ];
+    fuselageSpline.forEach(pt => lathePoints.push(new THREE.Vector2(pt.r, pt.z)));
+    const fuselageGeo = new THREE.LatheGeometry(lathePoints, 40);
+    fuselageGeo.rotateX(Math.PI / 2);
+    fuselageGeo.computeVertexNormals();
+
+    const fuselage = new THREE.Mesh(fuselageGeo, pearlCompositeMat);
     fuselage.castShadow = true;
     fuselage.receiveShadow = true;
     fuselageGroup.add(fuselage);
 
-    // Aerodynamic Nose Cone
-    const noseGeo = new THREE.ConeGeometry(0.72, 1.8, 32);
-    noseGeo.rotateX(-Math.PI / 2);
-    const nose = new THREE.Mesh(noseGeo, carbonFuselageMat);
-    nose.position.z = 4.8;
-    nose.castShadow = true;
-    fuselageGroup.add(nose);
-
-    // Glass Canopy / Cockpit
-    const canopyGeo = new THREE.SphereGeometry(0.68, 24, 16, 0, Math.PI * 2, 0, Math.PI / 2);
-    canopyGeo.scale(1, 0.7, 2.2);
+    // Polarized Avionics/Cockpit Canopy Glass
+    const canopyGeo = new THREE.SphereGeometry(0.72, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+    canopyGeo.scale(0.88, 0.62, 2.0);
     const canopy = new THREE.Mesh(canopyGeo, glassCockpitMat);
-    canopy.position.set(0, 0.52, 2.2);
+    canopy.position.set(0, 0.54, 2.4);
     fuselageGroup.add(canopy);
 
-    // Cyan Racing/Energy Stripe on Fuselage
-    const stripeGeo = new THREE.CylinderGeometry(0.73, 0.49, 0.15, 32);
-    stripeGeo.rotateX(Math.PI / 2);
-    const stripe = new THREE.Mesh(stripeGeo, cyanGlowMat);
-    stripe.position.z = 1.0;
-    fuselageGroup.add(stripe);
+    // Translucent X-Ray Composite Dorsal Shell (shows glowing H2 tank & PEM stack inside)
+    const dorsalGeo = new THREE.CylinderGeometry(0.81, 0.79, 3.2, 32, 1, false, Math.PI * 0.15, Math.PI * 0.70);
+    dorsalGeo.rotateX(Math.PI / 2);
+    const dorsalCover = new THREE.Mesh(dorsalGeo, translucentDorsalMat);
+    dorsalCover.position.set(0, 0.08, -0.1);
+    fuselageGroup.add(dorsalCover);
 
-    // --- Subassembly 2: MAIN WING (NACA 64-215 Class-A) ---
+    // Neon Cyan & Emerald Aerodynamic Chine Speed Stripes along Fuselage Flanks
+    [-0.82, 0.82].forEach(xSign => {
+      const stripeGeo = new THREE.BoxGeometry(0.04, 0.06, 6.2);
+      const stripeMesh = new THREE.Mesh(stripeGeo, cyanGlowMat);
+      stripeMesh.position.set(xSign, 0.05, 0.3);
+      fuselageGroup.add(stripeMesh);
+
+      const stripeEmeraldGeo = new THREE.BoxGeometry(0.03, 0.03, 5.0);
+      const stripeEmerald = new THREE.Mesh(stripeEmeraldGeo, emeraldGlowMat);
+      stripeEmerald.position.set(xSign * 1.01, -0.05, 0.3);
+      fuselageGroup.add(stripeEmerald);
+    });
+
+    // Ventral Firefighting Water Bomb Bay Doors on Belly
+    const bayFrameGeo = new THREE.BoxGeometry(0.64, 0.08, 1.8);
+    const bayFrame = new THREE.Mesh(bayFrameGeo, carbonDarkMat);
+    bayFrame.position.set(0, -0.62, 0.2);
+    fuselageGroup.add(bayFrame);
+
+    // Left Door (Hinged at x = -0.28)
+    const doorLGeo = new THREE.BoxGeometry(0.28, 0.04, 1.76);
+    doorLGeo.translate(0.14, 0, 0); // pivot along left edge
+    waterBayDoorL = new THREE.Mesh(doorLGeo, pearlCompositeMat);
+    waterBayDoorL.position.set(-0.28, -0.64, 0.2);
+    fuselageGroup.add(waterBayDoorL);
+
+    // Right Door (Hinged at x = +0.28)
+    const doorRGeo = new THREE.BoxGeometry(0.28, 0.04, 1.76);
+    doorRGeo.translate(-0.14, 0, 0); // pivot along right edge
+    waterBayDoorR = new THREE.Mesh(doorRGeo, pearlCompositeMat);
+    waterBayDoorR.position.set(0.28, -0.64, 0.2);
+    fuselageGroup.add(waterBayDoorR);
+
+    // ========================================================================
+    // SUBASSEMBLY 2: MAIN WING (NACA 64-215 Airfoil Lofting, Taper, Winglets)
+    // ========================================================================
     const wingGroup = new THREE.Group();
     aircraftGroup.add(wingGroup);
     explodedGroups.wing = wingGroup;
 
-    // High aspect ratio main wing
-    const wingCenterGeo = new THREE.BoxGeometry(12.4, 0.18, 1.25);
-    const mainWing = new THREE.Mesh(wingCenterGeo, wingMat);
-    mainWing.position.set(0, 0.85, 0.5);
-    mainWing.castShadow = true;
-    wingGroup.add(mainWing);
+    // Helper: generate true teardrop NACA 64-series cambered airfoil contour
+    function createNacaAirfoilShape(chord = 1.35, t = 0.14) {
+      const shape = new THREE.Shape();
+      const segments = 32;
+      const upperPts = [];
+      const lowerPts = [];
 
-    // Left Winglet
-    const wingletLGeo = new THREE.BoxGeometry(0.12, 0.85, 0.7);
-    const wingletL = new THREE.Mesh(wingletLGeo, cyanGlowMat);
-    wingletL.position.set(-6.2, 1.25, 0.5);
-    wingGroup.add(wingletL);
+      for (let i = 0; i <= segments; i++) {
+        const xNorm = i / segments;
+        // NACA thickness distribution:
+        const yt = 5 * t * (
+          0.2969 * Math.sqrt(Math.max(xNorm, 0.00001)) -
+          0.1260 * xNorm -
+          0.3516 * Math.pow(xNorm, 2) +
+          0.2843 * Math.pow(xNorm, 3) -
+          0.1015 * Math.pow(xNorm, 4)
+        );
+        // Camber line (2.5% camber at 40% chord):
+        const m = 0.025;
+        const p = 0.40;
+        let yc = 0;
+        if (xNorm < p) {
+          yc = (m / (p * p)) * (2 * p * xNorm - xNorm * xNorm);
+        } else {
+          yc = (m / Math.pow(1 - p, 2)) * ((1 - 2 * p) + 2 * p * xNorm - xNorm * xNorm);
+        }
 
-    // Right Winglet
-    const wingletRGeo = new THREE.BoxGeometry(0.12, 0.85, 0.7);
-    const wingletR = new THREE.Mesh(wingletRGeo, cyanGlowMat);
-    wingletR.position.set(6.2, 1.25, 0.5);
-    wingGroup.add(wingletR);
+        const zPos = (0.35 - xNorm) * chord; // Leading edge at +0.47m, Trailing edge at -0.88m
+        const yUpper = (yc + yt) * chord;
+        const yLower = (yc - yt) * chord;
 
-    // Internal Spar Truss (Visible in exploded view)
-    const sparGeo = new THREE.CylinderGeometry(0.04, 0.04, 11.8, 16);
+        upperPts.push(new THREE.Vector2(zPos, yUpper));
+        lowerPts.push(new THREE.Vector2(zPos, yLower));
+      }
+
+      shape.moveTo(upperPts[segments].x, upperPts[segments].y);
+      for (let i = segments - 1; i >= 0; i--) {
+        shape.lineTo(upperPts[i].x, upperPts[i].y);
+      }
+      for (let i = 1; i <= segments; i++) {
+        shape.lineTo(lowerPts[i].x, lowerPts[i].y);
+      }
+      shape.closePath();
+      return shape;
+    }
+
+    const semiSpan = 6.0;
+    const wingShape = createNacaAirfoilShape(1.35, 0.14);
+
+    // Left Wing Panel (NACA Extrude from x = 0 to x = -6.0)
+    const leftWingGeo = new THREE.ExtrudeGeometry(wingShape, {
+      depth: semiSpan,
+      bevelEnabled: true,
+      bevelThickness: 0.03,
+      bevelSize: 0.02,
+      bevelSegments: 3
+    });
+    leftWingGeo.rotateY(-Math.PI / 2);
+    leftWingGeo.computeVertexNormals();
+    const leftWing = new THREE.Mesh(leftWingGeo, pearlCompositeMat);
+    leftWing.position.set(0, 0.85, 0.5);
+    leftWing.castShadow = true;
+    wingGroup.add(leftWing);
+
+    // Right Wing Panel (NACA Extrude mirrored from x = 0 to x = +6.0)
+    const rightWingGeo = new THREE.ExtrudeGeometry(wingShape, {
+      depth: semiSpan,
+      bevelEnabled: true,
+      bevelThickness: 0.03,
+      bevelSize: 0.02,
+      bevelSegments: 3
+    });
+    rightWingGeo.rotateY(-Math.PI / 2);
+    rightWingGeo.scale(-1, 1, 1);
+    rightWingGeo.computeVertexNormals();
+    const rightWing = new THREE.Mesh(rightWingGeo, pearlCompositeMat);
+    rightWing.position.set(0, 0.85, 0.5);
+    rightWing.castShadow = true;
+    wingGroup.add(rightWing);
+
+    // Leading Edge Protective De-icing Boot Stripes (Dark CFRP)
+    [-3.0, 3.0].forEach(xCenter => {
+      const bootGeo = new THREE.CylinderGeometry(0.04, 0.04, 5.8, 16);
+      bootGeo.rotateZ(Math.PI / 2);
+      const boot = new THREE.Mesh(bootGeo, carbonDarkMat);
+      boot.position.set(xCenter, 0.85, 0.96);
+      wingGroup.add(boot);
+    });
+
+    // Aerodynamic Blended Canted Winglets at Wingtips (x = ±6.05)
+    [-1, 1].forEach(sign => {
+      const wingletGroup = new THREE.Group();
+      wingletGroup.position.set(sign * 6.05, 0.85, 0.5);
+
+      const wingletShape = new THREE.Shape();
+      wingletShape.moveTo(0.35, 0);
+      wingletShape.lineTo(-0.55, 0);
+      wingletShape.lineTo(-0.85, 0.85);
+      wingletShape.lineTo(-0.25, 0.85);
+      wingletShape.closePath();
+
+      const wingletGeo = new THREE.ExtrudeGeometry(wingletShape, {
+        depth: 0.06,
+        bevelEnabled: true,
+        bevelThickness: 0.02,
+        bevelSize: 0.015,
+        bevelSegments: 2
+      });
+      wingletGeo.rotateY(sign > 0 ? -Math.PI / 2 : Math.PI / 2);
+      wingletGeo.computeVertexNormals();
+
+      const wingletMesh = new THREE.Mesh(wingletGeo, pearlCompositeMat);
+      wingletMesh.rotation.z = sign * 0.26; // cant outwards by 15 deg
+      wingletGroup.add(wingletMesh);
+
+      // Glowing Cyan Winglet Edge Tip
+      const tipGeo = new THREE.BoxGeometry(0.08, 0.88, 0.04);
+      const tipMesh = new THREE.Mesh(tipGeo, cyanGlowMat);
+      tipMesh.position.set(sign * 0.12, 0.45, -0.55);
+      tipMesh.rotation.x = -0.35;
+      wingletGroup.add(tipMesh);
+
+      // Navigation position lights (Left = Red, Right = Green)
+      const navLightGeo = new THREE.SphereGeometry(0.05, 12, 12);
+      const navLightMat = new THREE.MeshBasicMaterial({ color: sign < 0 ? 0xff2222 : 0x00ff66 });
+      const navLight = new THREE.Mesh(navLightGeo, navLightMat);
+      navLight.position.set(sign * 0.22, 0.88, -0.55);
+      wingletGroup.add(navLight);
+
+      wingGroup.add(wingletGroup);
+    });
+
+    // Internal Carbon Spar Truss (visible in exploded view)
+    const sparGeo = new THREE.CylinderGeometry(0.05, 0.05, 11.8, 16);
     sparGeo.rotateZ(Math.PI / 2);
     const spar = new THREE.Mesh(sparGeo, metalMat);
     spar.position.set(0, 0.85, 0.5);
     wingGroup.add(spar);
 
-    // --- Subassembly 3: TWIN-BOOM TAIL ASSEMBLY ---
+    // Underwing Spray Boom with 6 visible rotary nozzles
+    const sprayBoomGroup = new THREE.Group();
+    sprayBoomGroup.position.set(0, 0.35, -0.22);
+    wingGroup.add(sprayBoomGroup);
+
+    // Transverse lightweight manifold tube
+    const sprayManifoldGeo = new THREE.CylinderGeometry(0.024, 0.024, 10.2, 16);
+    sprayManifoldGeo.rotateZ(Math.PI / 2);
+    const sprayManifold = new THREE.Mesh(sprayManifoldGeo, metalMat);
+    sprayManifold.name = 'sprayBoomMesh';
+    sprayBoomGroup.add(sprayManifold);
+
+    // 6 Visible Precision Rotary Atomizer Nozzles
+    const nozzlePositionsX = [-4.8, -2.9, -1.1, 1.1, 2.9, 4.8];
+    sprayNozzleMeshes = [];
+    nozzlePositionsX.forEach(posX => {
+      const nozzleUnit = new THREE.Group();
+      nozzleUnit.position.set(posX, 0, 0);
+
+      // Pylon bracket to wing
+      const pylonGeo = new THREE.BoxGeometry(0.04, 0.42, 0.08);
+      const pylon = new THREE.Mesh(pylonGeo, pearlCompositeMat);
+      pylon.position.set(0, 0.22, 0);
+      nozzleUnit.add(pylon);
+
+      // Atomizer body
+      const bodyNozzleGeo = new THREE.CylinderGeometry(0.038, 0.032, 0.14, 16);
+      const bodyNozzle = new THREE.Mesh(bodyNozzleGeo, metalMat);
+      bodyNozzle.position.set(0, -0.05, 0);
+      nozzleUnit.add(bodyNozzle);
+
+      // Spinning rotary atomizer cup disc
+      const cupGeo = new THREE.CylinderGeometry(0.065, 0.045, 0.025, 16);
+      const cup = new THREE.Mesh(cupGeo, emeraldGlowMat);
+      cup.position.set(0, -0.12, 0);
+      nozzleUnit.add(cup);
+
+      sprayBoomGroup.add(nozzleUnit);
+      sprayNozzleMeshes.push(nozzleUnit);
+    });
+
+    // ========================================================================
+    // SUBASSEMBLY 3: TWIN-BOOM TAIL ASSEMBLY (STOL Inverted-Pi / V-Tail)
+    // ========================================================================
     const tailGroup = new THREE.Group();
     aircraftGroup.add(tailGroup);
     explodedGroups.tail = tailGroup;
 
-    // Left Boom
-    const boomLGeo = new THREE.CylinderGeometry(0.12, 0.08, 5.2, 16);
-    boomLGeo.rotateX(Math.PI / 2);
-    const boomL = new THREE.Mesh(boomLGeo, carbonFuselageMat);
-    boomL.position.set(-2.4, 0.75, -2.5);
-    boomL.castShadow = true;
-    tailGroup.add(boomL);
+    // Twin volumetric aerodynamic tail booms emerging from inner engine nacelles (x = ±2.2)
+    [-2.2, 2.2].forEach(xPos => {
+      // Streamlined oval boom body
+      const boomGeo = new THREE.CylinderGeometry(0.18, 0.12, 5.3, 20);
+      boomGeo.rotateX(Math.PI / 2);
+      boomGeo.scale(0.85, 1.15, 1.0); // aerodynamic vertical aspect
+      const boom = new THREE.Mesh(boomGeo, pearlCompositeMat);
+      boom.position.set(xPos, 0.75, -2.15);
+      boom.castShadow = true;
+      tailGroup.add(boom);
 
-    // Right Boom
-    const boomRGeo = new THREE.CylinderGeometry(0.12, 0.08, 5.2, 16);
-    boomRGeo.rotateX(Math.PI / 2);
-    const boomR = new THREE.Mesh(boomRGeo, carbonFuselageMat);
-    boomR.position.set(2.4, 0.75, -2.5);
-    boomR.castShadow = true;
-    tailGroup.add(boomR);
+      // Cyan Accent Stripe on boom
+      const boomStripeGeo = new THREE.CylinderGeometry(0.182, 0.122, 0.12, 20);
+      boomStripeGeo.rotateX(Math.PI / 2);
+      boomStripeGeo.scale(0.85, 1.15, 1.0);
+      const boomStripe = new THREE.Mesh(boomStripeGeo, cyanGlowMat);
+      boomStripe.position.set(xPos, 0.75, -1.8);
+      tailGroup.add(boomStripe);
 
-    // Horizontal Stabilizer linking twin booms
-    const hStabGeo = new THREE.BoxGeometry(5.2, 0.09, 0.75);
-    const hStab = new THREE.Mesh(hStabGeo, wingMat);
-    hStab.position.set(0, 1.45, -5.0);
+      // Vertical Stabilizer Fin at boom aft
+      const finGroup = new THREE.Group();
+      finGroup.position.set(xPos, 1.45, -4.8);
+
+      const finGeo = new THREE.BoxGeometry(0.08, 1.35, 0.9);
+      const finMesh = new THREE.Mesh(finGeo, pearlCompositeMat);
+      finMesh.position.y = 0;
+      finMesh.rotation.z = (xPos > 0 ? -1 : 1) * 0.1; // cant outward 6 deg
+      finGroup.add(finMesh);
+
+      // Rudder surface trim line
+      const rudderTrimGeo = new THREE.BoxGeometry(0.082, 1.25, 0.28);
+      const rudderTrim = new THREE.Mesh(rudderTrimGeo, carbonDarkMat);
+      rudderTrim.position.set(0, 0, -0.32);
+      rudderTrim.rotation.z = (xPos > 0 ? -1 : 1) * 0.1;
+      finGroup.add(rudderTrim);
+
+      // Glowing cyan fin cap
+      const capGeo = new THREE.BoxGeometry(0.084, 0.08, 0.85);
+      const cap = new THREE.Mesh(capGeo, cyanGlowMat);
+      cap.position.set(0, 0.68, 0);
+      cap.rotation.z = (xPos > 0 ? -1 : 1) * 0.1;
+      finGroup.add(cap);
+
+      tailGroup.add(finGroup);
+    });
+
+    // High-Mounted Horizontal Stabilizer linking twin fins (clear of spray plume)
+    const hStabGeo = new THREE.BoxGeometry(4.48, 0.09, 0.85);
+    const hStab = new THREE.Mesh(hStabGeo, pearlCompositeMat);
+    hStab.position.set(0, 1.95, -4.8);
     hStab.castShadow = true;
     tailGroup.add(hStab);
 
-    // Twin Vertical Fins
-    const vFinGeo = new THREE.BoxGeometry(0.08, 1.2, 0.7);
-    const finL = new THREE.Mesh(vFinGeo, cyanGlowMat);
-    finL.position.set(-2.4, 1.4, -5.0);
-    tailGroup.add(finL);
+    // Elevator control surface line
+    const elevGeo = new THREE.BoxGeometry(4.44, 0.085, 0.32);
+    const elevator = new THREE.Mesh(elevGeo, carbonDarkMat);
+    elevator.position.set(0, 1.95, -5.1);
+    tailGroup.add(elevator);
 
-    const finR = new THREE.Mesh(vFinGeo, cyanGlowMat);
-    finR.position.set(2.4, 1.4, -5.0);
-    tailGroup.add(finR);
+    // Rear White Strobe / Beacon Light
+    const strobeGeo = new THREE.SphereGeometry(0.045, 12, 12);
+    const strobeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const strobe = new THREE.Mesh(strobeGeo, strobeMat);
+    strobe.position.set(0, 2.02, -5.2);
+    tailGroup.add(strobe);
 
-    // --- Subassembly 4: 4x ELECTRIC MOTORS & PROPELLERS (DEP) ---
+    // ========================================================================
+    // SUBASSEMBLY 4: 4x ELECTRIC MOTORS & SCIMITAR PROPELLERS (DEP)
+    // ========================================================================
     const depGroup = new THREE.Group();
     aircraftGroup.add(depGroup);
     explodedGroups.motors = depGroup;
 
-    const motorPositions = [-4.0, -1.8, 1.8, 4.0];
+    const motorPositions = [-4.2, -2.2, 2.2, 4.2];
     motorPositions.forEach((xPos, idx) => {
-      // Nacelle
-      const nacelleGeo = new THREE.CylinderGeometry(0.22, 0.2, 1.1, 16);
+      // Aerodynamic Engine Nacelle Body
+      const nacelleGeo = new THREE.CylinderGeometry(0.24, 0.21, 1.4, 20);
       nacelleGeo.rotateX(Math.PI / 2);
-      const nacelle = new THREE.Mesh(nacelleGeo, metalMat);
-      nacelle.position.set(xPos, 0.75, 1.05);
+      const nacelle = new THREE.Mesh(nacelleGeo, pearlCompositeMat);
+      nacelle.position.set(xPos, 0.72, 1.05);
       nacelle.castShadow = true;
       depGroup.add(nacelle);
 
-      // Propeller Spinner
+      // Titanium Air Intake Cowl Ring
+      const cowlRingGeo = new THREE.TorusGeometry(0.24, 0.03, 12, 24);
+      const cowlRing = new THREE.Mesh(cowlRingGeo, metalMat);
+      cowlRing.position.set(xPos, 0.72, 1.75);
+      depGroup.add(cowlRing);
+
+      // Cyan / Emerald Accent Trim on Nacelle
+      const nacelleStripeGeo = new THREE.CylinderGeometry(0.242, 0.242, 0.08, 20);
+      nacelleStripeGeo.rotateX(Math.PI / 2);
+      const nacelleStripe = new THREE.Mesh(nacelleStripeGeo, idx % 2 === 0 ? cyanGlowMat : emeraldGlowMat);
+      nacelleStripe.position.set(xPos, 0.72, 1.35);
+      depGroup.add(nacelleStripe);
+
+      // Propeller Spinner & Blades
       const propGroup = new THREE.Group();
-      propGroup.position.set(xPos, 0.75, 1.65);
+      propGroup.position.set(xPos, 0.72, 1.78);
       depGroup.add(propGroup);
 
-      const spinnerGeo = new THREE.ConeGeometry(0.14, 0.35, 16);
+      // Aerodynamic Parabolic Spinner Cone
+      const spinnerGeo = new THREE.ConeGeometry(0.14, 0.38, 20);
       spinnerGeo.rotateX(Math.PI / 2);
-      const spinner = new THREE.Mesh(spinnerGeo, cyanGlowMat);
+      const spinner = new THREE.Mesh(spinnerGeo, metalMat);
       propGroup.add(spinner);
 
-      // 3 Propeller Blades
+      // 3 Carbon Fiber Scimitar Propeller Blades with High-Vis Yellow Safety Tips
       for (let b = 0; b < 3; b++) {
-        const bladeGeo = new THREE.BoxGeometry(0.1, 0.8, 0.03);
-        const blade = new THREE.Mesh(bladeGeo, carbonFuselageMat);
-        blade.position.y = 0.38;
-        blade.rotation.z = (b * Math.PI * 2) / 3;
-        propGroup.add(blade);
+        const bladeGroup = new THREE.Group();
+        bladeGroup.rotation.z = (b * Math.PI * 2) / 3;
+
+        const bladeGeo = new THREE.BoxGeometry(0.09, 0.78, 0.024);
+        const blade = new THREE.Mesh(bladeGeo, carbonDarkMat);
+        blade.position.y = 0.42;
+        bladeGroup.add(blade);
+
+        // Yellow safety tip
+        const tipGeo = new THREE.BoxGeometry(0.092, 0.12, 0.026);
+        const tipMat = new THREE.MeshStandardMaterial({ color: 0xffd600, roughness: 0.3 });
+        const yellowTip = new THREE.Mesh(tipGeo, tipMat);
+        yellowTip.position.y = 0.76;
+        bladeGroup.add(yellowTip);
+
+        propGroup.add(bladeGroup);
       }
 
-      // Propeller blur disk (semi-transparent)
+      // Propeller Motion Blur Disc
       const diskGeo = new THREE.CircleGeometry(0.85, 24);
       const diskMat = new THREE.MeshBasicMaterial({
         color: 0x00e5ff,
         transparent: true,
-        opacity: 0.18,
+        opacity: 0.16,
         side: THREE.DoubleSide
       });
       const blurDisk = new THREE.Mesh(diskGeo, diskMat);
@@ -891,47 +1257,76 @@
       propBlades.push(propGroup);
     });
 
-    // --- Subassembly 5: CRYOGENIC LH2 TANK ---
+    // ========================================================================
+    // SUBASSEMBLY 5: CRYOGENIC LH2 TANK (Node 2 - Visible inside X-Ray shell)
+    // ========================================================================
     const h2Group = new THREE.Group();
     aircraftGroup.add(h2Group);
     explodedGroups.tank = h2Group;
 
-    const tankMat = new THREE.MeshStandardMaterial({
-      color: 0x00a8cc,
-      roughness: 0.15,
-      metalness: 0.9,
-      emissive: 0x003344
+    // Type IV Composite Pressure Vessel with Spherical End Caps
+    const tankCylinderGeo = new THREE.CylinderGeometry(0.44, 0.44, 1.8, 24);
+    tankCylinderGeo.rotateX(Math.PI / 2);
+    const tankCylinder = new THREE.Mesh(tankCylinderGeo, tankMat);
+    tankCylinder.position.set(0, 0.38, -0.7);
+    h2Group.add(tankCylinder);
+
+    // Spherical Dome Caps (Forward & Aft)
+    [-0.9, 0.9].forEach(zOffset => {
+      const capGeo = new THREE.SphereGeometry(0.44, 24, 16);
+      const capMesh = new THREE.Mesh(capGeo, tankMat);
+      capMesh.position.set(0, 0.38, -0.7 + zOffset);
+      h2Group.add(capMesh);
     });
-    standardMaterials.push(tankMat);
 
-    const tankGeo = new THREE.CylinderGeometry(0.48, 0.48, 2.8, 24);
-    tankGeo.rotateX(Math.PI / 2);
-    const tank = new THREE.Mesh(tankGeo, tankMat);
-    tank.position.set(0, 0.58, -0.6);
-    h2Group.add(tank);
+    // Carbon Fiber Filament Winding Rings & Cryogenic Feed Pipe
+    [-0.4, 0.0, 0.4].forEach(zBand => {
+      const bandGeo = new THREE.TorusGeometry(0.445, 0.02, 12, 28);
+      const band = new THREE.Mesh(bandGeo, cyanGlowMat);
+      band.position.set(0, 0.38, -0.7 + zBand);
+      h2Group.add(band);
+    });
 
-    // --- Subassembly 6: PEM FUEL CELL STACK ---
+    const pipeGeo = new THREE.CylinderGeometry(0.04, 0.04, 1.4, 16);
+    pipeGeo.rotateX(Math.PI / 2);
+    const pipe = new THREE.Mesh(pipeGeo, metalMat);
+    pipe.position.set(0.2, 0.38, 0.1);
+    h2Group.add(pipe);
+
+    // ========================================================================
+    // SUBASSEMBLY 6: PEM FUEL CELL STACK (Node 3 - Visible inside X-Ray shell)
+    // ========================================================================
     const fcGroup = new THREE.Group();
     aircraftGroup.add(fcGroup);
     explodedGroups.fuelcell = fcGroup;
 
-    const fcBoxGeo = new THREE.BoxGeometry(0.8, 0.55, 1.2);
-    const fcMat = new THREE.MeshStandardMaterial({
-      color: 0x223555,
-      roughness: 0.3,
-      metalness: 0.8
-    });
+    // Bipolar Graphite Heat Sink Stack
+    const fcBoxGeo = new THREE.BoxGeometry(0.78, 0.52, 1.15);
     const fcStack = new THREE.Mesh(fcBoxGeo, fcMat);
-    fcStack.position.set(0, 0.65, 0.8);
+    fcStack.position.set(0, 0.42, 0.85);
     fcGroup.add(fcStack);
 
-    // --- Subassembly 7: QUICK-SWAP MISSION POD (Agro / Fire) ---
+    // Glowing Emerald Core & High-Voltage Busbars
+    const fcCoreGeo = new THREE.BoxGeometry(0.79, 0.12, 1.16);
+    const fcCore = new THREE.Mesh(fcCoreGeo, emeraldGlowMat);
+    fcCore.position.set(0, 0.42, 0.85);
+    fcGroup.add(fcCore);
+
+    // Li-Po Peak Buffer Battery Pack
+    const lipoBoxGeo = new THREE.BoxGeometry(0.55, 0.28, 0.45);
+    const lipoPack = new THREE.Mesh(lipoBoxGeo, carbonDarkMat);
+    lipoPack.position.set(0, 0.16, 1.6);
+    fcGroup.add(lipoPack);
+
+    // ========================================================================
+    // SUBASSEMBLY 7: QUICK-SWAP MISSION POD (Node 4 - Ventral Belly Pod)
+    // ========================================================================
     const podGroup = new THREE.Group();
     aircraftGroup.add(podGroup);
     explodedGroups.payload = podGroup;
 
-    // Belly Tank Pod
-    const podGeo = new THREE.CylinderGeometry(0.58, 0.45, 3.2, 24);
+    // Ventral Mission Capsule
+    const podGeo = new THREE.CylinderGeometry(0.56, 0.42, 3.2, 24);
     podGeo.rotateX(Math.PI / 2);
     const podMat = new THREE.MeshStandardMaterial({
       color: 0x00ff9d, // agro emerald default
@@ -941,72 +1336,96 @@
     standardMaterials.push(podMat);
     const missionPodMesh = new THREE.Mesh(podGeo, podMat);
     missionPodMesh.name = 'missionPodMesh';
-    missionPodMesh.position.set(0, -0.42, 0.2);
+    missionPodMesh.position.set(0, -0.45, 0.2);
     missionPodMesh.castShadow = true;
     podGroup.add(missionPodMesh);
 
-    // Dual Spray Boom Bars under wings
-    const boomSprayGeo = new THREE.CylinderGeometry(0.03, 0.03, 8.5, 16);
-    boomSprayGeo.rotateZ(Math.PI / 2);
-    const boomSpray = new THREE.Mesh(boomSprayGeo, metalMat);
-    boomSpray.name = 'sprayBoomMesh';
-    boomSpray.position.set(0, 0.15, -0.2);
-    podGroup.add(boomSpray);
+    // Cam-Lock Aerospace Quick-Release Latches
+    [-0.8, 0.8].forEach(zLatch => {
+      const latchGeo = new THREE.BoxGeometry(1.15, 0.08, 0.14);
+      const latch = new THREE.Mesh(latchGeo, metalMat);
+      latch.position.set(0, -0.22, 0.2 + zLatch);
+      podGroup.add(latch);
+    });
 
-    // --- Subassembly 8: SENSOR GIMBAL (NOSE) ---
+    // ========================================================================
+    // SUBASSEMBLY 8: SENSOR GIMBAL TURRET (Node 6 - Mounted UNDER NOSE BELLY)
+    // ========================================================================
     const gimbalGroup = new THREE.Group();
+    // Positioned neatly UNDER the nose chin (not on a stick sticking out of the nose tip!)
+    gimbalGroup.position.set(0, -0.48, 3.2);
     aircraftGroup.add(gimbalGroup);
     explodedGroups.gimbal = gimbalGroup;
 
-    const turretGeo = new THREE.SphereGeometry(0.28, 20, 20);
+    // Aerodynamic mounting collar/pylon fairing blended into lower fuselage
+    const collarGeo = new THREE.CylinderGeometry(0.24, 0.26, 0.18, 24);
+    const collar = new THREE.Mesh(collarGeo, pearlCompositeMat);
+    collar.position.set(0, 0.12, 0);
+    gimbalGroup.add(collar);
+
+    // Spherical 3-Axis Optical Turret Housing
+    const turretGeo = new THREE.SphereGeometry(0.24, 24, 24);
     const turretMat = new THREE.MeshStandardMaterial({
-      color: 0x0a1122,
-      roughness: 0.2,
-      metalness: 0.95
+      color: 0x16202c, // Dark aerospace titanium
+      roughness: 0.22,
+      metalness: 0.92
     });
     const turret = new THREE.Mesh(turretGeo, turretMat);
-    turret.position.set(0, 0.12, 3.8);
+    turret.position.set(0, 0, 0);
     gimbalGroup.add(turret);
 
-    // Multispectral / Thermal Lenses
-    const lensGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.1, 16);
-    lensGeo.rotateX(Math.PI / 2);
-    const lensMat = new THREE.MeshBasicMaterial({ color: 0x00ff9d });
-    const lens1 = new THREE.Mesh(lensGeo, lensMat);
-    lens1.position.set(-0.09, 0.12, 4.05);
+    // Multispectral NDVI 48MP Optical Lens (Emerald AR Sapphire glass)
+    const lens1Geo = new THREE.CylinderGeometry(0.065, 0.065, 0.08, 16);
+    lens1Geo.rotateX(Math.PI / 2);
+    const lens1Mat = new THREE.MeshBasicMaterial({ color: 0x00ff9d });
+    const lens1 = new THREE.Mesh(lens1Geo, lens1Mat);
+    lens1.position.set(-0.08, -0.02, 0.22);
     gimbalGroup.add(lens1);
 
-    const lens2Mat = new THREE.MeshBasicMaterial({ color: 0xff4d00 });
-    const lens2 = new THREE.Mesh(lensGeo, lens2Mat);
-    lens2.position.set(0.09, 0.12, 4.05);
+    // FLIR Uncooled LWIR Thermal Infrared Lens (Germanium deep-ruby/amber coating)
+    const lens2Geo = new THREE.CylinderGeometry(0.065, 0.065, 0.08, 16);
+    lens2Geo.rotateX(Math.PI / 2);
+    const lens2Mat = new THREE.MeshBasicMaterial({ color: 0xff3355 });
+    const lens2 = new THREE.Mesh(lens2Geo, lens2Mat);
+    lens2.position.set(0.08, -0.02, 0.22);
     gimbalGroup.add(lens2);
 
-    // --- Subassembly 9: ROUGH-TERRAIN STOL LANDING GEAR ---
+    // Top Eye-Safe Laser Rangefinder / LiDAR Window
+    const lidarGeo = new THREE.CylinderGeometry(0.035, 0.035, 0.06, 16);
+    lidarGeo.rotateX(Math.PI / 2);
+    const lidarMat = new THREE.MeshBasicMaterial({ color: 0x00e5ff });
+    const lidar = new THREE.Mesh(lidarGeo, lidarMat);
+    lidar.position.set(0, 0.08, 0.22);
+    gimbalGroup.add(lidar);
+
+    // ========================================================================
+    // SUBASSEMBLY 9: ROUGH-TERRAIN STOL LANDING GEAR (Node 8)
+    // ========================================================================
     const gearGroup = new THREE.Group();
     aircraftGroup.add(gearGroup);
     explodedGroups.gear = gearGroup;
 
-    // Nose Gear
-    const noseStrutGeo = new THREE.CylinderGeometry(0.04, 0.04, 1.2, 16);
+    // Nose Gear (Oleo-Strut & Balloon Tire)
+    const noseStrutGeo = new THREE.CylinderGeometry(0.04, 0.04, 1.1, 16);
     const noseStrut = new THREE.Mesh(noseStrutGeo, metalMat);
-    noseStrut.position.set(0, -0.85, 3.0);
+    noseStrut.position.set(0, -0.85, 2.8);
     gearGroup.add(noseStrut);
 
-    const noseWheelGeo = new THREE.CylinderGeometry(0.24, 0.24, 0.14, 20);
+    const noseWheelGeo = new THREE.CylinderGeometry(0.24, 0.24, 0.16, 20);
     noseWheelGeo.rotateZ(Math.PI / 2);
     const tireMat = new THREE.MeshStandardMaterial({ color: 0x111620, roughness: 0.9 });
     const noseWheel = new THREE.Mesh(noseWheelGeo, tireMat);
-    noseWheel.position.set(0, -1.35, 3.0);
+    noseWheel.position.set(0, -1.35, 2.8);
     gearGroup.add(noseWheel);
 
-    // Main Gear (Left & Right)
-    [-1.5, 1.5].forEach(x => {
-      const mainStrutGeo = new THREE.CylinderGeometry(0.05, 0.05, 1.3, 16);
+    // Main Gear (Left & Right with Trailing-Link Struts)
+    [-1.6, 1.6].forEach(x => {
+      const mainStrutGeo = new THREE.CylinderGeometry(0.05, 0.05, 1.25, 16);
       const mainStrut = new THREE.Mesh(mainStrutGeo, metalMat);
       mainStrut.position.set(x, -0.85, 0.3);
       gearGroup.add(mainStrut);
 
-      const mainWheelGeo = new THREE.CylinderGeometry(0.32, 0.32, 0.22, 20);
+      const mainWheelGeo = new THREE.CylinderGeometry(0.32, 0.32, 0.24, 20);
       mainWheelGeo.rotateZ(Math.PI / 2);
       const mainWheel = new THREE.Mesh(mainWheelGeo, tireMat);
       mainWheel.position.set(x, -1.32, 0.3);
@@ -1023,7 +1442,6 @@
     keys.forEach((key, i) => {
       const data = HOTSPOTS_DATA[key];
       
-      // Canvas text icon texture for billboard sprite
       const canvas = document.createElement('canvas');
       canvas.width = 128;
       canvas.height = 128;
@@ -1134,18 +1552,51 @@
 
   function updateFlyoutPanel(data) {
     const flyout = document.getElementById('engineering-flyout');
-    document.getElementById('flyout-tag').textContent = data.category;
-    document.getElementById('flyout-title').textContent = data.title[STATE.lang];
+    if (!flyout) return;
+
+    // Node number badge & category
+    const nodeNumEl = document.getElementById('flyout-node-num');
+    if (nodeNumEl) {
+      nodeNumEl.textContent = STATE.lang === 'ru' ? `УЗЕЛ #${data.nodeNumber}` : `NODE #${data.nodeNumber}`;
+    }
+    const tagEl = document.getElementById('flyout-tag');
+    if (tagEl) tagEl.textContent = data.category;
+
+    // Node title
+    const titleEl = document.getElementById('flyout-title');
+    if (titleEl) titleEl.textContent = data.title[STATE.lang];
+
+    // Badges: Mass, % MTOW, Material
+    const massValEl = document.getElementById('flyout-mass-val');
+    if (massValEl) massValEl.textContent = `${data.massKg} кг`;
+
+    const mtowValEl = document.getElementById('flyout-mtow-val');
+    if (mtowValEl) mtowValEl.textContent = `${data.mtowPct} MTOW`;
+
+    const matValEl = document.getElementById('flyout-mat-val');
+    if (matValEl) matValEl.textContent = typeof data.material === 'object' ? data.material[STATE.lang] : data.material;
     
-    // Update Specs
+    // Update Specs Cells
     for (let i = 0; i < 4; i++) {
       const spec = data.specs[i];
-      document.getElementById(`spec-lbl-${i+1}`).textContent = spec.label[STATE.lang];
-      document.getElementById(`spec-val-${i+1}`).textContent = spec.val;
+      const lbl = document.getElementById(`spec-lbl-${i+1}`);
+      const val = document.getElementById(`spec-val-${i+1}`);
+      if (lbl && spec) lbl.textContent = spec.label[STATE.lang];
+      if (val && spec) val.textContent = spec.val;
     }
 
-    document.getElementById('flyout-formula-content').textContent = data.formula;
-    document.getElementById('flyout-desc').textContent = data.desc[STATE.lang];
+    // Formula Box & Description Text
+    const formulaEl = document.getElementById('flyout-formula-content');
+    if (formulaEl) formulaEl.textContent = data.formula;
+
+    const descEl = document.getElementById('flyout-desc');
+    if (descEl) descEl.textContent = data.desc[STATE.lang];
+
+    // Camera Focus button text
+    const focusBtnText = document.getElementById('flyout-btn-focus-text');
+    if (focusBtnText) {
+      focusBtnText.textContent = STATE.lang === 'ru' ? 'Приблизить камеру к узлу' : 'Focus Camera on Node';
+    }
 
     // Render ECharts Mini-Chart inside flyout
     renderFlyoutMiniChart(data.chartData);
@@ -1205,7 +1656,6 @@
   }
 
   function initZebraShader() {
-    // Zebra Stripe Reflection Shader evaluating Class-A Surface Continuity
     const zebraVertexShader = `
       varying vec3 vNormal;
       varying vec3 vViewPosition;
@@ -1225,11 +1675,11 @@
         vec3 viewDir = normalize(vViewPosition);
         vec3 reflectDir = reflect(-viewDir, normal);
         
-        // Striped zebra pattern along reflection angle
-        float stripe = sin(reflectDir.y * 55.0 + reflectDir.x * 20.0);
-        float colorVal = smoothstep(-0.05, 0.05, stripe);
+        // High-contrast zebra reflection stripes evaluating Class-A G2/G3 continuity
+        float stripe = sin(reflectDir.y * 60.0 + reflectDir.x * 25.0);
+        float colorVal = smoothstep(-0.06, 0.06, stripe);
         
-        vec3 col = mix(vec3(0.04, 0.06, 0.1), vec3(0.9, 0.95, 1.0), colorVal);
+        vec3 col = mix(vec3(0.02, 0.04, 0.08), vec3(0.96, 0.98, 1.0), colorVal);
         gl_FragColor = vec4(col, 1.0);
       }
     `;
@@ -1259,70 +1709,141 @@
   }
 
   function createParticleSystems() {
-    // 1. CFD Wind Tunnel Streamlines
-    const cfdCount = 1200;
+    // ------------------------------------------------------------------------
+    // 1. CFD Wind Tunnel Streamlines with Downwash and Propeller Swirl
+    // ------------------------------------------------------------------------
+    const cfdCount = 1800;
     const cfdGeo = new THREE.BufferGeometry();
     const cfdPositions = new Float32Array(cfdCount * 3);
     const cfdColors = new Float32Array(cfdCount * 3);
+    cfdData = [];
 
     for (let i = 0; i < cfdCount; i++) {
-      cfdPositions[i * 3] = (Math.random() - 0.5) * 14; // X span
-      cfdPositions[i * 3 + 1] = 0.5 + (Math.random() - 0.5) * 1.5; // Y height
-      cfdPositions[i * 3 + 2] = 8 - Math.random() * 16; // Z streamline
+      const x = (Math.random() - 0.5) * 14.0;
+      const y = 0.45 + (Math.random() - 0.5) * 1.6;
+      const z = 8.0 - Math.random() * 16.0;
 
-      // Speed & Pressure color gradient (Cyan to Green to Red)
-      cfdColors[i * 3] = 0.0;
-      cfdColors[i * 3 + 1] = 0.8 + Math.random() * 0.2;
-      cfdColors[i * 3 + 2] = 0.9;
+      cfdPositions[i * 3] = x;
+      cfdPositions[i * 3 + 1] = y;
+      cfdPositions[i * 3 + 2] = z;
+
+      // Color: Cyan for upper wing suction, Emerald for freestream, Amber for prop wash
+      const isProp = Math.abs(Math.abs(x) - 2.2) < 0.6 || Math.abs(Math.abs(x) - 4.2) < 0.6;
+      if (isProp) {
+        cfdColors[i * 3] = 1.0;
+        cfdColors[i * 3 + 1] = 0.65;
+        cfdColors[i * 3 + 2] = 0.0;
+      } else if (y > 0.8) {
+        cfdColors[i * 3] = 0.0;
+        cfdColors[i * 3 + 1] = 0.9;
+        cfdColors[i * 3 + 2] = 1.0;
+      } else {
+        cfdColors[i * 3] = 0.0;
+        cfdColors[i * 3 + 1] = 1.0;
+        cfdColors[i * 3 + 2] = 0.6;
+      }
+
+      cfdData.push({
+        baseX: x,
+        baseY: y,
+        speed: 0.28 + Math.random() * 0.14,
+        isProp: isProp,
+        phase: Math.random() * Math.PI * 2
+      });
     }
     cfdGeo.setAttribute('position', new THREE.BufferAttribute(cfdPositions, 3));
     cfdGeo.setAttribute('color', new THREE.BufferAttribute(cfdColors, 3));
 
     const cfdMat = new THREE.PointsMaterial({
-      size: 0.12,
+      size: 0.14,
       vertexColors: true,
       transparent: true,
-      opacity: 0.65
+      opacity: 0.75
     });
     cfdParticleSystem = new THREE.Points(cfdGeo, cfdMat);
     cfdParticleSystem.visible = false;
     scene.add(cfdParticleSystem);
 
-    // 2. Agro Spray Mist System
-    const sprayCount = 800;
+    // ------------------------------------------------------------------------
+    // 2. Agro Spray Mist System (6 Separate Conical Nozzle Emitters)
+    // ------------------------------------------------------------------------
+    const sprayCount = 1800; // 300 particles per nozzle
     const sprayGeo = new THREE.BufferGeometry();
-    const sprayPos = new Float32Array(sprayCount * 3);
+    const sprayPositions = new Float32Array(sprayCount * 3);
+    sprayData = [];
+    const nozzles = [-4.8, -2.9, -1.1, 1.1, 2.9, 4.8];
+
     for (let i = 0; i < sprayCount; i++) {
-      sprayPos[i * 3] = (Math.random() - 0.5) * 8.5;
-      sprayPos[i * 3 + 1] = 0.15;
-      sprayPos[i * 3 + 2] = -0.2 - Math.random() * 2;
+      const nIdx = i % 6;
+      const originX = nozzles[nIdx];
+      const originY = 0.35;
+      const originZ = -0.22;
+
+      // Initial spread
+      const progress = Math.random();
+      const x = originX + (Math.random() - 0.5) * 0.4 * progress;
+      const y = originY - progress * 1.8;
+      const z = originZ - progress * 3.5;
+
+      sprayPositions[i * 3] = x;
+      sprayPositions[i * 3 + 1] = y;
+      sprayPositions[i * 3 + 2] = z;
+
+      sprayData.push({
+        nozzleIdx: nIdx,
+        vx: (Math.random() - 0.5) * 0.025,
+        vy: -0.045 - Math.random() * 0.03,
+        vz: -0.08 - Math.random() * 0.04
+      });
     }
-    sprayGeo.setAttribute('position', new THREE.BufferAttribute(sprayPos, 3));
+    sprayGeo.setAttribute('position', new THREE.BufferAttribute(sprayPositions, 3));
+
     const sprayMat = new THREE.PointsMaterial({
       color: 0x00ff9d,
-      size: 0.16,
+      size: 0.18,
       transparent: true,
-      opacity: 0.7
+      opacity: 0.75
     });
     sprayParticleSystem = new THREE.Points(sprayGeo, sprayMat);
     sprayParticleSystem.visible = false;
     scene.add(sprayParticleSystem);
 
-    // 3. Firefighting Water Deluge Dump
-    const dumpCount = 1200;
+    // ------------------------------------------------------------------------
+    // 3. Firefighting Water Deluge & Ground Splash Physics System
+    // ------------------------------------------------------------------------
+    const dumpCount = 1800;
     const dumpGeo = new THREE.BufferGeometry();
-    const dumpPos = new Float32Array(dumpCount * 3);
+    const dumpPositions = new Float32Array(dumpCount * 3);
+    waterDumpData = [];
+
     for (let i = 0; i < dumpCount; i++) {
-      dumpPos[i * 3] = (Math.random() - 0.5) * 1.2;
-      dumpPos[i * 3 + 1] = -0.5;
-      dumpPos[i * 3 + 2] = 0.2 - Math.random() * 2;
+      const x = (Math.random() - 0.5) * 0.5;
+      const y = -0.6 - Math.random() * 0.9;
+      const z = 0.2 + (Math.random() - 0.5) * 1.5;
+
+      dumpPositions[i * 3] = x;
+      dumpPositions[i * 3 + 1] = y;
+      dumpPositions[i * 3 + 2] = z;
+
+      waterDumpData.push({
+        x0: (Math.random() - 0.5) * 0.45,
+        y0: -0.6,
+        z0: 0.2 + (Math.random() - 0.5) * 1.2,
+        vy: -0.06 - Math.random() * 0.04,
+        vz: -0.04 - Math.random() * 0.02,
+        isSplashing: false,
+        splashVx: 0,
+        splashVz: 0,
+        splashAge: 0
+      });
     }
-    dumpGeo.setAttribute('position', new THREE.BufferAttribute(dumpPos, 3));
+    dumpGeo.setAttribute('position', new THREE.BufferAttribute(dumpPositions, 3));
+
     const dumpMat = new THREE.PointsMaterial({
       color: 0x00e5ff,
-      size: 0.26,
+      size: 0.24,
       transparent: true,
-      opacity: 0.8
+      opacity: 0.85
     });
     waterDumpParticleSystem = new THREE.Points(dumpGeo, dumpMat);
     waterDumpParticleSystem.visible = false;
@@ -1351,14 +1872,15 @@
   }
 
   // --------------------------------------------------------------------------
-  // 9. THREE.JS RENDER LOOP & ANIMATIONS
+  // 9. THREE.JS RENDER LOOP & REAL-TIME ANIMATIONS
   // --------------------------------------------------------------------------
   function animate() {
     requestAnimationFrame(animate);
 
-    // 1. Spin DEP Propellers
-    const propSpeed = STATE.isFlying ? 0.35 : 0.08;
+    // 1. Counter-Rotating DEP Propellers
+    const propSpeed = STATE.isFlying ? 0.38 : 0.09;
     propBlades.forEach((prop, i) => {
+      // Counter-rotating pairs for zero P-factor torque
       prop.rotation.z += (i % 2 === 0 ? 1 : -1) * propSpeed;
     });
 
@@ -1376,55 +1898,151 @@
       explodedGroups.fuelcell.position.y = STATE.explodeProgress * 1.4;
       explodedGroups.fuelcell.position.z = STATE.explodeProgress * 1.2;
       explodedGroups.payload.position.y = -STATE.explodeProgress * 2.5;
+      explodedGroups.gimbal.position.y = -STATE.explodeProgress * 1.6;
       explodedGroups.gear.position.y = -STATE.explodeProgress * 1.8;
     }
 
-    // 3. CFD Streamlines Motion
+    // 3. Animated Belly Water Bomb Bay Doors
+    if (waterBayDoorL && waterBayDoorR) {
+      const targetAngle = STATE.waterDumping ? 1.15 : 0.0;
+      waterBayDoorL.rotation.z += (targetAngle - waterBayDoorL.rotation.z) * 0.12;
+      waterBayDoorR.rotation.z += (-targetAngle - waterBayDoorR.rotation.z) * 0.12;
+    }
+
+    // 4. CFD Streamlines Motion (NACA Camber Curve + Downwash + Prop Swirl)
     if (STATE.windTunnel && cfdParticleSystem) {
-      const positions = cfdParticleSystem.geometry.attributes.position.array;
-      for (let i = 2; i < positions.length; i += 3) {
-        positions[i] -= 0.35; // move air backward
-        if (positions[i] < -8) {
-          positions[i] = 8;
+      const pos = cfdParticleSystem.geometry.attributes.position.array;
+      const time = performance.now() * 0.005;
+
+      for (let i = 0; i < cfdData.length; i++) {
+        const d = cfdData[i];
+        let pz = pos[i * 3 + 2];
+        let py = pos[i * 3 + 1];
+        let px = pos[i * 3];
+
+        // Move air backward
+        pz -= d.speed;
+
+        // Upwash and Acceleration over NACA wing camber
+        if (pz < 1.0 && pz > -0.6) {
+          if (py > 0.8) {
+            py = d.baseY + Math.sin((pz + 0.6) / 1.6 * Math.PI) * 0.24;
+            pz -= 0.12; // Bernoulli suction acceleration
+          }
+        } else if (pz <= -0.6) {
+          // Downwash angle behind trailing edge
+          py -= 0.015;
         }
+
+        // Helical slipstream swirl behind the 4 propellers
+        if (d.isProp && pz < 1.7 && pz > -3.0) {
+          px = d.baseX + Math.cos(time + d.phase) * 0.14;
+          py = d.baseY + Math.sin(time + d.phase) * 0.14;
+          pz -= 0.18;
+        }
+
+        // Recycle streamline at boundary
+        if (pz < -8.0) {
+          pz = 8.0;
+          py = d.baseY;
+          px = d.baseX;
+        }
+
+        pos[i * 3] = px;
+        pos[i * 3 + 1] = py;
+        pos[i * 3 + 2] = pz;
       }
       cfdParticleSystem.geometry.attributes.position.needsUpdate = true;
     }
 
-    // 4. Spray Mist Particles Motion
+    // 5. Agro Spray Mist (6 Distinct Conical Plumes from Wing Nozzles)
     if (STATE.spraying && sprayParticleSystem) {
       const pos = sprayParticleSystem.geometry.attributes.position.array;
-      for (let i = 0; i < pos.length; i += 3) {
-        pos[i + 1] -= 0.06; // fall down
-        pos[i + 2] -= 0.09; // drift backward
-        if (pos[i + 1] < -1.5) {
-          pos[i + 1] = 0.15;
-          pos[i + 2] = -0.2;
+      const nozzles = [-4.8, -2.9, -1.1, 1.1, 2.9, 4.8];
+
+      for (let i = 0; i < sprayData.length; i++) {
+        const d = sprayData[i];
+        let px = pos[i * 3];
+        let py = pos[i * 3 + 1];
+        let pz = pos[i * 3 + 2];
+
+        py += d.vy;
+        pz += d.vz;
+        px += d.vx;
+
+        // Recycle particle back to its specific nozzle when hitting floor or drifting far
+        if (py < -1.58 || pz < -6.5) {
+          const originX = nozzles[d.nozzleIdx];
+          px = originX + (Math.random() - 0.5) * 0.08;
+          py = 0.35;
+          pz = -0.22;
+          d.vx = (Math.random() - 0.5) * 0.035; // conical expansion
+          d.vy = -0.045 - Math.random() * 0.03;
+          d.vz = -0.08 - Math.random() * 0.04;
         }
+
+        pos[i * 3] = px;
+        pos[i * 3 + 1] = py;
+        pos[i * 3 + 2] = pz;
       }
       sprayParticleSystem.geometry.attributes.position.needsUpdate = true;
     }
 
-    // 5. Water Dump Stream Motion
+    // 6. Water Dump Stream Motion + Ground Splash Physics
     if (STATE.waterDumping && waterDumpParticleSystem) {
       const pos = waterDumpParticleSystem.geometry.attributes.position.array;
-      for (let i = 0; i < pos.length; i += 3) {
-        pos[i + 1] -= 0.12; // plunge down
-        pos[i + 2] -= 0.07;
-        if (pos[i + 1] < -1.5) {
-          pos[i + 1] = -0.5;
-          pos[i + 2] = 0.2;
+
+      for (let i = 0; i < waterDumpData.length; i++) {
+        const d = waterDumpData[i];
+        let px = pos[i * 3];
+        let py = pos[i * 3 + 1];
+        let pz = pos[i * 3 + 2];
+
+        if (!d.isSplashing) {
+          // Free-fall plunge with gravity acceleration
+          d.vy -= 0.008; // gravity g
+          py += d.vy;
+          pz += d.vz;
+
+          // Impact with floor level (-1.58) -> Trigger Ground Splash!
+          if (py <= -1.58) {
+            d.isSplashing = true;
+            py = -1.57;
+            const splashAngle = Math.random() * Math.PI * 2;
+            const splashSpeed = 0.06 + Math.random() * 0.08;
+            d.splashVx = Math.cos(splashAngle) * splashSpeed;
+            d.splashVz = Math.sin(splashAngle) * splashSpeed;
+            d.splashAge = 0;
+          }
+        } else {
+          // Splash particle expands radially outward across floor grid
+          px += d.splashVx;
+          pz += d.splashVz;
+          d.splashAge++;
+
+          if (d.splashAge > 18) {
+            // Reset particle back into fuselage water bay
+            d.isSplashing = false;
+            px = d.x0 + (Math.random() - 0.5) * 0.4;
+            py = d.y0;
+            pz = d.z0;
+            d.vy = -0.06 - Math.random() * 0.04;
+          }
         }
+
+        pos[i * 3] = px;
+        pos[i * 3 + 1] = py;
+        pos[i * 3 + 2] = pz;
       }
       waterDumpParticleSystem.geometry.attributes.position.needsUpdate = true;
     }
 
-    // 6. Flight Simulator Controls & Dynamics
+    // 7. Flight Simulator Controls & Dynamics
     if (STATE.isFlying) {
       handleFlightPhysics();
     }
 
-    // 7. Pulse Hotspot Markers
+    // 8. Pulse Hotspot Markers
     const time = performance.now() * 0.003;
     hotspotSprites.forEach(sprite => {
       const scale = 0.65 + Math.sin(time) * 0.08;
@@ -2127,6 +2745,18 @@
       audio.playClick();
     });
 
+    // Fly To Node in 3D (Focus Camera on Selected Node)
+    const btnFlyToNode = document.getElementById('btn-fly-to-node');
+    if (btnFlyToNode) {
+      btnFlyToNode.addEventListener('click', () => {
+        if (STATE.activeHotspot && HOTSPOTS_DATA[STATE.activeHotspot]) {
+          const data = HOTSPOTS_DATA[STATE.activeHotspot];
+          smoothMoveCamera(data.camPos, data.targetPos);
+          audio.playWhoosh();
+        }
+      });
+    }
+
     // Map Scenarios
     document.getElementById('btn-scenario-agro').addEventListener('click', setupScenarioAgro);
     document.getElementById('btn-scenario-fire').addEventListener('click', setupScenarioFire);
@@ -2637,6 +3267,11 @@
     setupPdfExport();
     setupMasterBlueprint();
     setupEventListeners();
+
+    // Open Node #1 (Wing) in Inspector Panel by default
+    setTimeout(() => {
+      selectHotspot('wing');
+    }, 150);
   });
 
 })();

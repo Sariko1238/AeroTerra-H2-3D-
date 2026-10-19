@@ -164,16 +164,32 @@
       </div>
     </div>
 
-    <!-- Engineering Detail Flyout Panel (Right Side, pops up on 3D click) -->
-    <aside class="engineering-flyout" id="engineering-flyout">
+    <!-- Engineering Detail Flyout Panel (Right Side, pops up on 3D click & visible by default) -->
+    <aside class="engineering-flyout open" id="engineering-flyout">
       <div class="flyout-header">
         <div class="flyout-title-wrap">
-          <span class="flyout-tag" id="flyout-tag">CATIA V5 / AERODYNAMICS</span>
-          <h3 class="flyout-title" id="flyout-title">Крыло Class-A Surface</h3>
+          <div class="flyout-meta-row">
+            <span class="flyout-node-num" id="flyout-node-num">УЗЕЛ #1</span>
+            <span class="flyout-tag" id="flyout-tag">CATIA V5 / AERODYNAMICS</span>
+          </div>
+          <h3 class="flyout-title" id="flyout-title">Крыло Class-A Surface (NACA 64-215)</h3>
         </div>
         <button class="btn-close-flyout" id="btn-close-flyout" title="Закрыть панель">
           <i class="fa-solid fa-xmark"></i>
         </button>
+      </div>
+
+      <!-- Quick Engineering Metric Badges -->
+      <div class="flyout-badges-row">
+        <div class="flyout-badge-pill" id="flyout-mass-pill">
+          <i class="fa-solid fa-weight-hanging"></i> <span id="flyout-mass-val">86.4 кг</span>
+        </div>
+        <div class="flyout-badge-pill highlight" id="flyout-mtow-pill">
+          <i class="fa-solid fa-chart-pie"></i> <span id="flyout-mtow-val">19.2% MTOW</span>
+        </div>
+        <div class="flyout-badge-pill material" id="flyout-mat-pill">
+          <i class="fa-solid fa-layer-group"></i> <span id="flyout-mat-val">CFRP T800 Carbon</span>
+        </div>
       </div>
 
       <!-- Specs Grid -->
@@ -188,11 +204,11 @@
         </div>
         <div class="spec-cell">
           <span class="spec-cell-label" id="spec-lbl-3">Аэродинамическое качество:</span>
-          <span class="spec-cell-value highlight" id="spec-val-3">L/D = 21.0</span>
+          <span class="spec-cell-value highlight" id="spec-val-3">L/D = 21.4</span>
         </div>
         <div class="spec-cell">
-          <span class="spec-cell-label" id="spec-lbl-4">Материал:</span>
-          <span class="spec-cell-value" id="spec-val-4">CFRP Углепластик T800</span>
+          <span class="spec-cell-label" id="spec-lbl-4">Материал кессона:</span>
+          <span class="spec-cell-value" id="spec-val-4">CFRP T800 Carbon</span>
         </div>
       </div>
 
@@ -209,6 +225,11 @@
       <p class="flyout-desc" id="flyout-desc">
         Высоконесущее крыло большого удлинения, спроектированное в CATIA V5 ICEM Surf по стандартам непрерывности кривизны G2/G3. Снижает индуктивное сопротивление на 24% и обеспечивает устойчивый полет на сверхнизких скоростях при обдуве от распределенных моторов.
       </p>
+
+      <!-- Action Button: Fly to Node in 3D -->
+      <button class="btn-fly-to-node" id="btn-fly-to-node">
+        <i class="fa-solid fa-crosshairs"></i> <span id="flyout-btn-focus-text">Приблизить камеру к узлу</span>
+      </button>
     </aside>
   </section>
 
