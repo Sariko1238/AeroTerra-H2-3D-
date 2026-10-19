@@ -1,0 +1,32 @@
+# .cursorrules — AeroTerra H2 Aerospace Engineering Project
+
+# ==============================================================================
+# 1. GIT & GITHUB AUTOMATION WORKFLOW
+# ==============================================================================
+# Always ensure clean, atomic, descriptive Git commits following Conventional Commits:
+# feat(3d): add CATIA V5 zebra shader surface analysis
+# fix(aero): correct Oswald efficiency factor calculation
+# perf(webgl): optimize draw calls and buffer geometry allocation
+# docs(readme): update flight performance envelope and STOL specs
+
+# Automated Git Push Rules:
+# Whenever a major feature or bugfix is completed and verified:
+# 1. Run git status to verify modified/created files.
+# 2. Stage changes: git add .
+# 3. Create descriptive commit: git commit -m "feat(scope): concise description"
+# 4. Push directly to remote repository: git push origin main (or active branch)
+# 5. Never push broken code or code with console syntax errors.
+
+# ==============================================================================
+# 2. CODE QUALITY & ARCHITECTURE STANDARDS
+# ==============================================================================
+# - Keep application strictly zero-dependency bundlerless (pure HTML5, CSS3, Vanilla JS).
+# - Do not add npm build scripts or webpack/vite unless explicitly instructed by the user.
+# - Ensure index.html opens and runs immediately in any modern browser via file:// or static server.
+# - Maintain 60 FPS in Three.js render loop:
+#   * Reuse materials and geometries where possible.
+#   * Dispose of unused textures and buffer geometries.
+#   * Avoid memory leaks inside requestAnimationFrame.
+# - Support dual languages (Russian and English) through the I18N dictionary in app.js.
+# - All interactive cards must feature subtle 3D tilt effects with Vanilla-Tilt.
+# - Follow aerospace engineering conventions: SI units (kg, m, m/s, km/h, Bar, kW), standard ISA atmosphere.

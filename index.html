@@ -1,0 +1,1448 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AeroTerra H2 — Модульный Эко-Самолёт двойного назначения | Aerospace Engineering Club</title>
+  <meta name="description" content="Интерактивный 3D WebGL ангар и инженерный комплекс модульного водородно-электрического самолёта AeroTerra H2 (Агро-мониторинг и пожарный патруль).">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@500;600;700;800;900&family=Rajdhani:wght@500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  
+  <!-- Font Awesome 6 Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ==========================================================================
+       HEADER & NAVIGATION BAR
+       ========================================================================== -->
+  <header class="site-header">
+    <div class="brand-section">
+      <div class="logo-badge">
+        <i class="fa-solid fa-plane-departure"></i>
+      </div>
+      <div class="brand-title">
+        <h1>
+          AEROTERRA <span style="color: var(--accent-cyan);">H2</span>
+          <span class="badge-tag" id="header-club-tag">AEROSPACE CLUB</span>
+        </h1>
+        <span class="brand-subtitle" id="header-subtitle">HYDROGEN-ELECTRIC DUAL-ROLE ECO-AIRCRAFT</span>
+      </div>
+    </div>
+
+    <nav>
+      <ul class="nav-links">
+        <li class="nav-item"><a href="#blueprint-section" class="active"><i class="fa-solid fa-compass-drafting"></i> <span data-i18n="nav_blueprint">Инженерный Паспорт</span></a></li>
+        <li class="nav-item"><a href="#hangar-section"><i class="fa-solid fa-cube"></i> <span data-i18n="nav_hangar">3D Ангар</span></a></li>
+        <li class="nav-item"><a href="#math-section"><i class="fa-solid fa-calculator"></i> <span data-i18n="nav_math">Инженерная Математика</span></a></li>
+        <li class="nav-item"><a href="#mission-section"><i class="fa-solid fa-map-location-dot"></i> <span data-i18n="nav_mission">Миссии и Пульт RC</span></a></li>
+        <li class="nav-item"><a href="#club-section"><i class="fa-solid fa-users-gear"></i> <span data-i18n="nav_club">Клуб & ИИ Конструктор</span></a></li>
+      </ul>
+    </nav>
+
+    <div class="header-actions">
+      <!-- Scale Switcher -->
+      <div class="scale-toggle-group" title="Переключение масштаба проекта">
+        <button class="scale-btn active" id="btn-scale-full" data-scale="full">
+          <i class="fa-solid fa-plane"></i> <span>1:1 Full-Scale</span>
+        </button>
+        <button class="scale-btn" id="btn-scale-rc" data-scale="rc">
+          <i class="fa-solid fa-gamepad"></i> <span>1:5 RC Prototype</span>
+        </button>
+      </div>
+
+      <!-- Language Selector -->
+      <button class="lang-btn" id="btn-lang-toggle" title="Switch Language RU / EN">
+        <i class="fa-solid fa-globe"></i> <span id="current-lang-text">RU</span>
+      </button>
+
+      <!-- Audio Synthesizer Toggle -->
+      <button class="sound-btn" id="btn-sound-toggle" title="Включить/выключить звуковые эффекты">
+        <i class="fa-solid fa-volume-high" id="sound-icon"></i>
+      </button>
+
+      <!-- PDF Export Button -->
+      <button class="btn-pdf-export" id="btn-export-pdf" title="Скачать официальный Инженерный Паспорт в PDF">
+        <i class="fa-solid fa-file-pdf"></i> <span data-i18n="btn_pdf">Паспорт PDF</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ==========================================================================
+       SECTION 2: 3D HANGAR & INTERACTIVE AIRPLANE (THREE.JS + RAYCASTING)
+       ========================================================================== -->
+  <section class="hangar-viewport-section" id="hangar-section">
+    <!-- WebGL Canvas for Three.js -->
+    <canvas id="webgl-canvas"></canvas>
+
+    <!-- Hangar HUD Overlays -->
+    <div class="hangar-hud-overlay">
+      <!-- Top Row -->
+      <div class="hud-top-bar">
+        <!-- Aircraft Status Badge -->
+        <div class="aircraft-telemetry-badge glass-panel">
+          <div class="hud-corner top-left"></div>
+          <div class="hud-corner top-right"></div>
+          <div class="hud-corner bottom-left"></div>
+          <div class="hud-corner bottom-right"></div>
+          <div class="telemetry-row">
+            <span class="telemetry-label" data-i18n="hud_designation">ПРОЕКТ:</span>
+            <span class="telemetry-val cyan" id="hud-val-designation">AeroTerra H2 (STOL Twin-Boom)</span>
+          </div>
+          <div class="telemetry-row">
+            <span class="telemetry-label" data-i18n="hud_mtow">ВЗЛЁТНАЯ МАССА (MTOW):</span>
+            <span class="telemetry-val emerald" id="hud-val-mtow">1850 кг</span>
+            <span class="telemetry-label" data-i18n="hud_wingspan">РАЗМАХ:</span>
+            <span class="telemetry-val" id="hud-val-wingspan">12.4 м</span>
+          </div>
+          <div class="telemetry-row">
+            <span class="telemetry-label" data-i18n="hud_airfoil">ПРОФИЛЬ:</span>
+            <span class="telemetry-val">NACA 64-215 (Class-A Surface)</span>
+            <span class="telemetry-label" data-i18n="hud_propulsion">ТЯГА:</span>
+            <span class="telemetry-val cyan">4x Brushless DEP</span>
+          </div>
+        </div>
+
+        <!-- Mission Mode Switcher -->
+        <div class="mission-mode-pill">
+          <button class="mode-btn clean active" id="btn-mode-clean">
+            <i class="fa-solid fa-atom"></i> <span data-i18n="mode_clean">Аэродинамика H2</span>
+          </button>
+          <button class="mode-btn agro" id="btn-mode-agro">
+            <i class="fa-solid fa-seedling"></i> <span data-i18n="mode_agro">Режим Агро (NDVI)</span>
+          </button>
+          <button class="mode-btn fire" id="btn-mode-fire">
+            <i class="fa-solid fa-fire-extinguisher"></i> <span data-i18n="mode_fire">Пожарный Патруль</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Bottom Row: 3D Toolbar & Camera Angles -->
+      <div class="hud-bottom-bar">
+        <!-- Camera View Presets -->
+        <div class="view-presets">
+          <button class="preset-btn active" data-view="iso" title="Изометрический вид">ISO</button>
+          <button class="preset-btn" data-view="front" title="Вид спереди">FRONT</button>
+          <button class="preset-btn" data-view="top" title="Вид сверху">TOP</button>
+          <button class="preset-btn" data-view="side" title="Вид сбоку">SIDE</button>
+          <button class="preset-btn" data-view="pilot" title="Вид из кокпита">COCKPIT</button>
+        </div>
+
+        <!-- Engineering View Buttons -->
+        <div class="hangar-tools-floating">
+          <button class="hangar-tool-btn" id="btn-exploded-view" title="Разобрать самолёт в 3D на узлы">
+            <i class="fa-solid fa-cubes-stacked"></i> <span data-i18n="btn_exploded">3D Разбор (Exploded)</span>
+          </button>
+          <button class="hangar-tool-btn" id="btn-zebra-shader" title="Проверка кривизны поверхностей класса А CATIA V5">
+            <i class="fa-solid fa-barcode"></i> <span data-i18n="btn_zebra">CATIA Zebra Shader</span>
+          </button>
+          <button class="hangar-tool-btn" id="btn-wind-tunnel" title="Включить обдув крыла и вихревые линии CFD">
+            <i class="fa-solid fa-wind"></i> <span data-i18n="btn_cfd">Обдув CFD</span>
+          </button>
+          <button class="hangar-tool-btn success" id="btn-spray-anim" title="Запустить распыление удобрений из форсунок">
+            <i class="fa-solid fa-spray-can"></i> <span data-i18n="btn_spray">Распыление</span>
+          </button>
+          <button class="hangar-tool-btn danger" id="btn-water-dump" title="Запустить залповый сброс воды на очаг пожара">
+            <i class="fa-solid fa-water"></i> <span data-i18n="btn_dump">Сброс Воды</span>
+          </button>
+          <div class="cad-upload-wrapper">
+            <button class="hangar-tool-btn" title="Загрузить свой .STL / .OBJ / .GLB файл из CATIA V5">
+              <i class="fa-solid fa-folder-open"></i> <span data-i18n="btn_upload_cad">Загрузить CAD</span>
+            </button>
+            <input type="file" id="cad-file-input" accept=".stl,.obj,.glb,.gltf">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Engineering Detail Flyout Panel (Right Side, pops up on 3D click) -->
+    <aside class="engineering-flyout" id="engineering-flyout">
+      <div class="flyout-header">
+        <div class="flyout-title-wrap">
+          <span class="flyout-tag" id="flyout-tag">CATIA V5 / AERODYNAMICS</span>
+          <h3 class="flyout-title" id="flyout-title">Крыло Class-A Surface</h3>
+        </div>
+        <button class="btn-close-flyout" id="btn-close-flyout" title="Закрыть панель">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Specs Grid -->
+      <div class="flyout-specs-grid">
+        <div class="spec-cell">
+          <span class="spec-cell-label" id="spec-lbl-1">Площадь крыла (S):</span>
+          <span class="spec-cell-value highlight" id="spec-val-1">13.35 м²</span>
+        </div>
+        <div class="spec-cell">
+          <span class="spec-cell-label" id="spec-lbl-2">Удлинение (AR):</span>
+          <span class="spec-cell-value" id="spec-val-2">11.5</span>
+        </div>
+        <div class="spec-cell">
+          <span class="spec-cell-label" id="spec-lbl-3">Аэродинамическое качество:</span>
+          <span class="spec-cell-value highlight" id="spec-val-3">L/D = 21.0</span>
+        </div>
+        <div class="spec-cell">
+          <span class="spec-cell-label" id="spec-lbl-4">Материал:</span>
+          <span class="spec-cell-value" id="spec-val-4">CFRP Углепластик T800</span>
+        </div>
+      </div>
+
+      <!-- Formula Box -->
+      <div class="flyout-formula-box">
+        <div class="flyout-formula-title" id="flyout-formula-title">Расчётная аэродинамическая формула:</div>
+        <div id="flyout-formula-content">L = 0.5 · ρ · V² · S · CL &nbsp;|&nbsp; CDi = CL² / (π · AR · e)</div>
+      </div>
+
+      <!-- Mini Chart -->
+      <div class="flyout-chart-container" id="flyout-chart-container"></div>
+
+      <!-- Description Text -->
+      <p class="flyout-desc" id="flyout-desc">
+        Высоконесущее крыло большого удлинения, спроектированное в CATIA V5 ICEM Surf по стандартам непрерывности кривизны G2/G3. Снижает индуктивное сопротивление на 24% и обеспечивает устойчивый полет на сверхнизких скоростях при обдуве от распределенных моторов.
+      </p>
+    </aside>
+  </section>
+
+  <!-- ==========================================================================
+       HOTSPOTS QUICK BAR (DIRECT CLICKS TO 8 PARTS)
+       ========================================================================== -->
+  <div class="hotspots-quick-bar">
+    <div class="hotspots-label">
+      <i class="fa-solid fa-bullseye"></i> <span data-i18n="hotspots_heading">ИНТЕРАКТИВНЫЕ УЗЛЫ 3D:</span>
+    </div>
+    <div class="hotspots-scroll-container">
+      <button class="hotspot-chip" data-hotspot="wing">
+        <i class="fa-solid fa-feather-pointed"></i> <span data-i18n="hs_wing">1. Крыло Class-A</span>
+      </button>
+      <button class="hotspot-chip" data-hotspot="tank">
+        <i class="fa-solid fa-bottle-droplet"></i> <span data-i18n="hs_tank">2. Крио-Бак H2</span>
+      </button>
+      <button class="hotspot-chip" data-hotspot="fuelcell">
+        <i class="fa-solid fa-bolt"></i> <span data-i18n="hs_fuelcell">3. Топливная Ячейка</span>
+      </button>
+      <button class="hotspot-chip" data-hotspot="payload">
+        <i class="fa-solid fa-box-open"></i> <span data-i18n="hs_payload">4. Модульный Отсек</span>
+      </button>
+      <button class="hotspot-chip" data-hotspot="motors">
+        <i class="fa-solid fa-fan"></i> <span data-i18n="hs_motors">5. Электромоторы DEP</span>
+      </button>
+      <button class="hotspot-chip" data-hotspot="gimbal">
+        <i class="fa-solid fa-eye"></i> <span data-i18n="hs_gimbal">6. Сенсорная Турель</span>
+      </button>
+      <button class="hotspot-chip" data-hotspot="avionics">
+        <i class="fa-solid fa-tower-broadcast"></i> <span data-i18n="hs_avionics">7. Автопилот MAVLink</span>
+      </button>
+      <button class="hotspot-chip" data-hotspot="gear">
+        <i class="fa-solid fa-circle-notch"></i> <span data-i18n="hs_gear">8. Шасси STOL</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MAIN CONTENT CONTAINER
+       ========================================================================== -->
+  <main class="main-content">
+
+    <!-- ==========================================================================
+         FLAGSHIP SECTION: ENGINEERING MASTER INFOGRAPHIC & INTERACTIVE 3D BLUEPRINT
+         (Technical Aerospace Poster & Jury Presentation Mode)
+         ========================================================================== -->
+    <section class="master-blueprint-section" id="blueprint-section">
+      <!-- Blueprint Hero Banner -->
+      <div class="blueprint-hero-banner">
+        <div class="blueprint-hero-title-box">
+          <div class="blueprint-pretag">
+            <i class="fa-solid fa-certificate"></i>
+            <span>AEROSPACE CLUB · OFFICIAL MASTER BLUEPRINT SPECIFICATION · CS-23 UAV CERT</span>
+          </div>
+          <h2 class="blueprint-main-title">AEROTERRA H2-01</h2>
+          <p class="blueprint-sub-title" data-i18n="bp_subtitle">
+            Modular Hydrogen-Electric STOL Unmanned Aircraft (Precision Agricultural Spraying & Forest Fire Patrol)
+          </p>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+          <!-- Prototype Switcher in Blueprint Header -->
+          <div class="blueprint-proto-selector" title="Переключение масштаба инженерного постера">
+            <button class="blueprint-proto-btn rc active" id="btn-bp-subscale" data-bp-proto="subscale">
+              <i class="fa-solid fa-circle-check"></i> <span data-i18n="bp_proto_subscale">🟢 Прототип Клуба (3.2м / MTOM 25кг / 12S LiPo / H2-Hybrid)</span>
+            </button>
+            <button class="blueprint-proto-btn" id="btn-bp-fullscale" data-bp-proto="fullscale">
+              <i class="fa-solid fa-plane"></i> <span data-i18n="bp_proto_fullscale">🔵 Полноразмерный Борт (9.6м / MTOM 450кг / Liquid H2)</span>
+            </button>
+          </div>
+
+          <!-- Presentation & Export Buttons -->
+          <div style="display: flex; gap: 0.5rem;">
+            <button class="hangar-tool-btn" id="btn-toggle-bp-fullscreen" title="Включить полноэкранный режим презентации для защиты перед жюри">
+              <i class="fa-solid fa-expand"></i> <span data-i18n="bp_btn_fullscreen">Презентация на весь экран</span>
+            </button>
+            <button class="btn-pdf-export" id="btn-export-poster" title="Экспортировать инженерный плакат А1 в HD PDF">
+              <i class="fa-solid fa-print"></i> <span data-i18n="bp_btn_export_poster">Плакат А1 (PDF)</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4 Top Clickable HUD Badges -->
+      <div class="blueprint-badges-grid">
+        <!-- Badge 1: Control -->
+        <div class="blueprint-hud-badge" data-badge-target="avionics">
+          <div class="blueprint-badge-icon">
+            <i class="fa-solid fa-gamepad"></i>
+          </div>
+          <div class="blueprint-badge-content">
+            <span class="blueprint-badge-title" data-i18n="badge1_title">Remote & Autonomous RTK Control</span>
+            <span class="blueprint-badge-desc" data-i18n="badge1_desc">Наземная станция GCS + автопилот по точкам с сантиметровой точностью 2 см (FPV / ELRS 900MHz / MAVLink).</span>
+          </div>
+        </div>
+
+        <!-- Badge 2: Quick-Swap Pod -->
+        <div class="blueprint-hud-badge" data-badge-target="payload">
+          <div class="blueprint-badge-icon emerald">
+            <i class="fa-solid fa-arrow-right-arrow-left"></i>
+          </div>
+          <div class="blueprint-badge-content">
+            <span class="blueprint-badge-title" data-i18n="badge2_title">Dual-Role Quick-Swap Pod</span>
+            <span class="blueprint-badge-desc" data-i18n="badge2_desc">Смена полезной нагрузки за 5 минут: бак опрыскивания (10 л / 150 л) ⇄ пожарный водяной сброс с клапаном salvo.</span>
+          </div>
+        </div>
+
+        <!-- Badge 3: H2 Hybrid & Blown Wing -->
+        <div class="blueprint-hud-badge" data-badge-target="motors">
+          <div class="blueprint-badge-icon amber">
+            <i class="fa-solid fa-bolt-lightning"></i>
+          </div>
+          <div class="blueprint-badge-content">
+            <span class="blueprint-badge-title" data-i18n="badge3_title">H2-Hybrid & Blown-Wing STOL</span>
+            <span class="blueprint-badge-desc" data-i18n="badge3_desc">Водородная ячейка + буфер LiPo, взлёт с грунта за 35 м, активный обдув закрылков скосом потока Downwash.</span>
+          </div>
+        </div>
+
+        <!-- Badge 4: CATIA V5 Class-A -->
+        <div class="blueprint-hud-badge" data-badge-target="wing">
+          <div class="blueprint-badge-icon">
+            <i class="fa-solid fa-feather-pointed"></i>
+          </div>
+          <div class="blueprint-badge-content">
+            <span class="blueprint-badge-title" data-i18n="badge4_title">CATIA V5 Class-A Aerodynamics</span>
+            <span class="blueprint-badge-desc" data-i18n="badge4_desc">Бескабинный фюзеляж (Zero Cockpit Drag), ламинарный профиль NACA 4415, удлинение AR = 8.0 и винглеты.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 8 Detailed Engineering Blocks Grid -->
+      <div class="blueprint-blocks-grid">
+
+        <!-- ====================================================================
+             BLOCK 1: KEY SPECIFICATIONS
+             ==================================================================== -->
+        <div class="blueprint-card span-6">
+          <div class="hud-corner top-left"></div>
+          <div class="hud-corner top-right"></div>
+          <div class="hud-corner bottom-left"></div>
+          <div class="hud-corner bottom-right"></div>
+
+          <div class="blueprint-card-header">
+            <span class="blueprint-card-title">
+              <i class="fa-solid fa-list-check" style="color: var(--accent-cyan);"></i>
+              <span data-i18n="b1_title">1. Key Specifications (Выверенные ТТХ)</span>
+            </span>
+            <span class="blueprint-tag" id="bp-b1-tag">Sub-Scale 3.2m</span>
+          </div>
+
+          <table class="engineering-spec-table">
+            <tbody>
+              <tr data-highlight="wing">
+                <td class="spec-td-label" data-i18n="b1_conf_lbl">Аэродинамическая схема:</td>
+                <td class="spec-td-value" id="bp-spec-conf">High-Wing Twin-Boom STOL, V-Tail, 2x BLDC</td>
+              </tr>
+              <tr data-highlight="wing">
+                <td class="spec-td-label" data-i18n="b1_span_lbl">Размах крыла / Площадь:</td>
+                <td class="spec-td-value highlight" id="bp-spec-span">3.20 m / 1.28 m² (AR = 8.0, NACA 4415)</td>
+              </tr>
+              <tr data-highlight="fuselage">
+                <td class="spec-td-label" data-i18n="b1_dim_lbl">Длина / Высота планера:</td>
+                <td class="spec-td-value" id="bp-spec-dim">2.20 m / 0.68 m (CFRP Monocoque)</td>
+              </tr>
+              <tr data-highlight="mass">
+                <td class="spec-td-label" data-i18n="b1_mtom_lbl">Макс. взлётная масса (MTOM):</td>
+                <td class="spec-td-value highlight" style="color: var(--accent-emerald);" id="bp-spec-mtom">25.0 kg (Согласовано во всех расчётах)</td>
+              </tr>
+              <tr data-highlight="payload">
+                <td class="spec-td-label" data-i18n="b1_payload_lbl">Полезная нагрузка (Quick-Swap):</td>
+                <td class="spec-td-value" id="bp-spec-payload">10.0 L (10.0 kg) жидкости в центре масс (CG)</td>
+              </tr>
+              <tr data-highlight="motors">
+                <td class="spec-td-label" data-i18n="b1_speed_lbl">Крейсерская / Рабочая скорость:</td>
+                <td class="spec-td-value" id="bp-spec-speed">16 m/s (58 km/h) крейсер / 11 m/s (40 km/h) спрей</td>
+              </tr>
+              <tr data-highlight="tank">
+                <td class="spec-td-label" data-i18n="b1_endurance_lbl">Продолжительность полёта:</td>
+                <td class="spec-td-value highlight" id="bp-spec-endurance">32 min (12S LiPo) / 110 min (H2 Fuel Cell)</td>
+              </tr>
+              <tr data-highlight="gear">
+                <td class="spec-td-label" data-i18n="b1_stol_lbl">Дистанция взлёта / посадки:</td>
+                <td class="spec-td-value" id="bp-spec-stol">35 – 50 m (Грунт, трава, полевая дорога)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- ====================================================================
+             BLOCK 2: MASS BUDGET & CG TRAVEL VISUALIZER
+             ==================================================================== -->
+        <div class="blueprint-card span-6">
+          <div class="hud-corner top-left"></div>
+          <div class="hud-corner top-right"></div>
+          <div class="hud-corner bottom-left"></div>
+          <div class="hud-corner bottom-right"></div>
+
+          <div class="blueprint-card-header">
+            <span class="blueprint-card-title">
+              <i class="fa-solid fa-scale-balanced" style="color: var(--accent-emerald);"></i>
+              <span data-i18n="b2_title">2. Mass Budget (Весовой баланс + Центровка CG)</span>
+            </span>
+            <span class="blueprint-tag" style="color: var(--accent-emerald); border-color: rgba(0, 255, 157, 0.3);">∑ = 25.0 kg (100%)</span>
+          </div>
+
+          <table class="mass-budget-table">
+            <tbody>
+              <tr>
+                <td style="color: #9cb1ce;">Airframe (CFRP/Rohacell Wings, Booms, V-Tail):</td>
+                <td style="text-align: right; font-family: var(--font-mono); font-weight: 700; color: #fff;" id="mb-val-airframe">5.2 kg</td>
+                <td style="width: 80px;">
+                  <div class="mass-bar-container"><div class="mass-bar-fill" style="width: 20.8%;"></div></div>
+                </td>
+              </tr>
+              <tr>
+                <td style="color: #9cb1ce;">Propulsion (2x BLDC Motors + 20x10" Props):</td>
+                <td style="text-align: right; font-family: var(--font-mono); font-weight: 700; color: #fff;" id="mb-val-prop">1.8 kg</td>
+                <td style="width: 80px;">
+                  <div class="mass-bar-container"><div class="mass-bar-fill" style="width: 7.2%;"></div></div>
+                </td>
+              </tr>
+              <tr>
+                <td style="color: #9cb1ce;">ESC (2x 80A FOC) + Power Wiring & BEC:</td>
+                <td style="text-align: right; font-family: var(--font-mono); font-weight: 700; color: #fff;" id="mb-val-esc">0.9 kg</td>
+                <td style="width: 80px;">
+                  <div class="mass-bar-container"><div class="mass-bar-fill" style="width: 3.6%;"></div></div>
+                </td>
+              </tr>
+              <tr>
+                <td style="color: #9cb1ce;">Energy Pack (12S Semi-Solid LiPo / H2 Module):</td>
+                <td style="text-align: right; font-family: var(--font-mono); font-weight: 700; color: #fff;" id="mb-val-energy">4.5 kg</td>
+                <td style="width: 80px;">
+                  <div class="mass-bar-container"><div class="mass-bar-fill" style="width: 18.0%;"></div></div>
+                </td>
+              </tr>
+              <tr>
+                <td style="color: #9cb1ce;">Mission System (10L Tank, Pump, 6x Nozzles / Salvo Gate):</td>
+                <td style="text-align: right; font-family: var(--font-mono); font-weight: 700; color: #fff;" id="mb-val-mission">1.4 kg</td>
+                <td style="width: 80px;">
+                  <div class="mass-bar-container"><div class="mass-bar-fill emerald" style="width: 5.6%;"></div></div>
+                </td>
+              </tr>
+              <tr>
+                <td style="color: #9cb1ce;">Avionics & RC (Cube Orange+, RTK, Camera, ELRS):</td>
+                <td style="text-align: right; font-family: var(--font-mono); font-weight: 700; color: #fff;" id="mb-val-avionics">0.6 kg</td>
+                <td style="width: 80px;">
+                  <div class="mass-bar-container"><div class="mass-bar-fill" style="width: 2.4%;"></div></div>
+                </td>
+              </tr>
+              <tr>
+                <td style="color: #9cb1ce;">STOL Landing Gear (Carbon spring legs + tundra wheels):</td>
+                <td style="text-align: right; font-family: var(--font-mono); font-weight: 700; color: #fff;" id="mb-val-gear">0.6 kg</td>
+                <td style="width: 80px;">
+                  <div class="mass-bar-container"><div class="mass-bar-fill" style="width: 2.4%;"></div></div>
+                </td>
+              </tr>
+              <tr style="border-top: 1px dashed rgba(0, 229, 255, 0.3); font-weight: 700;">
+                <td style="color: var(--accent-cyan);">Empty Operating Weight (Сухая масса):</td>
+                <td style="text-align: right; font-family: var(--font-mono); color: var(--accent-cyan);" id="mb-val-empty">15.0 kg</td>
+                <td><span style="font-size: 0.7rem; color: var(--text-muted);">60.0%</span></td>
+              </tr>
+              <tr style="font-weight: 700;">
+                <td style="color: var(--accent-amber);">Payload (Жидкость: химикаты или вода):</td>
+                <td style="text-align: right; font-family: var(--font-mono); color: var(--accent-amber);" id="mb-val-payload">10.0 kg</td>
+                <td><span style="font-size: 0.7rem; color: var(--accent-amber);">40.0%</span></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- CG Travel Scale with Zero CG Shift Demo -->
+          <div class="cg-visualizer-box">
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem;">
+              <span style="color: var(--text-muted);"><i class="fa-solid fa-crosshairs" style="color: #ff4d00;"></i> <strong data-i18n="cg_title">Индикатор Центровки (CG Shift):</strong></span>
+              <span style="color: var(--accent-emerald); font-family: var(--font-mono); font-weight: 700;" id="cg-status-text">CG: 27.5% MAC (STATIC STABILITY: OK)</span>
+            </div>
+            <div class="cg-scale-track">
+              <div class="cg-mac-zone">MAC 20–32%</div>
+              <div class="cg-needle" id="cg-needle" title="Текущее положение центра тяжести (CG)"></div>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2px;">
+              <span style="font-size: 0.7rem; color: #9cb1ce;" data-i18n="cg_note">Бак установлен строго в фокусе крыла $\implies$ $\Delta \text{CG} \approx 0$ при выработке!</span>
+              <button class="btn-drain-tank" id="btn-simulate-cg-drain">
+                <i class="fa-solid fa-droplet-slash"></i> <span data-i18n="btn_drain_cg">Слить бак 10 кг (Тест CG)</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ====================================================================
+             BLOCK 3: PROPULSION & THRUST REQUIREMENTS
+             ==================================================================== -->
+        <div class="blueprint-card span-6">
+          <div class="hud-corner top-left"></div>
+          <div class="hud-corner top-right"></div>
+          <div class="hud-corner bottom-left"></div>
+          <div class="hud-corner bottom-right"></div>
+
+          <div class="blueprint-card-header">
+            <span class="blueprint-card-title">
+              <i class="fa-solid fa-fan" style="color: var(--accent-cyan);"></i>
+              <span data-i18n="b3_title">3. Propulsion & Thrust Requirements (Аэродинамика)</span>
+            </span>
+            <span class="blueprint-tag">T / W = 0.65</span>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem;">
+            <div class="spec-cell">
+              <span class="spec-cell-label" data-i18n="b3_w_lbl">Вес самолёта (W):</span>
+              <span class="spec-cell-value">245.25 N (25.0 kg)</span>
+            </div>
+            <div class="spec-cell">
+              <span class="spec-cell-label" data-i18n="b3_tw_lbl">Тяговооружённость (T/W):</span>
+              <span class="spec-cell-value highlight">0.65 (STOL 35 m)</span>
+            </div>
+            <div class="spec-cell">
+              <span class="spec-cell-label" data-i18n="b3_thrust_lbl">Макс. статическая тяга:</span>
+              <span class="spec-cell-value highlight">160 N (80 N / мотор)</span>
+            </div>
+            <div class="spec-cell">
+              <span class="spec-cell-label" data-i18n="b3_props_lbl">Воздушные винты:</span>
+              <span class="spec-cell-value">20 × 10" Carbon Fiber</span>
+            </div>
+            <div class="spec-cell">
+              <span class="spec-cell-label" data-i18n="b3_motors_lbl">Электромоторы (BLDC):</span>
+              <span class="spec-cell-value">2x 180KV (2.0 kW peak)</span>
+            </div>
+            <div class="spec-cell">
+              <span class="spec-cell-label" data-i18n="b3_p_cruise_lbl">Крейсерская мощность:</span>
+              <span class="spec-cell-value" style="color: var(--accent-emerald);">920 W (L/D = 14)</span>
+            </div>
+          </div>
+
+          <div class="flyout-formula-box">
+            <div class="flyout-formula-title">Физический расчёт потребной мощности:</div>
+            <div style="font-size: 0.76rem;">
+              D = W / (L/D) = 245.25 / 14 = 17.52 N &nbsp;|&nbsp; P_shaft = (D · V) / η_prop = (17.52 · 16) / 0.78 = 359 W (Чистый планер) + Обдув форсунок/закрылков = <strong>920 W</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- ====================================================================
+             BLOCK 4: ENERGY SIZING & ENDURANCE (FLAWLESS MATH)
+             ==================================================================== -->
+        <div class="blueprint-card span-6">
+          <div class="hud-corner top-left"></div>
+          <div class="hud-corner top-right"></div>
+          <div class="hud-corner bottom-left"></div>
+          <div class="hud-corner bottom-right"></div>
+
+          <div class="blueprint-card-header">
+            <span class="blueprint-card-title">
+              <i class="fa-solid fa-battery-three-quarters" style="color: #9d4edd;"></i>
+              <span data-i18n="b4_title">4. Energy Sizing & Endurance (Без ошибок!)</span>
+            </span>
+            <div class="energy-mode-switch">
+              <button class="energy-switch-btn active" id="btn-energy-lipo" data-energy-mode="lipo">12S LiPo (Рабочий)</button>
+              <button class="energy-switch-btn" id="btn-energy-h2" data-energy-mode="h2">H2-Hybrid (Водород)</button>
+            </div>
+          </div>
+
+          <!-- Sizing 4-Step Explanation Box -->
+          <div class="sizing-steps-card" id="energy-sizing-display">
+            <div><span class="step-num-badge">ШАГ 1:</span> Номинальная энергоемкость: <strong>44.4 V × 14 Ah = 621 Wh</strong> (12S Semi-Solid сборка).</div>
+            <div><span class="step-num-badge">ШАГ 2:</span> Полезная энергия (80% Depth of Discharge): <strong>621 Wh × 0.80 = 497 Wh</strong>.</div>
+            <div><span class="step-num-badge">ШАГ 3:</span> Средняя потребляемая мощность: <strong>920 W (Тяга) + 80 W (Помпа спрея) = 1.00 kW</strong>.</div>
+            <div style="color: var(--accent-emerald); font-weight: 700; margin-top: 4px; border-top: 1px dashed rgba(0, 229, 255, 0.3); padding-top: 4px;">
+              <span class="step-num-badge">ШАГ 4:</span> Точное время полёта: t = 497 Wh / 1000 W = 0.497 ч ≈ <strong>30 МИНУТ</strong> (Математически строго!).
+            </div>
+          </div>
+
+          <div style="font-size: 0.74rem; color: #9cb1ce; display: flex; justify-content: space-between; align-items: center;">
+            <span>Водородный модуль H2 (2.5 кг) увеличивает время полёта до <strong>110 минут</strong>!</span>
+            <span class="badge-tag">ISO / EASA</span>
+          </div>
+        </div>
+
+        <!-- ====================================================================
+             BLOCK 5: AIRCRAFT LAYOUT & 3-VIEW VECTOR BLUEPRINTS
+             ==================================================================== -->
+        <div class="blueprint-card span-8">
+          <div class="hud-corner top-left"></div>
+          <div class="hud-corner top-right"></div>
+          <div class="hud-corner bottom-left"></div>
+          <div class="hud-corner bottom-right"></div>
+
+          <div class="blueprint-card-header">
+            <span class="blueprint-card-title">
+              <i class="fa-solid fa-drafting-compass" style="color: var(--accent-cyan);"></i>
+              <span data-i18n="b5_title">5. Aircraft Layout & 3-View Engineering Blueprints</span>
+            </span>
+            <span class="blueprint-tag">CATIA V5 CAD Vector (1:1 / 1:5)</span>
+          </div>
+
+          <div class="blueprint-cad-viewport">
+            <!-- CAD View Tabs (Top / Front / Side) -->
+            <div class="cad-view-tabs">
+              <button class="cad-tab-btn active" id="cad-tab-top" data-view="top">Top View (Сверху - 3.2м)</button>
+              <button class="cad-tab-btn" id="cad-tab-front" data-view="front">Front View (Спереди)</button>
+              <button class="cad-tab-btn" id="cad-tab-side" data-view="side">Side View (Сбоку - 2.2м)</button>
+            </div>
+
+            <!-- Precision SVG Engineering Blueprint -->
+            <svg id="blueprint-svg-canvas" viewBox="0 0 800 360" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <pattern id="cadGrid" width="20" height="20" patternUnits="userSpaceOnUse">
+                  <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(0, 229, 255, 0.08)" stroke-width="1"/>
+                </pattern>
+                <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="#00e5ff" />
+                </marker>
+              </defs>
+
+              <!-- Grid Background -->
+              <rect width="100%" height="100%" fill="#040914" />
+              <rect width="100%" height="100%" fill="url(#cadGrid)" />
+
+              <!-- TOP VIEW GROUP -->
+              <g id="svg-view-top">
+                <!-- Centerline (Dashed) -->
+                <line x1="400" y1="20" x2="400" y2="340" stroke="#00e5ff" stroke-width="1" stroke-dasharray="8,4" opacity="0.4" />
+                
+                <!-- Main Wing (Span 3.2m -> 640px) -->
+                <rect class="svg-part" data-part="wing" x="80" y="110" width="640" height="42" rx="4" fill="rgba(0, 229, 255, 0.12)" stroke="#00e5ff" stroke-width="2" />
+                <!-- Winglets -->
+                <polygon points="76,110 80,105 80,152 76,152" fill="#00e5ff" />
+                <polygon points="724,110 720,105 720,152 724,152" fill="#00e5ff" />
+                
+                <!-- 6 Centrifugal ULV Spray Nozzles along trailing edge -->
+                <circle cx="150" cy="156" r="4" fill="#00ff9d" />
+                <circle cx="250" cy="156" r="4" fill="#00ff9d" />
+                <circle cx="350" cy="156" r="4" fill="#00ff9d" />
+                <circle cx="450" cy="156" r="4" fill="#00ff9d" />
+                <circle cx="550" cy="156" r="4" fill="#00ff9d" />
+                <circle cx="650" cy="156" r="4" fill="#00ff9d" />
+                <!-- Spray Boom Bar -->
+                <line x1="140" y1="156" x2="660" y2="156" stroke="#00ff9d" stroke-width="2" stroke-dasharray="4,2" />
+
+                <!-- Fuselage Body (2.2m -> 320px) -->
+                <rect class="svg-part" data-part="fuselage" x="375" y="45" width="50" height="230" rx="14" fill="rgba(12, 22, 48, 0.85)" stroke="#00e5ff" stroke-width="2" />
+                <!-- Nose Cone -->
+                <path d="M 375 75 C 375 40, 425 40, 425 75 Z" fill="#00e5ff" opacity="0.3" />
+                <!-- 10L Quick-Swap CG Tank inside Fuselage -->
+                <rect class="svg-part" data-part="payload" x="380" y="105" width="40" height="52" rx="6" fill="#00ff9d" opacity="0.6" stroke="#00ff9d" stroke-width="1.5" />
+                <text x="400" y="135" fill="#fff" font-size="10" font-family="monospace" text-anchor="middle">CG TANK</text>
+
+                <!-- 2 Wing Motors (2x BLDC) -->
+                <rect class="svg-part" data-part="motors" x="270" y="95" width="24" height="48" rx="4" fill="#f59e0b" stroke="#fff" stroke-width="1" />
+                <!-- Propeller Blur Circles (20") -->
+                <ellipse cx="282" cy="90" rx="36" ry="10" fill="none" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="3,3" />
+
+                <rect class="svg-part" data-part="motors" x="506" y="95" width="24" height="48" rx="4" fill="#f59e0b" stroke="#fff" stroke-width="1" />
+                <ellipse cx="518" cy="90" rx="36" ry="10" fill="none" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="3,3" />
+
+                <!-- Twin Booms extending back -->
+                <line x1="282" y1="152" x2="282" y2="305" stroke="#00e5ff" stroke-width="3" />
+                <line x1="518" y1="152" x2="518" y2="305" stroke="#00e5ff" stroke-width="3" />
+
+                <!-- V-Tail Assembly -->
+                <line x1="260" y1="305" x2="540" y2="305" stroke="#00e5ff" stroke-width="4" />
+                <polygon points="260,305 282,280 282,315" fill="#00e5ff" opacity="0.7" />
+                <polygon points="540,305 518,280 518,315" fill="#00e5ff" opacity="0.7" />
+
+                <!-- Dimension Lines -->
+                <!-- Wingspan 3.2m -->
+                <line x1="80" y1="35" x2="720" y2="35" stroke="#00e5ff" stroke-width="1.5" marker-start="url(#arrow)" marker-end="url(#arrow)" />
+                <text x="400" y="28" fill="#00e5ff" font-family="Orbitron" font-size="12" font-weight="bold" text-anchor="middle">WINGSPAN: 3.20 m (AR = 8.0)</text>
+
+                <!-- Length 2.2m -->
+                <line x1="755" y1="45" x2="755" y2="310" stroke="#00e5ff" stroke-width="1.5" marker-start="url(#arrow)" marker-end="url(#arrow)" />
+                <text x="765" y="180" fill="#00e5ff" font-family="Orbitron" font-size="11" font-weight="bold" transform="rotate(90,765,180)" text-anchor="middle">LENGTH: 2.20 m</text>
+              </g>
+
+              <!-- FRONT VIEW GROUP (Hidden by default, switched by tabs) -->
+              <g id="svg-view-front" style="display: none;">
+                <line x1="400" y1="20" x2="400" y2="340" stroke="#00e5ff" stroke-width="1" stroke-dasharray="8,4" opacity="0.4" />
+                <!-- Ground Line -->
+                <line x1="60" y1="290" x2="740" y2="290" stroke="#54657e" stroke-width="2" />
+                <!-- High Wing -->
+                <rect x="80" y="110" width="640" height="20" rx="3" fill="rgba(0,229,255,0.15)" stroke="#00e5ff" stroke-width="2" />
+                <!-- Fuselage -->
+                <rect x="370" y="100" width="60" height="85" rx="10" fill="rgba(12,22,48,0.9)" stroke="#00e5ff" stroke-width="2" />
+                <!-- Belly Pod -->
+                <rect x="375" y="185" width="50" height="30" rx="6" fill="#00ff9d" opacity="0.5" stroke="#00ff9d" stroke-width="1.5" />
+                <!-- Landing Gear -->
+                <line x1="380" y1="185" x2="350" y2="275" stroke="#fff" stroke-width="3" />
+                <line x1="420" y1="185" x2="450" y2="275" stroke="#fff" stroke-width="3" />
+                <circle cx="350" cy="280" r="12" fill="#111620" stroke="#00e5ff" stroke-width="1.5" />
+                <circle cx="450" cy="280" r="12" fill="#111620" stroke="#00e5ff" stroke-width="1.5" />
+                <!-- Motors & Downwash Cone -->
+                <circle cx="282" cy="120" r="14" fill="#f59e0b" />
+                <circle cx="518" cy="120" r="14" fill="#f59e0b" />
+                <polygon points="252,135 312,135 330,270 234,270" fill="rgba(245, 158, 11, 0.15)" stroke="rgba(245, 158, 11, 0.4)" stroke-dasharray="4,2" />
+                <polygon points="488,135 548,135 566,270 470,270" fill="rgba(245, 158, 11, 0.15)" stroke="rgba(245, 158, 11, 0.4)" stroke-dasharray="4,2" />
+                <text x="282" y="210" fill="#f59e0b" font-family="monospace" font-size="10" text-anchor="middle">DOWNWASH CONE</text>
+                <text x="518" y="210" fill="#f59e0b" font-family="monospace" font-size="10" text-anchor="middle">DOWNWASH CONE</text>
+                <!-- Height Dimension 0.68m -->
+                <line x1="755" y1="95" x2="755" y2="290" stroke="#00e5ff" stroke-width="1.5" marker-start="url(#arrow)" marker-end="url(#arrow)" />
+                <text x="765" y="195" fill="#00e5ff" font-family="Orbitron" font-size="11" font-weight="bold" transform="rotate(90,765,195)" text-anchor="middle">HEIGHT: 0.68 m</text>
+              </g>
+
+              <!-- SIDE VIEW GROUP (Hidden by default, switched by tabs) -->
+              <g id="svg-view-side" style="display: none;">
+                <line x1="60" y1="290" x2="740" y2="290" stroke="#54657e" stroke-width="2" />
+                <!-- Fuselage Side Contour -->
+                <path d="M 120 180 C 120 120, 260 120, 360 130 L 640 180 L 640 210 L 360 215 L 200 215 Z" fill="rgba(12,22,48,0.85)" stroke="#00e5ff" stroke-width="2" />
+                <!-- Nose Gimbal Camera -->
+                <circle cx="120" cy="195" r="14" fill="#00ff9d" stroke="#fff" stroke-width="1.5" />
+                <!-- Airfoil Section (NACA 4415) -->
+                <path d="M 280 125 C 280 100, 360 100, 420 125 C 380 135, 320 135, 280 125 Z" fill="#00e5ff" opacity="0.4" stroke="#00e5ff" stroke-width="2" />
+                <!-- Flap Deflection -->
+                <line x1="410" y1="125" x2="435" y2="145" stroke="#f59e0b" stroke-width="3" />
+                <text x="445" y="150" fill="#f59e0b" font-size="10" font-family="monospace">FLAPS 20°</text>
+                <!-- Quick Swap Pod on Belly -->
+                <rect x="270" y="215" width="120" height="35" rx="8" fill="#00ff9d" opacity="0.6" stroke="#00ff9d" stroke-width="1.5" />
+                <text x="330" y="238" fill="#fff" font-family="monospace" font-size="10" text-anchor="middle">10L POD (CG)</text>
+                <!-- Tail V-Fin -->
+                <polygon points="610,180 660,100 645,100 595,180" fill="#00e5ff" opacity="0.7" />
+                <!-- Gear -->
+                <line x1="310" y1="215" x2="280" y2="275" stroke="#fff" stroke-width="3" />
+                <circle cx="280" cy="278" r="14" fill="#111620" stroke="#00e5ff" stroke-width="1.5" />
+              </g>
+            </svg>
+
+            <!-- 3D Scene Synchronize Button -->
+            <button class="btn-sync-3d" id="btn-sync-3d-cam" title="Повернуть 3D модель в ту же проекцию">
+              <i class="fa-solid fa-arrows-rotate"></i> <span>Синхронизировать с 3D</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- ====================================================================
+             BLOCK 6: INTERACTIVE COMPONENT ARCHITECTURE (SYSTEM LOOPS)
+             ==================================================================== -->
+        <div class="blueprint-card span-4">
+          <div class="hud-corner top-left"></div>
+          <div class="hud-corner top-right"></div>
+          <div class="hud-corner bottom-left"></div>
+          <div class="hud-corner bottom-right"></div>
+
+          <div class="blueprint-card-header">
+            <span class="blueprint-card-title">
+              <i class="fa-solid fa-network-wired" style="color: var(--accent-emerald);"></i>
+              <span data-i18n="b6_title">6. Component Architecture</span>
+            </span>
+            <span class="blueprint-tag">3 Flight Loops</span>
+          </div>
+
+          <div class="architecture-loops-wrap">
+            <!-- Loop 1: Control & Telemetry -->
+            <div class="arch-loop-card" data-loop-type="control">
+              <div class="arch-loop-header">
+                <span>🟦 Control & Telemetry Loop</span>
+                <i class="fa-solid fa-satellite-dish"></i>
+              </div>
+              <div class="arch-nodes-chain">
+                <span class="arch-node-chip">GCS Ground Station</span> ➔
+                <span class="arch-node-chip">ELRS 900MHz</span> ➔
+                <span class="arch-node-chip">Cube Orange+</span> ➔
+                <span class="arch-node-chip">RTK GNSS</span> ➔
+                <span class="arch-node-chip">Servos</span>
+              </div>
+            </div>
+
+            <!-- Loop 2: Power & Propulsion -->
+            <div class="arch-loop-card orange" data-loop-type="propulsion">
+              <div class="arch-loop-header">
+                <span>🟧 Power & Propulsion Loop</span>
+                <i class="fa-solid fa-bolt"></i>
+              </div>
+              <div class="arch-nodes-chain">
+                <span class="arch-node-chip">12S LiPo / H2 FC</span> ➔
+                <span class="arch-node-chip">Smart BMS</span> ➔
+                <span class="arch-node-chip">2x 80A FOC ESC</span> ➔
+                <span class="arch-node-chip">2x BLDC Motors</span> ➔
+                <span class="arch-node-chip">20" Props</span>
+              </div>
+            </div>
+
+            <!-- Loop 3: Spraying & Fire Drop -->
+            <div class="arch-loop-card green" data-loop-type="mission">
+              <div class="arch-loop-header">
+                <span>🟩 Spraying & Fire Drop Loop</span>
+                <i class="fa-solid fa-spray-can"></i>
+              </div>
+              <div class="arch-nodes-chain">
+                <span class="arch-node-chip">10L CG Tank</span> ➔
+                <span class="arch-node-chip">PWM Pump</span> ➔
+                <span class="arch-node-chip">Flowmeter</span> ➔
+                <span class="arch-node-chip">6x ULV Nozzles</span> /
+                <span class="arch-node-chip">Salvo Gate</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ====================================================================
+             BLOCK 7: MISSION & OPERATION (5 FLIGHT PHASES)
+             ==================================================================== -->
+        <div class="blueprint-card span-6">
+          <div class="hud-corner top-left"></div>
+          <div class="hud-corner top-right"></div>
+          <div class="hud-corner bottom-left"></div>
+          <div class="hud-corner bottom-right"></div>
+
+          <div class="blueprint-card-header">
+            <span class="blueprint-card-title">
+              <i class="fa-solid fa-route" style="color: var(--accent-cyan);"></i>
+              <span data-i18n="b7_title">7. Mission & Operation (5 Этапов)</span>
+            </span>
+            <span class="blueprint-tag">Turnaround 5 min</span>
+          </div>
+
+          <div class="mission-steps-timeline">
+            <div class="mission-phase-item">
+              <div class="phase-number-box">1</div>
+              <div class="phase-text-box">
+                <span class="phase-title-bold" data-i18n="p1_title">Pre-Flight & Pod Swap (3–5 min):</span>
+                <span class="phase-details-sub" data-i18n="p1_desc">Установка заряженной капсулы (Агро 10 л или Пожарный сброс), загрузка маршрута по точкам RTK GNSS.</span>
+              </div>
+            </div>
+
+            <div class="mission-phase-item">
+              <div class="phase-number-box">2</div>
+              <div class="phase-text-box">
+                <span class="phase-title-bold" data-i18n="p2_title">STOL Takeoff (35–50 m):</span>
+                <span class="phase-details-sub" data-i18n="p2_desc">Короткий взлёт с грунтовой дороги или пашни с активным обдувом закрылков от 2 винтов.</span>
+              </div>
+            </div>
+
+            <div class="mission-phase-item">
+              <div class="phase-number-box">3</div>
+              <div class="phase-text-box">
+                <span class="phase-title-bold" data-i18n="p3_title">Autonomous Transit (58 km/h):</span>
+                <span class="phase-details-sub" data-i18n="p3_desc">Скоростной выход в зону работы на высоте 50–100 м с контролем по FPV и тепловизору FLIR.</span>
+              </div>
+            </div>
+
+            <div class="mission-phase-item">
+              <div class="phase-number-box">4</div>
+              <div class="phase-text-box">
+                <span class="phase-title-bold" data-i18n="p4_title">Precision Spraying / Fire Salvo:</span>
+                <span class="phase-details-sub" data-i18n="p4_desc">Снижение до 40 км/ч на высоте 2–4 м над кронами, авто-регулировка потока PWM пропорционально скорости.</span>
+              </div>
+            </div>
+
+            <div class="mission-phase-item">
+              <div class="phase-number-box">5</div>
+              <div class="phase-text-box">
+                <span class="phase-title-bold" data-i18n="p5_title">RTL Return & Soft Landing:</span>
+                <span class="phase-details-sub" data-i18n="p5_desc">Автовозврат на базу (Return-to-Launch), посадка на грунт на тундра-колёса и быстрая смена бака за 2 минуты.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ====================================================================
+             BLOCK 8: KEY DESIGN CONSIDERATIONS & COMPETITIVE ADVANTAGE
+             ==================================================================== -->
+        <div class="blueprint-card span-6">
+          <div class="hud-corner top-left"></div>
+          <div class="hud-corner top-right"></div>
+          <div class="hud-corner bottom-left"></div>
+          <div class="hud-corner bottom-right"></div>
+
+          <div class="blueprint-card-header">
+            <span class="blueprint-card-title">
+              <i class="fa-solid fa-trophy" style="color: var(--accent-amber);"></i>
+              <span data-i18n="b8_title">8. Key Design Considerations & Advantages</span>
+            </span>
+            <span class="blueprint-tag" style="color: var(--accent-amber); border-color: rgba(255, 77, 0, 0.3);">Why AeroTerra Wins</span>
+          </div>
+
+          <div class="advantages-2x3-grid">
+            <div class="adv-mini-card">
+              <span class="adv-title"><i class="fa-solid fa-wind" style="color: var(--accent-cyan);"></i> Orchard Downwash</span>
+              <p class="adv-desc">Винты на крыле пробивают плотную крону деревьев нисходящим потоком, покрывая нижнюю сторону листьев.</p>
+            </div>
+
+            <div class="adv-mini-card">
+              <span class="adv-title"><i class="fa-solid fa-crosshairs" style="color: var(--accent-emerald);"></i> Zero CG Shift</span>
+              <p class="adv-desc">Бак находится строго в фокусе крыла: при расходе 10 кг жидкости триммирование рулей не требуется.</p>
+            </div>
+
+            <div class="adv-mini-card">
+              <span class="adv-title"><i class="fa-solid fa-atom" style="color: #9d4edd;"></i> True Energy Sizing</span>
+              <p class="adv-desc">Честный расчёт энергоёмкости без завышения: 30 мин на 12S LiPo и 110 мин на водородном модуле.</p>
+            </div>
+
+            <div class="adv-mini-card">
+              <span class="adv-title"><i class="fa-solid fa-shield-halved" style="color: var(--accent-cyan);"></i> Zero Cockpit Drag</span>
+              <p class="adv-desc">Бескабинный фюзеляж снижает мидель и паразитное сопротивление CD0 на 18% по сравнению с конвертированными самолётами.</p>
+            </div>
+
+            <div class="adv-mini-card">
+              <span class="adv-title"><i class="fa-solid fa-calendar-days" style="color: var(--accent-amber);"></i> 365-Day Use</span>
+              <p class="adv-desc">Весной и летом — обработка садов и полей, в жару и осенью — патрулирование и тушение лесных пожаров.</p>
+            </div>
+
+            <div class="adv-mini-card" style="border-color: var(--accent-cyan); background: rgba(0, 229, 255, 0.08);">
+              <span class="adv-title"><i class="fa-solid fa-file-pdf" style="color: var(--accent-cyan);"></i> HD Poster Export</span>
+              <p class="adv-desc">Готовый плакат А1 со всеми чертежами и формулами для печати на конференцию или защиты перед инвесторами.</p>
+            </div>
+          </div>
+
+          <button class="btn-toggle-flight" id="btn-export-poster-bottom" style="margin-top: 0.5rem;">
+            <i class="fa-solid fa-download"></i> <span data-i18n="btn_dl_poster">Скачать Весь Инженерный Паспорт (А1 HD)</span>
+          </button>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         SECTION 3: ENGINEERING MATH & KEROSENE SAVINGS CALCULATOR
+         ========================================================================== -->
+    <section class="math-calculator-section" id="math-section">
+      <div class="section-header">
+        <span class="section-pretitle"><i class="fa-solid fa-microchip"></i> AERODYNAMICS & PROPULSION LAB</span>
+        <h2 class="section-title"><i class="fa-solid fa-chart-line"></i> <span data-i18n="math_title">Инженерная Математика и Экономия Керосина</span></h2>
+        <p class="section-desc" data-i18n="math_subtitle">
+          Динамический расчёт весового баланса, потребной мощности на взлёте STOL, аэродинамического качества и колоссальной экономической выгоды перехода с авиакеросина Jet A-1 на зелёный водород.
+        </p>
+      </div>
+
+      <div class="calc-grid-layout">
+        <!-- Sliders Controls Card -->
+        <div class="calc-controls-card glass-panel" data-tilt data-tilt-max="4" data-tilt-glare data-tilt-max-glare="0.15">
+          <div class="hud-corner top-left"></div>
+          <div class="hud-corner top-right"></div>
+          <div class="hud-corner bottom-left"></div>
+          <div class="hud-corner bottom-right"></div>
+
+          <h3 style="font-size: 1.1rem; color: #fff; margin-bottom: 0.5rem;">
+            <i class="fa-solid fa-sliders" style="color: var(--accent-cyan);"></i> <span data-i18n="calc_params">Параметры Миссии и Самолёта</span>
+          </h3>
+
+          <!-- Slider 1: Payload -->
+          <div class="slider-group">
+            <div class="slider-header">
+              <span class="slider-name" data-i18n="slider_payload">Полезная нагрузка (вода / химикаты):</span>
+              <span class="slider-val-badge" id="val-payload">600 кг</span>
+            </div>
+            <input type="range" class="aerotech-slider" id="slider-payload" min="100" max="1000" step="25" value="600">
+          </div>
+
+          <!-- Slider 2: Range -->
+          <div class="slider-group">
+            <div class="slider-header">
+              <span class="slider-name" data-i18n="slider_range">Дальность полёта:</span>
+              <span class="slider-val-badge" id="val-range">1200 км</span>
+            </div>
+            <input type="range" class="aerotech-slider" id="slider-range" min="200" max="2200" step="50" value="1200">
+          </div>
+
+          <!-- Slider 3: Cruise Speed -->
+          <div class="slider-group">
+            <div class="slider-header">
+              <span class="slider-name" data-i18n="slider_speed">Крейсерская скорость:</span>
+              <span class="slider-val-badge" id="val-speed">210 км/ч</span>
+            </div>
+            <input type="range" class="aerotech-slider" id="slider-speed" min="120" max="320" step="10" value="210">
+          </div>
+
+          <!-- Slider 4: Aspect Ratio (AR) -->
+          <div class="slider-group">
+            <div class="slider-header">
+              <span class="slider-name" data-i18n="slider_ar">Удлинение крыла (Aspect Ratio):</span>
+              <span class="slider-val-badge" id="val-ar">11.5</span>
+            </div>
+            <input type="range" class="aerotech-slider" id="slider-ar" min="8.0" max="15.0" step="0.5" value="11.5">
+          </div>
+
+          <!-- Slider 5: Jet A-1 Price -->
+          <div class="slider-group">
+            <div class="slider-header">
+              <span class="slider-name" data-i18n="slider_jet_price">Цена авиакеросина Jet A-1:</span>
+              <span class="slider-val-badge" id="val-jet-price">1.25 $/л</span>
+            </div>
+            <input type="range" class="aerotech-slider" id="slider-jet-price" min="0.6" max="2.5" step="0.05" value="1.25">
+          </div>
+
+          <!-- Slider 6: Green H2 Price -->
+          <div class="slider-group">
+            <div class="slider-header">
+              <span class="slider-name" data-i18n="slider_h2_price">Цена чистого водорода H2:</span>
+              <span class="slider-val-badge" id="val-h2-price">4.50 $/кг</span>
+            </div>
+            <input type="range" class="aerotech-slider" id="slider-h2-price" min="2.0" max="10.0" step="0.25" value="4.50">
+          </div>
+
+          <!-- Takeoff Roll Estimator -->
+          <div class="flyout-formula-box" style="margin-top: 0.5rem;">
+            <div class="flyout-formula-title" data-i18n="stol_roll_title">Дистанция разбега STOL (грунт):</div>
+            <div style="font-size: 1.15rem; font-weight: 700; color: var(--accent-cyan); font-family: var(--font-tech);" id="calc-stol-roll">
+              128 метров (Обдув крыла DEP)
+            </div>
+          </div>
+        </div>
+
+        <!-- Calculations Live Results & 4 ECharts -->
+        <div class="calc-results-wrapper">
+          <!-- KPI Row -->
+          <div class="kpi-cards-row">
+            <div class="kpi-card glass-panel">
+              <span class="kpi-label" data-i18n="kpi_mtow">ПОЛНАЯ МАССА MTOW</span>
+              <span class="kpi-num cyan" id="kpi-mtow">1850 кг</span>
+              <span class="kpi-subtext" id="kpi-sub-mtow">Пустой + ПН + H2 + Бат</span>
+            </div>
+            <div class="kpi-card glass-panel">
+              <span class="kpi-label" data-i18n="kpi_ld">КАЧЕСТВО L/D (МАКС)</span>
+              <span class="kpi-num emerald" id="kpi-ld">21.4</span>
+              <span class="kpi-subtext" id="kpi-sub-ld">Индуктивное снижено на 24%</span>
+            </div>
+            <div class="kpi-card glass-panel">
+              <span class="kpi-label" data-i18n="kpi_cost_hr">СТОИМОСТЬ ЧАСА (H2)</span>
+              <span class="kpi-num cyan" id="kpi-cost-hr">42 $/ч</span>
+              <span class="kpi-subtext" id="kpi-sub-cost">В 4.5 раза дешевле Ан-2</span>
+            </div>
+            <div class="kpi-card glass-panel">
+              <span class="kpi-label" data-i18n="kpi_co2">СЭКОНОМЛЕНО CO₂ / ГОД</span>
+              <span class="kpi-num amber" id="kpi-co2">285 тонн</span>
+              <span class="kpi-subtext" id="kpi-sub-co2">Выхлоп: только чистый пар</span>
+            </div>
+          </div>
+
+          <!-- 4 ECharts 2x2 Grid -->
+          <div class="charts-2x2-grid">
+            <!-- Chart 1: Mass Budget 3D Donut -->
+            <div class="chart-card glass-panel">
+              <div class="chart-card-header">
+                <span class="chart-card-title"><i class="fa-solid fa-chart-pie" style="color: var(--accent-cyan);"></i> <span data-i18n="chart_mass_title">Весовой Баланс (Mass Budget)</span></span>
+                <span class="badge-tag">ISO 9001</span>
+              </div>
+              <div class="chart-canvas-box" id="chart-mass-budget"></div>
+            </div>
+
+            <!-- Chart 2: Aerodynamic Drag Polar & L/D -->
+            <div class="chart-card glass-panel">
+              <div class="chart-card-header">
+                <span class="chart-card-title"><i class="fa-solid fa-bezier-curve" style="color: var(--accent-emerald);"></i> <span data-i18n="chart_aero_title">Поляра Сопротивления & L/D</span></span>
+                <span class="badge-tag">NACA 64-215</span>
+              </div>
+              <div class="chart-canvas-box" id="chart-aero-polar"></div>
+            </div>
+
+            <!-- Chart 3: Economic Comparison (H2 vs Kerosene) -->
+            <div class="chart-card glass-panel">
+              <div class="chart-card-header">
+                <span class="chart-card-title"><i class="fa-solid fa-coins" style="color: var(--accent-amber);"></i> <span data-i18n="chart_eco_title">Экономика: H2 vs Керосин Jet A-1</span></span>
+                <span class="badge-tag">$/100 Га</span>
+              </div>
+              <div class="chart-canvas-box" id="chart-eco-comparison"></div>
+            </div>
+
+            <!-- Chart 4: Energy & Power Profile -->
+            <div class="chart-card glass-panel">
+              <div class="chart-card-header">
+                <span class="chart-card-title"><i class="fa-solid fa-bolt-lightning" style="color: #9d4edd;"></i> <span data-i18n="chart_power_title">Профиль Мощности Миссии</span></span>
+                <span class="badge-tag">STOL 220 кВт</span>
+              </div>
+              <div class="chart-canvas-box" id="chart-power-profile"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         SECTION 4: MISSION SIMULATOR & RC GROUND CONTROL STATION (LEAFLET + HUD)
+         ========================================================================== -->
+    <section class="mission-section" id="mission-section">
+      <div class="section-header">
+        <span class="section-pretitle"><i class="fa-solid fa-satellite"></i> AUTONOMOUS AVIONICS & MAVLINK GCS</span>
+        <h2 class="section-title"><i class="fa-solid fa-map-location-dot"></i> <span data-i18n="sim_title">Симулятор Миссий и Пульт RC Наземного Управления</span></h2>
+        <p class="section-desc" data-i18n="sim_subtitle">
+          Интерактивная спутниковая карта выполнения реальных агро- и пожарных миссий с автономным планированием маршрута «змейкой» и виртуальным авиагоризонтом пилота.
+        </p>
+      </div>
+
+      <div class="mission-gcs-layout">
+        <!-- Interactive Satellite Mission Map -->
+        <div class="map-card-wrapper glass-panel">
+          <div id="mission-map"></div>
+
+          <!-- Scenario Toggle Bar -->
+          <div class="map-scenario-switch-bar">
+            <button class="scenario-btn agro active" id="btn-scenario-agro">
+              <i class="fa-solid fa-wheat-awn"></i> <span data-i18n="scen_agro">1. Агро-Опрыскивание (NDVI Grid)</span>
+            </button>
+            <button class="scenario-btn fire" id="btn-scenario-fire">
+              <i class="fa-solid fa-fire"></i> <span data-i18n="scen_fire">2. Пожарный Патруль (Wildfire Drop)</span>
+            </button>
+          </div>
+
+          <!-- Live Mission Metrics Overlay -->
+          <div class="map-status-overlay">
+            <div><span style="color: var(--text-muted);" data-i18n="map_mission_status">СТАТУС МИССИИ:</span> <span style="color: var(--accent-cyan); font-weight: 700;" id="map-status-text">АКТИВНОЕ СКАНИРОВАНИЕ</span></div>
+            <div><span style="color: var(--text-muted);" data-i18n="map_area_covered">ОБРАБОТАНО:</span> <span style="color: var(--accent-emerald); font-weight: 700;" id="map-area-val">340 Га / 600 Га</span></div>
+            <div><span style="color: var(--text-muted);" data-i18n="map_rate">ПРОИЗВОДИТЕЛЬНОСТЬ:</span> <span style="color: #fff; font-weight: 700;" id="map-rate-val">120 Га/час</span></div>
+          </div>
+        </div>
+
+        <!-- Virtual RC Cockpit & GCS Telemetry -->
+        <div class="gcs-card glass-panel" data-tilt data-tilt-max="5">
+          <div class="hud-corner top-left"></div>
+          <div class="hud-corner top-right"></div>
+          <div class="hud-corner bottom-left"></div>
+          <div class="hud-corner bottom-right"></div>
+
+          <div class="gcs-header">
+            <span class="gcs-title"><i class="fa-solid fa-vr-cardboard" style="color: var(--accent-cyan);"></i> <span data-i18n="gcs_hud_title">RC Telemetry & HUD Cockpit</span></span>
+            <div class="signal-indicator">
+              <div class="pulse-dot"></div>
+              <span>MAVLink 5G 100%</span>
+            </div>
+          </div>
+
+          <!-- Artificial Horizon Canvas -->
+          <div class="artificial-horizon-container">
+            <canvas id="horizon-canvas"></canvas>
+            <div class="horizon-readouts">
+              <span>IAS: <strong id="hud-ias-val" style="color: #fff;">210 km/h</strong></span>
+              <span>ALT: <strong id="hud-alt-val" style="color: #fff;">150 m</strong></span>
+            </div>
+          </div>
+
+          <!-- Telemetry Bars -->
+          <div style="display: flex; flex-direction: column; gap: 0.6rem;">
+            <div>
+              <div style="display: flex; justify-content: space-between; font-size: 0.75rem; font-family: var(--font-mono); margin-bottom: 2px;">
+                <span data-i18n="gcs_h2_tank">Давление Водорода (LH2 / 350 Bar):</span>
+                <span style="color: var(--accent-cyan);" id="telemetry-h2-bar">342 Bar</span>
+              </div>
+              <div style="height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden;">
+                <div id="bar-h2-fill" style="width: 88%; height: 100%; background: var(--accent-cyan); box-shadow: 0 0 8px var(--cyan-glow);"></div>
+              </div>
+            </div>
+
+            <div>
+              <div style="display: flex; justify-content: space-between; font-size: 0.75rem; font-family: var(--font-mono); margin-bottom: 2px;">
+                <span data-i18n="gcs_fc_temp">Температура Ячейки PEM:</span>
+                <span style="color: var(--accent-emerald);" id="telemetry-temp-val">68 °C</span>
+              </div>
+              <div style="height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden;">
+                <div id="bar-temp-fill" style="width: 62%; height: 100%; background: var(--accent-emerald); box-shadow: 0 0 8px var(--emerald-glow);"></div>
+              </div>
+            </div>
+
+            <div>
+              <div style="display: flex; justify-content: space-between; font-size: 0.75rem; font-family: var(--font-mono); margin-bottom: 2px;">
+                <span data-i18n="gcs_payload_level">Остаток бака опрыскивания / воды:</span>
+                <span style="color: var(--accent-amber);" id="telemetry-payload-val">480 л / 600 л</span>
+              </div>
+              <div style="height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden;">
+                <div id="bar-payload-fill" style="width: 80%; height: 100%; background: var(--accent-amber); box-shadow: 0 0 8px var(--amber-glow);"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- RC Flight Simulator Activation -->
+          <div class="flight-sim-activation-wrap">
+            <button class="btn-toggle-flight" id="btn-toggle-flight">
+              <i class="fa-solid fa-gamepad"></i> <span data-i18n="btn_flight_control">Включить ручное RC-управление</span>
+            </button>
+            <div class="flight-keys-hint">
+              <span class="key-tag">W/S: Тангаж</span>
+              <span class="key-tag">A/D: Крен</span>
+              <span class="key-tag">Space: Сброс</span>
+              <span class="key-tag">E: Спрей</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         SECTION 5: AEROSPACE ENGINEERING CLUB HUB, ROADMAP & AI CHIEF DESIGNER
+         ========================================================================== -->
+    <section class="club-suite-section" id="club-section">
+      <div class="section-header">
+        <span class="section-pretitle"><i class="fa-solid fa-certificate"></i> UNIVERSITY & INDUSTRY STANDARDS</span>
+        <h2 class="section-title"><i class="fa-solid fa-users-gear"></i> <span data-i18n="club_title">Aerospace Engineering Club & Дорожная Карта</span></h2>
+        <p class="section-desc" data-i18n="club_subtitle">
+          Сертификационный цикл EASA CS-23 / ICAO, командные исследования клуба и интеллектуальный ИИ-главный конструктор для проверки центровки и аэродинамики.
+        </p>
+      </div>
+
+      <div class="club-suite-grid">
+        <!-- Certification Roadmap -->
+        <div class="roadmap-wrapper glass-panel" style="padding: 1.5rem;">
+          <div class="hud-corner top-left"></div>
+          <div class="hud-corner top-right"></div>
+          <div class="hud-corner bottom-left"></div>
+          <div class="hud-corner bottom-right"></div>
+
+          <h3 style="font-size: 1.1rem; color: #fff; margin-bottom: 1.2rem; display: flex; align-items: center; gap: 0.5rem;">
+            <i class="fa-solid fa-timeline" style="color: var(--accent-cyan);"></i> <span data-i18n="roadmap_heading">Дорожная карта создания самолёта</span>
+          </h3>
+
+          <div class="roadmap-timeline">
+            <!-- Step 1 -->
+            <div class="roadmap-step">
+              <div class="step-status-icon done"><i class="fa-solid fa-check"></i></div>
+              <div class="step-details">
+                <span class="step-title" data-i18n="step1_title">Этап 1: CATIA V5 & ICEM Surf Class-A Lofting</span>
+                <span class="step-meta">CATIA V5 R21 · G2/G3 Curvature Continuity · Q1 2025</span>
+                <span class="step-desc" data-i18n="step1_desc">Построение теоретического контура крыла NACA 64-215 и композитного фюзеляжа без изломов кривизны.</span>
+              </div>
+            </div>
+
+            <!-- Step 2 -->
+            <div class="roadmap-step">
+              <div class="step-status-icon done"><i class="fa-solid fa-check"></i></div>
+              <div class="step-details">
+                <span class="step-title" data-i18n="step2_title">Этап 2: CFD-моделирование OpenFOAM & ANSYS</span>
+                <span class="step-meta">OpenFOAM 10 · 24 млн ячеек · Q3 2025</span>
+                <span class="step-desc" data-i18n="step2_desc">Анализ распределенной винтомоторной группы (DEP) и эффекта обдува механизации крыла для короткого взлёта STOL.</span>
+              </div>
+            </div>
+
+            <!-- Step 3 -->
+            <div class="roadmap-step">
+              <div class="step-status-icon current"><i class="fa-solid fa-gears fa-spin"></i></div>
+              <div class="step-details">
+                <span class="step-title" data-i18n="step3_title">Этап 3: Сборка и Лётные Испытания Прототипа 1:5</span>
+                <span class="step-meta">Aerospace Club Lab · MTOW 18.5 кг · Q1-Q2 2026 (ТЕКУЩИЙ)</span>
+                <span class="step-desc" data-i18n="step3_desc">Изготовление крыла на 5-осевом ЧПУ, карбоновая выклейка вакуумной инфузией и полёты на полигоне с автопилотом.</span>
+              </div>
+            </div>
+
+            <!-- Step 4 -->
+            <div class="roadmap-step">
+              <div class="step-status-icon pending"><i class="fa-solid fa-hourglass-start"></i></div>
+              <div class="step-details">
+                <span class="step-title" data-i18n="step4_title">Этап 4: Стендовые Тесты Водородного ТЭК PEM</span>
+                <span class="step-meta">Cryo H2 350 Bar · Баллистический парашют · Q4 2026</span>
+                <span class="step-desc" data-i18n="step4_desc">Испытания топливной ячейки на вибрацию, холодный пуск и системы аварийного сброса водорода.</span>
+              </div>
+            </div>
+
+            <!-- Step 5 -->
+            <div class="roadmap-step">
+              <div class="step-status-icon pending"><i class="fa-solid fa-plane-up"></i></div>
+              <div class="step-details">
+                <span class="step-title" data-i18n="step5_title">Этап 5: Полноразмерный Самолёт 1:1 и Сертификация EASA</span>
+                <span class="step-meta">EASA CS-23 Standard · MTOW 1850 кг · 2027</span>
+                <span class="step-desc" data-i18n="step5_desc">Лётная сертификация для коммерческих агрохолдингов и лесоохранных ведомств МЧС.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- AI Chief Designer (AI Aerospace Advisor) -->
+        <div class="ai-advisor-card glass-panel" data-tilt data-tilt-max="4">
+          <div class="hud-corner top-left"></div>
+          <div class="hud-corner top-right"></div>
+          <div class="hud-corner bottom-left"></div>
+          <div class="hud-corner bottom-right"></div>
+
+          <div class="ai-advisor-header">
+            <div class="ai-avatar-wrap">
+              <div class="ai-avatar"><i class="fa-solid fa-brain"></i></div>
+              <div>
+                <h4 style="color: #fff; font-size: 0.95rem;" data-i18n="ai_name">ИИ-Главный Конструктор</h4>
+                <span style="font-family: var(--font-mono); font-size: 0.7rem; color: var(--accent-emerald);">AEROSPACE AI ADVISOR · ONLINE</span>
+              </div>
+            </div>
+            <button class="scale-btn" id="btn-ai-analyze-state" title="Провести глубокий аудит текущих настроек самолёта">
+              <i class="fa-solid fa-bolt"></i> <span data-i18n="ai_btn_audit">Аудит Самолёта</span>
+            </button>
+          </div>
+
+          <!-- Chat messages box -->
+          <div class="ai-messages-box" id="ai-messages-box">
+            <div class="ai-msg system">
+              <i class="fa-solid fa-robot" style="color: var(--accent-cyan); margin-right: 0.4rem;"></i>
+              <strong>Приветствую, коллега!</strong> Я бортовой ИИ-консультант проекта AeroTerra H2. Я в реальном времени анализирую геометрию в CATIA, распределение масс, аэродинамическое качество $L/D$ и балансировку водородной силовой установки. Выберите готовый вопрос ниже или задайте свой!
+            </div>
+          </div>
+
+          <!-- Quick Query Prompts -->
+          <div class="ai-quick-prompts">
+            <span class="ai-prompt-chip" data-query="audit">⚡ Полный аудит текущей конфигурации</span>
+            <span class="ai-prompt-chip" data-query="stol">🛫 Как распределенная тяга DEP сокращает взлет?</span>
+            <span class="ai-prompt-chip" data-query="h2">💧 Преимущество LH2 перед литий-ионными АКБ</span>
+            <span class="ai-prompt-chip" data-query="catia">📐 Что такое Class-A Surface в CATIA V5?</span>
+          </div>
+
+          <!-- Input bar -->
+          <div class="ai-input-wrap">
+            <input type="text" class="ai-input" id="ai-chat-input" placeholder="Спросить главного конструктора..." data-i18n-ph="ai_input_ph">
+            <button class="btn-ai-send" id="btn-ai-chat-send">
+              <i class="fa-solid fa-paper-plane"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Team Members Cards (Vanilla-Tilt 3D) -->
+      <div style="margin-top: 3rem;">
+        <h3 style="font-size: 1.25rem; color: #fff; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+          <i class="fa-solid fa-id-card-clip" style="color: var(--accent-emerald);"></i> <span data-i18n="team_heading">Инженерная Команда Проекта (Aerospace Engineering Club)</span>
+        </h3>
+
+        <div class="team-cards-grid">
+          <!-- Lead 1 -->
+          <div class="team-card glass-panel" data-tilt data-tilt-max="12" data-tilt-speed="400" data-tilt-glare data-tilt-max-glare="0.2">
+            <div class="team-avatar-box"><i class="fa-solid fa-user-astronaut"></i></div>
+            <h4 class="team-name" data-i18n="member1_name">Александр Смирнов</h4>
+            <span class="team-role" data-i18n="member1_role">CHIEF DESIGNER & AERO LEAD</span>
+            <p class="team-bio" data-i18n="member1_bio">Общая компоновка Box-Wing STOL, аэродинамика профилей NACA и интеграция водородных систем.</p>
+          </div>
+
+          <!-- Lead 2 -->
+          <div class="team-card glass-panel" data-tilt data-tilt-max="12" data-tilt-speed="400" data-tilt-glare data-tilt-max-glare="0.2">
+            <div class="team-avatar-box"><i class="fa-solid fa-compass-drafting"></i></div>
+            <h4 class="team-name" data-i18n="member2_name">Елена Воронова</h4>
+            <span class="team-role" data-i18n="member2_role">CATIA V5 CLASS-A SPECIALIST</span>
+            <p class="team-bio" data-i18n="member2_bio">Параметрическое проектирование поверхностей в ICEM Surf, непрерывность кривизны G2/G3 и композитный силовой набор.</p>
+          </div>
+
+          <!-- Lead 3 -->
+          <div class="team-card glass-panel" data-tilt data-tilt-max="12" data-tilt-speed="400" data-tilt-glare data-tilt-max-glare="0.2">
+            <div class="team-avatar-box"><i class="fa-solid fa-atom"></i></div>
+            <h4 class="team-name" data-i18n="member3_name">Даниил Ким</h4>
+            <span class="team-role" data-i18n="member3_role">H2 PROPULSION & THERMAL LEAD</span>
+            <p class="team-bio" data-i18n="member3_bio">Криогенный водородный бак, балансировка PEM топливной ячейки и тепловой менеджмент силовой установки.</p>
+          </div>
+
+          <!-- Lead 4 -->
+          <div class="team-card glass-panel" data-tilt data-tilt-max="12" data-tilt-speed="400" data-tilt-glare data-tilt-max-glare="0.2">
+            <div class="team-avatar-box"><i class="fa-solid fa-satellite-dish"></i></div>
+            <h4 class="team-name" data-i18n="member4_name">Марк Романов</h4>
+            <span class="team-role" data-i18n="member4_role">AVIONICS & RC TEST PILOT</span>
+            <p class="team-bio" data-i18n="member4_bio">Бортовой компьютер на ArduPilot, каналы телеметрии Starlink/5G и пилотирование лётного прототипа 1:5.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ==========================================================================
+       FOOTER
+       ========================================================================== -->
+  <footer class="site-footer">
+    <div class="footer-content">
+      <div class="footer-left">
+        <h3 style="color: #fff; font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem;">
+          <i class="fa-solid fa-plane-departure" style="color: var(--accent-cyan);"></i> AeroTerra H2 — Aerospace Engineering Club
+        </h3>
+        <p class="footer-disclaimer" data-i18n="footer_rights">
+          Проект разработан в рамках Студенческого Аэрокосмического Клуба. Подготовлено к презентации жюри и венчурным инвесторам.
+        </p>
+      </div>
+      <div>
+        <span style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--accent-cyan);">
+          AIRBUS UPNEXT / NASA CYBERNETIC SPEC REV 4.2
+        </span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ==========================================================================
+       HIDDEN PRINTABLE PASSPORT TEMPLATE (FOR HTML2PDF)
+       ========================================================================== -->
+  <div id="pdf-passport-template">
+    <div style="border-bottom: 2px solid #00e5ff; padding-bottom: 15px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+      <div>
+        <h1 style="color: #00e5ff; margin: 0; font-size: 24px;">AEROTERRA H2 — ТЕХНИЧЕСКИЙ ПАСПОРТ САМОЛЁТА</h1>
+        <p style="color: #8b9bb4; margin: 4px 0 0 0; font-size: 14px;">Aerospace Engineering Club | Сертификат предварительного проекта CS-23</p>
+      </div>
+      <div style="text-align: right; color: #00ff9d; font-family: monospace; font-size: 14px;">
+        РЕВИЗИЯ: 2026-B<br>СТАТУС: ВАЛИДИРОВАНО
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+      <div style="background: rgba(14,26,54,0.6); padding: 15px; border-radius: 8px;">
+        <h3 style="color: #00e5ff; font-size: 16px; margin-top: 0;">1. ОСНОВНЫЕ ГАБАРИТЫ И МАССЫ</h3>
+        <p>• Размах крыла: <strong>12.4 м</strong> (удлинение AR = 11.5)</p>
+        <p>• Максимальная взлётная масса (MTOW): <strong>1850 кг</strong></p>
+        <p>• Масса пустого снаряжённого: <strong>820 кг</strong></p>
+        <p>• Масса полезной нагрузки (ПН): <strong>600 - 800 кг</strong></p>
+        <p>• Запас криогенного водорода: <strong>38 кг LH2</strong> (1265 кВт·ч)</p>
+      </div>
+
+      <div style="background: rgba(14,26,54,0.6); padding: 15px; border-radius: 8px;">
+        <h3 style="color: #00ff9d; font-size: 16px; margin-top: 0;">2. ЛЁТНО-ТЕХНИЧЕСКИЕ ДАННЫЕ</h3>
+        <p>• Крейсерская скорость: <strong>210 км/ч</strong> (Макс: 280 км/ч)</p>
+        <p>• Дальность полёта: <strong>1400 км</strong></p>
+        <p>• Длина разбега STOL: <strong>120 м</strong> (грунтовая полоса)</p>
+        <p>• Аэродинамическое качество: <strong>L/D = 21.0</strong></p>
+        <p>• Уровень шума: <strong>-15 дБ</strong> относительно поршневых ДВС</p>
+      </div>
+    </div>
+
+    <div style="background: rgba(14,26,54,0.6); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+      <h3 style="color: #ff4d00; font-size: 16px; margin-top: 0;">3. ЭКОЛОГИЧЕСКИЙ И ЭКОНОМИЧЕСКИЙ ЭФФЕКТ</h3>
+      <p>• Снижение себестоимости лётного часа в <strong>4.5 раза</strong> относительно самолётов Ан-2 и вертолётов Ми-2.</p>
+      <p>• Полное отсутствие токсичных выбросов: $CO_2 = 0$, $NO_x = 0$, сажа = 0. Выхлоп — чистая вода ($H_2O$).</p>
+      <p>• Предотвращение выброса до <strong>285 тонн $CO_2$</strong> ежегодно на один борт.</p>
+    </div>
+
+    <div style="display: flex; justify-content: space-between; margin-top: 40px; border-top: 1px dashed #54657e; padding-top: 20px; font-size: 13px; color: #8b9bb4;">
+      <div>Главный конструктор проекта: ____________________ / Смирнов А. /</div>
+      <div>Печать Aerospace Engineering Club: [ VALIDATED ]</div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       EXTERNAL CDN JAVASCRIPT LIBRARIES
+       ========================================================================== -->
+  <!-- Three.js Core -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <!-- Three.js OrbitControls -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <!-- Three.js GLTFLoader -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+  <!-- Three.js STLLoader -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js"></script>
+  <!-- Apache ECharts -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Vanilla Tilt -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/vanilla-tilt/1.8.1/vanilla-tilt.min.js"></script>
+  <!-- SweetAlert2 -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <!-- html2pdf.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+  <!-- Application Logic -->
+  <script src="app.js"></script>
+</body>
+</html>
