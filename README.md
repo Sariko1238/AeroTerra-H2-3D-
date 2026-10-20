@@ -4,7 +4,66 @@
 
 ![AeroTerra H2 Cover](https://img.shields.io/badge/AEROSPACE-CLUB_PROJECT-00e5ff?style=for-the-badge&logo=spacex)
 ![Status](https://img.shields.io/badge/STATUS-VALIDATED_CS--23-00ff9d?style=for-the-badge)
-![Tech Stack](https://img.shields.io/badge/TECH-HTML5_·_CSS3_·_THREE.JS_·_ECHARTS-ff4d00?style=for-the-badge)
+![Tech Stack](https://img.shields.io/badge/TECH-THREE.JS_·_NEON_POSTGRES_·_VERCEL_·_FRAMER_MOTION-ff4d00?style=for-the-badge)
+![Database](https://img.shields.io/badge/DATABASE-NEON_SERVERLESS-00e5ff?style=for-the-badge)
+![Deployment](https://img.shields.io/badge/DEPLOYMENT-VERCEL_EDGE-000000?style=for-the-badge&logo=vercel)
+
+---
+
+## 🚀 Новые Возможности (Версия 2.0)
+1. **🌟 Отдельный Лендинг-Презентация ([landing.html](file:///Users/macbookair/Desktop/AeroTerra-H2-3D%29/landing.html))**:
+   - Полноценный Showcase/Pitch Deck для инвесторов и жюри с эстетикой **shadcn/ui**.
+   - Анимации на **Framer Motion (`framer-motion`)**.
+   - **Многослойный Parallax-эффект** при скролле (HUD-высотомер, сетка координат, карточки телеметрии).
+   - Интерактивный переключатель миссий (Agro ULV ⇄ Firefighter Salvo).
+2. **🔐 Система Аутентификации (Вход / Регистрация / Профиль)**:
+   - Облачное хранилище в **Neon Serverless PostgreSQL**.
+   - Таблицы: `users`, `user_sessions`, `aircraft_configs`, `telemetry_logs`.
+   - Защита паролей с помощью **bcrypt**, авторизация по **JWT-токенам**.
+   - Встроена как на лендинге, так и в основном 3D-ангаре.
+3. **⚡ Vercel Serverless Functions (`/api/`):**
+   - `/api/auth/register` — регистрация инженеров.
+   - `/api/auth/login` — вход и проверка пароля.
+   - `/api/auth/me` — верификация сессии.
+   - `/api/configs/save` & `/api/configs/list` — сохранение кастомных конфигураций самолёта.
+   - `/api/db-health` — проверка пинга и статуса Neon.
+4. **✈️ 3D Модель CATIA V5 Class-A в Three.js:**
+   - Плавный аэродинамический фюзеляж, профиль крыла **NACA 64-215**, оптическая турель под носом, сброс воды со створками и ULV-распыление.
+
+---
+
+## ⚡ Быстрый Старт: CLI Автоматизация
+
+### 1. Настройка Базы Данных Neon:
+```bash
+# Вход в Neon CLI
+npx neonctl auth
+
+# Создание проекта или получение строки подключения
+npx neonctl connection-string
+```
+Скопируйте полученную ссылку в файл `.env`:
+```env
+DATABASE_URL=postgres://user:pass@ep-xxxx.us-east-2.aws.neon.tech/neondb?sslmode=require
+```
+
+### 2. Инициализация Таблиц в Neon:
+```bash
+npm run db:init
+```
+*(Создаст таблицы users, sessions, configs и демо-аккаунт `pilot@aeroterra.aero`)*.
+
+### 3. Локальный запуск:
+```bash
+npm start
+# Доступно: http://localhost:3000 (Лендинг) и http://localhost:3000/hangar (3D Ангар)
+```
+
+### 4. Деплой на Vercel одной командой:
+```bash
+npx vercel --prod
+```
+В настройках проекта Vercel добавьте переменную: `DATABASE_URL`.
 
 ---
 

@@ -74,6 +74,28 @@
       <button class="btn-pdf-export" id="btn-export-pdf" title="Скачать официальный Инженерный Паспорт в PDF">
         <i class="fa-solid fa-file-pdf"></i> <span data-i18n="btn_pdf">Паспорт PDF</span>
       </button>
+
+      <!-- Landing Presentation Link -->
+      <a href="/landing" class="btn-presentation-link" id="btn-presentation-link" title="Открыть флагманскую презентацию проекта с Parallax и Motion">
+        <i class="fa-solid fa-rocket"></i> <span>Презентация</span>
+      </a>
+
+      <!-- User Auth Profile Widget (Neon Postgres) -->
+      <div class="auth-header-widget" id="auth-header-widget">
+        <button class="btn-auth-trigger" id="btn-open-auth">
+          <i class="fa-solid fa-user-astronaut"></i> <span id="auth-btn-label">Вход / Регистрация</span>
+        </button>
+        <div class="user-profile-badge" id="user-profile-badge" style="display: none;">
+          <div class="user-avatar" id="header-user-avatar">П</div>
+          <div class="user-info-text">
+            <span class="user-name" id="header-user-name">Пилот</span>
+            <span class="user-status-pill"><span class="neon-dot"></span> <span id="header-user-role">Neon Cloud</span></span>
+          </div>
+          <button class="btn-auth-logout" id="btn-header-logout" title="Выйти из аккаунта">
+            <i class="fa-solid fa-right-from-bracket"></i>
+          </button>
+        </div>
+      </div>
     </div>
   </header>
 
@@ -1438,6 +1460,90 @@
     <div style="display: flex; justify-content: space-between; margin-top: 40px; border-top: 1px dashed #54657e; padding-top: 20px; font-size: 13px; color: #8b9bb4;">
       <div>Главный конструктор проекта: ____________________ / Смирнов А. /</div>
       <div>Печать Aerospace Engineering Club: [ VALIDATED ]</div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       NEON CLOUD AUTHENTICATION MODAL (LOGIN & REGISTRATION)
+       ========================================================================== -->
+  <div class="auth-modal-overlay" id="auth-modal" style="display: none;">
+    <div class="auth-modal-card glass-panel">
+      <button class="auth-modal-close" id="btn-close-auth"><i class="fa-solid fa-xmark"></i></button>
+      
+      <div class="auth-modal-header">
+        <div class="auth-icon-badge">
+          <i class="fa-solid fa-shield-halved"></i>
+        </div>
+        <h3 id="modal-auth-title">ВХОД В АККАУНТ ИНЖЕНЕРА</h3>
+        <p class="auth-subtitle">Синхронизация профиля и телеметрии с базой Neon PostgreSQL</p>
+      </div>
+
+      <!-- Mode Tabs -->
+      <div class="auth-tabs">
+        <button class="auth-tab-btn active" id="tab-auth-login">Вход</button>
+        <button class="auth-tab-btn" id="tab-auth-register">Регистрация</button>
+      </div>
+
+      <!-- Alert notification inside modal -->
+      <div class="auth-alert" id="auth-modal-alert" style="display: none;"></div>
+
+      <!-- Login Form -->
+      <form class="auth-form" id="form-login">
+        <div class="form-group">
+          <label><i class="fa-solid fa-envelope"></i> Корпоративный Email:</label>
+          <input type="email" id="login-email" required placeholder="pilot@aeroterra.aero" autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label><i class="fa-solid fa-key"></i> Пароль:</label>
+          <input type="password" id="login-password" required placeholder="••••••••" autocomplete="current-password">
+        </div>
+        <button type="submit" class="btn-auth-submit" id="btn-submit-login">
+          <span>Войти в систему</span> <i class="fa-solid fa-arrow-right"></i>
+        </button>
+      </form>
+
+      <!-- Register Form -->
+      <form class="auth-form" id="form-register" style="display: none;">
+        <div class="form-group">
+          <label><i class="fa-solid fa-user"></i> ФИО инженера / Позывной:</label>
+          <input type="text" id="reg-fullname" required placeholder="Алекс Воронов">
+        </div>
+        <div class="form-group">
+          <label><i class="fa-solid fa-building-columns"></i> Организация / Клуб:</label>
+          <input type="text" id="reg-org" placeholder="Aerospace Engineering Club" value="Aerospace Engineering Club">
+        </div>
+        <div class="form-group">
+          <label><i class="fa-solid fa-id-badge"></i> Роль в проекте:</label>
+          <select id="reg-role">
+            <option value="engineer">Инженер-Конструктор</option>
+            <option value="pilot" selected>Тест-Пилот БПЛА</option>
+            <option value="investor">Инвестор / Партнёр</option>
+            <option value="flight_controller">Оператор Полётов</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label><i class="fa-solid fa-envelope"></i> Email:</label>
+          <input type="email" id="reg-email" required placeholder="engineer@aeroterra.aero">
+        </div>
+        <div class="form-group">
+          <label><i class="fa-solid fa-key"></i> Пароль (от 6 символов):</label>
+          <input type="password" id="reg-password" required placeholder="••••••••" minlength="6">
+        </div>
+        <button type="submit" class="btn-auth-submit" id="btn-submit-register">
+          <span>Создать аккаунт в Neon</span> <i class="fa-solid fa-user-plus"></i>
+        </button>
+      </form>
+
+      <!-- 1-Click Demo Login -->
+      <div class="auth-demo-footer">
+        <button type="button" class="btn-quick-demo" id="btn-quick-demo-login">
+          <i class="fa-solid fa-bolt"></i> <span>⚡ Быстрый демо-вход (Тест-Пилот)</span>
+        </button>
+        <div class="neon-db-status-bar">
+          <span class="neon-indicator-dot"></span>
+          <span id="neon-status-text">Neon Serverless: Готов к работе</span>
+        </div>
+      </div>
     </div>
   </div>
 

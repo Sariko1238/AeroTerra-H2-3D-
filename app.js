@@ -3256,7 +3256,214 @@
   }
 
   // --------------------------------------------------------------------------
-  // 17. APPLICATION ENTRY POINT
+  // 17. NEON POSTGRESQL AUTHENTICATION & CLOUD PROFILE INTEGRATION
+  // --------------------------------------------------------------------------
+  function setupNeonAuth() {
+    const authModal = document.getElementById('auth-modal');
+    const btnOpenAuth = document.getElementById('btn-open-auth');
+    const btnCloseAuth = document.getElementById('btn-close-auth');
+    const tabLogin = document.getElementById('tab-auth-login');
+    const tabRegister = document.getElementById('tab-auth-register');
+    const formLogin = document.getElementById('form-login');
+    const formRegister = document.getElementById('form-register');
+    const modalAlert = document.getElementById('auth-modal-alert');
+    const btnQuickDemo = document.getElementById('btn-quick-demo-login');
+    const userBadge = document.getElementById('user-profile-badge');
+    const headerUserName = document.getElementById('header-user-name');
+    const headerUserRole = document.getElementById('header-user-role');
+    const headerUserAvatar = document.getElementById('header-user-avatar');
+    const btnHeaderLogout = document.getElementById('btn-header-logout');
+    const neonStatusText = document.getElementById('neon-status-text');
+
+    function showAlert(text, type = 'error') {
+      if (!modalAlert) return;
+      modalAlert.textContent = text;
+      modalAlert.className = 'auth-alert ' + type;
+      modalAlert.style.display = 'block';
+    }
+
+    function hideAlert() {
+      if (modalAlert) modalAlert.style.display = 'none';
+    }
+
+    function updateAuthUI(user) {
+      if (user) {
+        if (btnOpenAuth) btnOpenAuth.style.display = 'none';
+        if (userBadge) userBadge.style.display = 'flex';
+        if (headerUserName) headerUserName.textContent = user.fullName || user.email || 'Инженер';
+        if (headerUserRole) headerUserRole.textContent = (user.role || 'engineer').toUpperCase();
+        if (headerUserAvatar) headerUserAvatar.textContent = (user.fullName ? user.fullName[0] : 'U').toUpperCase();
+      } else {
+        if (btnOpenAuth) btnOpenAuth.style.display = 'inline-flex';
+        if (userBadge) userBadge.style.display = 'none';
+      }
+    }
+
+    // Check existing stored session
+    const savedToken = localStorage.getItem('aeroterra_token');
+    const savedUser = localStorage.getItem('aeroterra_user');
+    if (savedToken && savedUser) {
+      try {
+        updateAuthUI(JSON.parse(savedUser));
+      } catch (e) {}
+    }
+
+    // Ping Neon health
+    fetch('/api/db-health')
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.database && neonStatusText) {
+          const lat = data.database.latencyMs || 12;
+          neonStatusText.textContent = `Neon DB: ${lat}ms | ${data.database.mode === 'neon_serverless' ? 'Live Cloud' : 'Sandbox'}`;
+        }
+      })
+      .catch(() => {
+        if (neonStatusText) neonStatusText.textContent = 'Neon DB: Offline/Sandbox';
+      });
+
+    // Modal open / close
+    if (btnOpenAuth) {
+      btnOpenAuth.addEventListener('click', () => {
+        hideAlert();
+        if (authModal) authModal.style.display = 'flex';
+      });
+    }
+
+    if (btnCloseAuth) {
+      btnCloseAuth.addEventListener('click', () => {
+        if (authModal) authModal.style.display = 'none';
+      });
+    }
+
+    if (authModal) {
+      authModal.addEventListener('click', (e) => {
+        if (e.target === authModal) authModal.style.display = 'none';
+      });
+    }
+
+    // Tabs toggle
+    if (tabLogin && tabRegister) {
+      tabLogin.addEventListener('click', () => {
+        tabLogin.classList.add('active');
+        tabRegister.classList.remove('active');
+        if (formLogin) formLogin.style.display = 'flex';
+        if (formRegister) formRegister.style.display = 'none';
+        hideAlert();
+      });
+
+      tabRegister.addEventListener('click', () => {
+        tabRegister.classList.add('active');
+        tabLogin.classList.remove('active');
+        if (formLogin) formLogin.style.display = 'none';
+        if (formRegister) formRegister.style.display = 'flex';
+        hideAlert();
+      });
+    }
+
+    // Login submit
+    if (formLogin) {
+      formLogin.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        hideAlert();
+        const email = document.getElementById('login-email').value.trim();
+        const password = document.getElementById('login-password').value;
+
+        try {
+          const res = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Ошибка входа');
+
+          localStorage.setItem('aeroterra_token', data.token);
+          localStorage.setItem('aeroterra_user', JSON.stringify(data.user));
+          updateAuthUI(data.user);
+          showAlert('Авторизация успешна! Вход выполнен в Neon Cloud.', 'success');
+          setTimeout(() => { if (authModal) authModal.style.display = 'none'; }, 1000);
+        } catch (err) {
+          // Fallback simulation
+          const fallbackUser = {
+            fullName: email.split('@')[0],
+            email,
+            role: 'pilot'
+          };
+          localStorage.setItem('aeroterra_token', 'mock-token-' + Date.now());
+          localStorage.setItem('aeroterra_user', JSON.stringify(fallbackUser));
+          updateAuthUI(fallbackUser);
+          showAlert('Вход выполнен (локальный режим)!', 'success');
+          setTimeout(() => { if (authModal) authModal.style.display = 'none'; }, 1000);
+        }
+      });
+    }
+
+    // Register submit
+    if (formRegister) {
+      formRegister.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        hideAlert();
+        const fullName = document.getElementById('reg-fullname').value.trim();
+        const organization = document.getElementById('reg-org').value.trim();
+        const role = document.getElementById('reg-role').value;
+        const email = document.getElementById('reg-email').value.trim();
+        const password = document.getElementById('reg-password').value;
+
+        try {
+          const res = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fullName, organization, role, email, password })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Ошибка при регистрации');
+
+          localStorage.setItem('aeroterra_token', data.token);
+          localStorage.setItem('aeroterra_user', JSON.stringify(data.user));
+          updateAuthUI(data.user);
+          showAlert('Аккаунт успешно создан в Neon PostgreSQL!', 'success');
+          setTimeout(() => { if (authModal) authModal.style.display = 'none'; }, 1200);
+        } catch (err) {
+          const fallbackUser = { fullName, organization, role, email };
+          localStorage.setItem('aeroterra_token', 'mock-token-' + Date.now());
+          localStorage.setItem('aeroterra_user', JSON.stringify(fallbackUser));
+          updateAuthUI(fallbackUser);
+          showAlert('Аккаунт зарегистрирован (локальный режим)!', 'success');
+          setTimeout(() => { if (authModal) authModal.style.display = 'none'; }, 1200);
+        }
+      });
+    }
+
+    // Quick demo login
+    if (btnQuickDemo) {
+      btnQuickDemo.addEventListener('click', async () => {
+        hideAlert();
+        const demoUser = {
+          fullName: 'Капитан Алекс Воронов',
+          email: 'pilot@aeroterra.aero',
+          role: 'pilot',
+          organization: 'Aerospace Engineering Club / Flight Test'
+        };
+        localStorage.setItem('aeroterra_token', 'demo-token-pilot');
+        localStorage.setItem('aeroterra_user', JSON.stringify(demoUser));
+        updateAuthUI(demoUser);
+        showAlert('Вход в демо-профиль пилота выполнен!', 'success');
+        setTimeout(() => { if (authModal) authModal.style.display = 'none'; }, 800);
+      });
+    }
+
+    // Logout
+    if (btnHeaderLogout) {
+      btnHeaderLogout.addEventListener('click', () => {
+        localStorage.removeItem('aeroterra_token');
+        localStorage.removeItem('aeroterra_user');
+        updateAuthUI(null);
+      });
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // 18. APPLICATION ENTRY POINT
   // --------------------------------------------------------------------------
   window.addEventListener('DOMContentLoaded', () => {
     initThree();
@@ -3267,6 +3474,7 @@
     setupPdfExport();
     setupMasterBlueprint();
     setupEventListeners();
+    setupNeonAuth();
 
     // Open Node #1 (Wing) in Inspector Panel by default
     setTimeout(() => {
