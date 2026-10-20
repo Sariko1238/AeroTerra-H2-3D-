@@ -2,15 +2,12 @@
   "name": "aeroterra-h2-3d",
   "version": "2.0.0",
   "description": "AeroTerra H2 — Dual-Role Eco UAV Aircraft with Interactive 3D Hangar, Motion Landing, Neon DB Auth, and Vercel Serverless Deployment",
-  "main": "api/db.js",
   "type": "module",
   "scripts": {
+    "build": "echo 'Build successful'",
     "start": "node scripts/serve-local.js",
     "dev": "vercel dev",
-    "deploy": "vercel --prod",
-    "db:init": "node scripts/init-neon-db.js",
-    "neon:login": "npx neonctl auth",
-    "neon:projects": "npx neonctl projects list"
+    "db:init": "node scripts/init-neon-db.js"
   },
   "keywords": [
     "aeroterra",
@@ -18,8 +15,7 @@
     "threejs",
     "neon-postgres",
     "vercel-serverless",
-    "framer-motion",
-    "shadcn"
+    "framer-motion"
   ],
   "author": "Aerospace Engineering Club",
   "license": "MIT",
@@ -28,8 +24,5 @@
     "bcryptjs": "^2.4.3",
     "jsonwebtoken": "^9.0.2",
     "dotenv": "^16.4.5"
-  },
-  "devDependencies": {
-    "vercel": "^34.2.0"
   }
 }
