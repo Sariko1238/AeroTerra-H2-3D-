@@ -3463,7 +3463,63 @@
   }
 
   // --------------------------------------------------------------------------
-  // 18. APPLICATION ENTRY POINT
+  // 18. IN-APP PRESENTATION MODAL VIEWER (FRAMER MOTION & PARALLAX SHOWCASE)
+  // --------------------------------------------------------------------------
+  function setupPresentationModal() {
+    const btnPres = document.getElementById('btn-presentation-link');
+    const presModal = document.getElementById('presentation-modal');
+    const presIframe = document.getElementById('presentation-iframe');
+    const btnClosePres = document.getElementById('btn-close-presentation');
+
+    if (btnPres && presModal) {
+      btnPres.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (presIframe && (!presIframe.src || presIframe.src === 'about:blank' || !presIframe.src.includes('landing.html'))) {
+          presIframe.src = 'landing.html';
+        }
+        presModal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+      });
+    }
+
+    if (btnClosePres && presModal) {
+      btnClosePres.addEventListener('click', () => {
+        presModal.style.display = 'none';
+        document.body.style.overflow = '';
+      });
+    }
+
+    // Close on overlay backdrop click
+    if (presModal) {
+      presModal.addEventListener('click', (e) => {
+        if (e.target === presModal) {
+          presModal.style.display = 'none';
+          document.body.style.overflow = '';
+        }
+      });
+    }
+
+    // Close on Escape key
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && presModal && presModal.style.display === 'flex') {
+        presModal.style.display = 'none';
+        document.body.style.overflow = '';
+      }
+    });
+
+    // Listen for postMessage from inside iframe (e.g. clicking 3D Hangar inside presentation)
+    window.addEventListener('message', (event) => {
+      if (event.data && (event.data.type === 'CLOSE_PRESENTATION' || event.data.type === 'GO_TO_HANGAR')) {
+        if (presModal) {
+          presModal.style.display = 'none';
+          document.body.style.overflow = '';
+        }
+      }
+    });
+  }
+
+  // --------------------------------------------------------------------------
+  // 19. APPLICATION ENTRY POINT
   // --------------------------------------------------------------------------
   window.addEventListener('DOMContentLoaded', () => {
     initThree();
@@ -3475,6 +3531,7 @@
     setupMasterBlueprint();
     setupEventListeners();
     setupNeonAuth();
+    setupPresentationModal();
 
     // Open Node #1 (Wing) in Inspector Panel by default
     setTimeout(() => {

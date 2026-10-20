@@ -75,8 +75,8 @@
         <i class="fa-solid fa-file-pdf"></i> <span data-i18n="btn_pdf">Паспорт PDF</span>
       </button>
 
-      <!-- Landing Presentation Link -->
-      <a href="/landing" class="btn-presentation-link" id="btn-presentation-link" title="Открыть флагманскую презентацию проекта с Parallax и Motion">
+      <!-- Landing Presentation In-App Trigger -->
+      <a href="landing.html" class="btn-presentation-link" id="btn-presentation-link" title="Открыть флагманскую презентацию проекта с Parallax и Motion прямо внутри сайта">
         <i class="fa-solid fa-rocket"></i> <span>Презентация</span>
       </a>
 
@@ -1543,6 +1543,32 @@
           <span class="neon-indicator-dot"></span>
           <span id="neon-status-text">Neon Serverless: Готов к работе</span>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       IN-APP PRESENTATION MODAL VIEWER (FRAMER MOTION & PARALLAX SHOWCASE)
+       ========================================================================== -->
+  <div class="presentation-modal-overlay" id="presentation-modal" style="display: none;">
+    <div class="presentation-modal-container">
+      <div class="presentation-modal-bar">
+        <div class="presentation-modal-title">
+          <i class="fa-solid fa-rocket"></i>
+          <span>AeroTerra H2 — Интерактивная Презентация & Pitch Deck</span>
+          <span class="badge-tag">SHADCN • MOTION • PARALLAX</span>
+        </div>
+        <div class="presentation-modal-actions">
+          <a href="landing.html" target="_blank" class="btn-pres-action" title="Открыть в отдельной вкладке браузера">
+            <i class="fa-solid fa-arrow-up-right-from-square"></i> <span>В новой вкладке</span>
+          </a>
+          <button class="btn-pres-close" id="btn-close-presentation" title="Закрыть презентацию (Esc)">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+      </div>
+      <div class="presentation-iframe-wrapper">
+        <iframe id="presentation-iframe" src="" frameborder="0" allowfullscreen></iframe>
       </div>
     </div>
   </div>
