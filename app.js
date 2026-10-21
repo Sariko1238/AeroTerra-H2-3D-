@@ -89,6 +89,7 @@
       btn_drain_cg: 'Слить бак 10 кг (Тест CG)',
       btn_dl_poster: 'Скачать Весь Инженерный Паспорт (А1 HD)',
       nav_hangar: '3D Ангар',
+      nav_sim: '🎮 ПОЛЁТ (MSFS Sim)',
       nav_math: 'Инженерная Математика',
       nav_mission: 'Миссии и Пульт RC',
       nav_club: 'Клуб & ИИ Конструктор',
@@ -205,6 +206,7 @@
       btn_drain_cg: 'Drain 10 kg Tank (CG Test)',
       btn_dl_poster: 'Download Master Technical Poster (A1 HD)',
       nav_hangar: '3D Hangar',
+      nav_sim: '🎮 FLIGHT (MSFS Sim)',
       nav_math: 'Engineering Math',
       nav_mission: 'Missions & RC GCS',
       nav_club: 'Club & AI Chief Designer',
@@ -2710,6 +2712,26 @@
         soundIcon.className = STATE.soundEnabled ? 'fa-solid fa-volume-high' : 'fa-solid fa-volume-xmark';
       });
     }
+
+    // Navigation Links Smooth Scroll & Active Tracking
+    document.querySelectorAll('.nav-links a').forEach(link => {
+      link.addEventListener('click', function (e) {
+        const href = this.getAttribute('href');
+        if (href && href.startsWith('#')) {
+          e.preventDefault();
+          const target = document.querySelector(href);
+          if (target) {
+            audio.playClick();
+            document.querySelectorAll('.nav-links a').forEach(l => l.classList.remove('active'));
+            this.classList.add('active');
+            target.scrollIntoView({ behavior: 'smooth' });
+            if (href === '#simulator-section' && window.AeroTerraSim) {
+              window.dispatchEvent(new Event('resize'));
+            }
+          }
+        }
+      });
+    });
 
     // Mission Modes (Clean H2 / Agro / Fire)
     document.getElementById('btn-mode-clean').addEventListener('click', () => setMissionMode('clean'));

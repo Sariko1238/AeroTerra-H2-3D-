@@ -593,18 +593,19 @@ a:hover {
    ========================================================================== */
 .engineering-flyout {
   position: absolute;
-  top: 1.5rem;
+  top: 90px;
   right: 1.5rem;
   width: 410px;
-  max-height: calc(100% - 3rem);
-  background: rgba(8, 15, 34, 0.88);
+  max-height: calc(100vh - 180px);
+  background: rgba(8, 15, 34, 0.92);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   border: 1px solid var(--accent-cyan);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7), 0 0 25px var(--cyan-glow);
   border-radius: 16px;
-  z-index: 50;
+  z-index: 40;
   padding: 1.5rem;
+  padding-top: 20px;
   display: flex;
   flex-direction: column;
   gap: 1.1rem;
@@ -2295,28 +2296,84 @@ a:hover {
   }
 }
 
+@media (max-width: 1024px) {
+  .site-header {
+    padding: 0.6rem 1rem;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+  .nav-links {
+    display: flex !important;
+    overflow-x: auto;
+    white-space: nowrap;
+    width: 100%;
+    padding: 0.4rem 0.2rem;
+    gap: 0.5rem;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .nav-links::-webkit-scrollbar {
+    display: none;
+  }
+  .calc-grid-layout, .mission-gcs-layout, .club-suite-grid, .charts-2x2-grid, .team-cards-grid, .kpi-cards-row {
+    grid-template-columns: 1fr !important;
+    height: auto;
+  }
+  .engineering-flyout {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: auto !important;
+    width: 100% !important;
+    max-height: 75vh !important;
+    border-radius: 20px 20px 0 0 !important;
+    border-bottom: none !important;
+    padding: 1.25rem 1.25rem 2rem 1.25rem !important;
+    transform: translateY(105%) !important;
+    z-index: 2000 !important;
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.85), 0 0 30px var(--cyan-glow) !important;
+  }
+  .engineering-flyout.open {
+    transform: translateY(0) !important;
+  }
+}
+
 @media (max-width: 768px) {
   .site-header {
     flex-direction: column;
-    align-items: flex-start;
-    padding: 1rem;
+    align-items: stretch;
+    padding: 0.6rem 0.75rem;
   }
-  .nav-links {
-    display: none; /* Mobile menu can toggle */
+  .brand-section {
+    justify-content: space-between;
+    width: 100%;
+  }
+  .brand-title h1 {
+    font-size: 1.05rem;
+  }
+  .header-actions {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+  .scale-toggle-group button span {
+    display: none;
   }
   .hangar-viewport-section {
-    height: 75vh;
+    height: 65vh;
   }
-  .charts-2x2-grid, .team-cards-grid, .kpi-cards-row {
-    grid-template-columns: 1fr;
-  }
-  .engineering-flyout {
-    width: calc(100% - 2rem);
-    right: 1rem;
-    left: 1rem;
+  .blueprint-hero-grid, .blocks-8-grid {
+    grid-template-columns: 1fr !important;
   }
   .hangar-hud-overlay {
-    padding: 1rem;
+    padding: 0.6rem;
+  }
+  .hud-top-bar {
+    flex-direction: column;
+    gap: 0.4rem;
+    align-items: stretch;
   }
 }
 
@@ -2798,5 +2855,1304 @@ a:hover {
   border: none;
   display: block;
 }
+
+/* ==========================================================================
+   ULTRA-REALISTIC 3D FLIGHT SIMULATOR & MISSION GAME (MSFS 2024 LEVEL)
+   ========================================================================== */
+.nav-sim-link {
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.2), rgba(0, 255, 157, 0.25)) !important;
+  border: 1px solid var(--accent-cyan) !important;
+  color: #fff !important;
+  text-shadow: 0 0 10px var(--cyan-glow);
+  box-shadow: 0 0 15px rgba(0, 229, 255, 0.35);
+  position: relative;
+  overflow: hidden;
+}
+
+.nav-sim-link:hover {
+  background: linear-gradient(135deg, rgba(0, 229, 255, 0.35), rgba(0, 255, 157, 0.45)) !important;
+  box-shadow: 0 0 25px rgba(0, 229, 255, 0.6);
+  transform: translateY(-1px);
+}
+
+.sim-pulse-dot, .pulse-indicator-neon {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #00ff9d;
+  box-shadow: 0 0 8px #00ff9d;
+  display: inline-block;
+  margin-right: 4px;
+  animation: pulseNeon 1.5s infinite;
+}
+
+@keyframes pulseNeon {
+  0% { transform: scale(0.9); opacity: 0.8; }
+  50% { transform: scale(1.3); opacity: 1; box-shadow: 0 0 14px #00ff9d; }
+  100% { transform: scale(0.9); opacity: 0.8; }
+}
+
+/* Viewport Section */
+.simulator-viewport-section {
+  position: relative;
+  width: 100%;
+  height: 92vh;
+  min-height: 650px;
+  background: #030611;
+  overflow: hidden;
+}
+
+.simulator-viewport-section:fullscreen {
+  height: 100vh;
+  width: 100vw;
+}
+
+#sim-webgl-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  outline: none;
+  display: block;
+}
+
+/* Top Command & Mission Control Bar */
+.sim-top-control-bar {
+  position: absolute;
+  top: 1rem;
+  left: 1.5rem;
+  right: 1.5rem;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0.9rem;
+  border-radius: 12px;
+  background: rgba(6, 12, 26, 0.88);
+  border: 1px solid rgba(0, 229, 255, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
+}
+
+.sim-scenarios-scroll {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  overflow-x: auto;
+  white-space: nowrap;
+  scrollbar-width: none;
+}
+.sim-scenarios-scroll::-webkit-scrollbar { display: none; }
+
+.sim-badge-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: #00ff9d;
+  background: rgba(0, 255, 157, 0.12);
+  border: 1px solid rgba(0, 255, 157, 0.3);
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.pulse-dot-green {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #00ff9d;
+  box-shadow: 0 0 6px #00ff9d;
+  animation: pulseNeon 1.5s infinite;
+}
+
+.sim-scenario-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  background: rgba(14, 26, 54, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #c0d0e6;
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--trans-fast);
+}
+
+.sim-scenario-btn:hover, .sim-scenario-btn.active {
+  background: rgba(0, 229, 255, 0.2);
+  border-color: #00e5ff;
+  color: #fff;
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.3);
+}
+
+.sim-scenario-btn.auto-ai {
+  border-color: rgba(0, 255, 157, 0.4);
+  color: #00ff9d;
+}
+.sim-scenario-btn.auto-ai.active {
+  background: rgba(0, 255, 157, 0.25);
+  box-shadow: 0 0 15px rgba(0, 255, 157, 0.4);
+}
+
+.sim-quick-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sim-weather-group {
+  display: flex;
+  background: rgba(10, 18, 38, 0.9);
+  padding: 2px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sim-tool-btn {
+  padding: 0.35rem 0.6rem;
+  border-radius: 6px;
+  background: rgba(14, 26, 54, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #c0d0e6;
+  font-size: 0.75rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-weight: 600;
+  transition: all var(--trans-fast);
+}
+
+.sim-tool-btn:hover, .sim-tool-btn.active {
+  background: rgba(0, 229, 255, 0.2);
+  border-color: #00e5ff;
+  color: #fff;
+}
+
+.sim-tool-btn.prof-btn {
+  background: rgba(157, 78, 221, 0.18);
+  border-color: rgba(157, 78, 221, 0.45);
+  color: #e0aaff;
+}
+.sim-tool-btn.prof-btn:hover, .sim-tool-btn.prof-btn.active {
+  background: rgba(157, 78, 221, 0.35);
+  box-shadow: 0 0 12px rgba(157, 78, 221, 0.4);
+}
+
+.sim-tool-btn.ai-btn {
+  background: rgba(0, 255, 157, 0.15);
+  border-color: rgba(0, 255, 157, 0.4);
+  color: #00ff9d;
+}
+
+/* HUD Overlay Layer */
+.sim-hud-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 20;
+}
+
+/* Center Compass Tape */
+.sim-compass-tape-wrap {
+  position: absolute;
+  top: 4.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 480px;
+  height: 48px;
+  background: rgba(6, 12, 26, 0.75);
+  border: 1px solid rgba(0, 229, 255, 0.3);
+  border-radius: 8px;
+  overflow: hidden;
+  backdrop-filter: blur(8px);
+}
+
+.compass-lubber-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  background: #ff5500;
+  box-shadow: 0 0 8px #ff5500;
+  z-index: 5;
+}
+
+.sim-compass-ribbon {
+  position: absolute;
+  top: 0;
+  height: 28px;
+  display: flex;
+  align-items: flex-end;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: #00e5ff;
+  transition: transform 0.05s linear;
+  will-change: transform;
+}
+
+.compass-tick {
+  width: 30px;
+  text-align: center;
+  position: relative;
+}
+.compass-tick::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  height: 8px;
+  background: rgba(0, 229, 255, 0.6);
+}
+.compass-tick.major::after {
+  height: 14px;
+  background: #00e5ff;
+}
+
+.compass-digital-hdg {
+  position: absolute;
+  top: 3px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #060b16;
+  border: 1px solid #00e5ff;
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #00e5ff;
+  z-index: 6;
+}
+
+.compass-nav-bugs {
+  position: absolute;
+  bottom: 2px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 0.8rem;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 700;
+}
+
+.nav-bug {
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+.bug-rwy { background: rgba(0, 229, 255, 0.2); color: #00e5ff; border: 1px solid #00e5ff; }
+.bug-agro { background: rgba(0, 255, 157, 0.2); color: #00ff9d; border: 1px solid #00ff9d; }
+.bug-fire { background: rgba(255, 77, 0, 0.2); color: #ff5500; border: 1px solid #ff5500; }
+.bug-lake { background: rgba(37, 99, 235, 0.2); color: #3b82f6; border: 1px solid #3b82f6; }
+
+/* Primary Flight Display (PFD) Center */
+.sim-pfd-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 460px;
+  height: 460px;
+}
+
+#sim-horizon-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Flight Path Vector (FPV) marker */
+.sim-fpv-marker {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 32px;
+  height: 32px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  transition: transform 0.08s ease-out;
+}
+
+.fpv-circle {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: 12px;
+  height: 12px;
+  border: 2px solid #ffea00;
+  border-radius: 50%;
+  box-shadow: 0 0 6px rgba(255, 234, 0, 0.8);
+}
+.fpv-wing-left {
+  position: absolute;
+  top: 15px;
+  left: 0;
+  width: 10px;
+  height: 2px;
+  background: #ffea00;
+  box-shadow: 0 0 4px #ffea00;
+}
+.fpv-wing-right {
+  position: absolute;
+  top: 15px;
+  right: 0;
+  width: 10px;
+  height: 2px;
+  background: #ffea00;
+  box-shadow: 0 0 4px #ffea00;
+}
+.fpv-fin-top {
+  position: absolute;
+  top: 2px;
+  left: 15px;
+  width: 2px;
+  height: 8px;
+  background: #ffea00;
+  box-shadow: 0 0 4px #ffea00;
+}
+
+/* Slip Ball */
+.sim-slip-indicator {
+  position: absolute;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 70px;
+  height: 12px;
+  border: 1px solid rgba(0, 229, 255, 0.4);
+  border-radius: 6px;
+  background: rgba(6, 12, 26, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.slip-bracket-left, .slip-bracket-right {
+  position: absolute;
+  width: 1px;
+  height: 100%;
+  background: rgba(0, 229, 255, 0.7);
+}
+.slip-bracket-left { left: 26px; }
+.slip-bracket-right { right: 26px; }
+.slip-ball {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ffea00;
+  box-shadow: 0 0 6px #ffea00;
+  transform: translateX(0);
+  transition: transform 0.05s ease-out;
+}
+
+/* Vertical Tapes: Airspeed & Altitude */
+.sim-tape-wrap {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 85px;
+  height: 380px;
+  background: rgba(6, 12, 26, 0.85);
+  border: 1px solid rgba(0, 229, 255, 0.3);
+  border-radius: 8px;
+  backdrop-filter: blur(10px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sim-speed-tape { left: 2.5rem; }
+.sim-alt-tape { right: 2.5rem; width: 105px; }
+
+.tape-header-label {
+  padding: 4px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #8b9bb4;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.tape-viewport {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.tape-ladder {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: #f0f6fc;
+  transition: transform 0.05s linear;
+  will-change: transform;
+}
+
+.tape-tick-row {
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 6px;
+  box-sizing: border-box;
+}
+.tape-tick-mark {
+  width: 10px;
+  height: 1px;
+  background: rgba(0, 229, 255, 0.6);
+}
+.tape-tick-row.major .tape-tick-mark {
+  width: 16px;
+  height: 2px;
+  background: #00e5ff;
+}
+
+.tape-readout-box {
+  position: absolute;
+  top: 50%;
+  left: 5px;
+  right: 5px;
+  transform: translateY(-50%);
+  background: #000;
+  border: 2px solid #00e5ff;
+  border-radius: 4px;
+  padding: 4px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #00e5ff;
+  text-shadow: 0 0 8px #00e5ff;
+  z-index: 10;
+}
+
+.speed-trend-vector {
+  position: absolute;
+  right: 0;
+  width: 4px;
+  background: #ff5500;
+  border-radius: 2px;
+  top: 50%;
+  height: 0;
+  transition: height 0.1s ease-out, top 0.1s ease-out;
+}
+
+.vsi-indicator-scale {
+  position: absolute;
+  right: 0;
+  top: 30px;
+  bottom: 50px;
+  width: 22px;
+  background: rgba(0, 0, 0, 0.4);
+  border-left: 1px solid rgba(0, 229, 255, 0.3);
+}
+.vsi-zero-line {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.4);
+}
+.vsi-pointer {
+  position: absolute;
+  left: 2px;
+  top: 50%;
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-right: 8px solid #00ff9d;
+  transform: translateY(-50%);
+}
+.vsi-digital {
+  position: absolute;
+  bottom: 2px;
+  left: 0;
+  right: 0;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  text-align: center;
+  color: #00ff9d;
+}
+
+.tape-sub-data {
+  padding: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: #8b9bb4;
+}
+.tape-sub-data b { color: #f0f6fc; }
+.agl-box {
+  background: rgba(0, 229, 255, 0.08);
+}
+
+/* EICAS Engine & Systems Panel (Bottom Left) */
+.sim-eicas-panel {
+  position: absolute;
+  bottom: 1.5rem;
+  left: 2.5rem;
+  width: 440px;
+  padding: 0.85rem;
+  background: rgba(6, 12, 26, 0.9);
+  border: 1px solid rgba(0, 229, 255, 0.35);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+  pointer-events: auto;
+}
+
+.eicas-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 0.35rem;
+  margin-bottom: 0.6rem;
+}
+.eicas-title {
+  font-family: var(--font-tech);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.05em;
+}
+.eicas-mode {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #00ff9d;
+  background: rgba(0, 255, 157, 0.12);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.eicas-grid {
+  display: grid;
+  grid-template-columns: 80px 140px 1fr;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.throttle-gauge-box {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.15);
+  position: relative;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.5);
+}
+.throttle-bar-fill {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, #00e5ff, #00ff9d);
+  height: 0%;
+  transition: height 0.08s ease-out;
+}
+.throttle-val-text {
+  position: relative;
+  z-index: 2;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #fff;
+}
+.eicas-sub-lbl {
+  display: block;
+  text-align: center;
+  font-size: 0.62rem;
+  font-family: var(--font-mono);
+  color: #8b9bb4;
+  margin-top: 3px;
+}
+
+.motors-bars-row {
+  display: flex;
+  gap: 4px;
+  height: 44px;
+  align-items: flex-end;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 3px;
+  border-radius: 4px;
+}
+.motor-mini-bar {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 2px;
+  position: relative;
+}
+.motor-mini-bar .m-fill {
+  width: 100%;
+  background: #00e5ff;
+  height: 0%;
+  transition: height 0.08s ease-out;
+}
+.motor-mini-bar span {
+  position: absolute;
+  bottom: 1px;
+  font-size: 0.55rem;
+  font-family: var(--font-mono);
+  color: #fff;
+}
+.motors-rpm-text {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: #8b9bb4;
+  text-align: center;
+  margin-top: 4px;
+}
+
+.eicas-fluids-col {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.fluid-metric-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+}
+.fluid-metric-row .f-lbl {
+  width: 44px;
+  color: #8b9bb4;
+}
+.f-bar-track {
+  flex: 1;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.f-bar-val {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.2s ease-out;
+}
+.cyan-bg { background: #00e5ff; }
+.emerald-bg { background: #00ff9d; }
+.amber-bg { background: #ff5500; }
+.fluid-metric-row .f-val {
+  font-size: 0.6rem;
+  color: #f0f6fc;
+  min-width: 80px;
+  text-align: right;
+}
+
+.eicas-annunciators {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 0.6rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.annun-pill {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #8b9bb4;
+}
+.annun-pill.active {
+  background: rgba(0, 255, 157, 0.18);
+  border-color: #00ff9d;
+  color: #00ff9d;
+}
+.annun-pill.warning {
+  background: rgba(255, 77, 0, 0.2);
+  border-color: #ff4d00;
+  color: #ff4d00;
+}
+
+/* Tactical Minimap (Top Right) */
+.sim-minimap-panel {
+  position: absolute;
+  top: 4.5rem;
+  right: 2.5rem;
+  width: 240px;
+  padding: 0.65rem;
+  background: rgba(6, 12, 26, 0.88);
+  border: 1px solid rgba(0, 229, 255, 0.35);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+  pointer-events: auto;
+}
+.minimap-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--font-tech);
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 0.4rem;
+}
+.wind-readout {
+  font-family: var(--font-mono);
+  color: #00e5ff;
+  font-size: 0.6rem;
+}
+.minimap-canvas-box {
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 229, 255, 0.4);
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.6);
+  margin: 0 auto;
+}
+#sim-minimap-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.minimap-legend {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px 6px;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  color: #8b9bb4;
+  margin-top: 0.4rem;
+}
+
+/* Stall Warning Banner */
+.sim-stall-warning {
+  position: absolute;
+  top: 15%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 0, 0, 0.85);
+  border: 2px solid #ffea00;
+  padding: 0.6rem 1.5rem;
+  border-radius: 8px;
+  color: #fff;
+  font-family: var(--font-tech);
+  font-size: 1.1rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  box-shadow: 0 0 35px rgba(255, 0, 0, 0.8);
+  animation: stallPulse 0.4s infinite alternate;
+  z-index: 50;
+}
+@keyframes stallPulse {
+  from { opacity: 0.7; transform: translateX(-50%) scale(0.98); }
+  to { opacity: 1; transform: translateX(-50%) scale(1.02); }
+}
+
+/* Mission Live Commentary Banner */
+.sim-mission-banner {
+  position: absolute;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 500px;
+  max-width: calc(100% - 400px);
+  padding: 0.7rem 1.1rem;
+  background: rgba(6, 12, 26, 0.92);
+  border: 1px solid rgba(0, 255, 157, 0.4);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  pointer-events: auto;
+}
+.mission-banner-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: rgba(0, 255, 157, 0.15);
+  border: 1px solid #00ff9d;
+  color: #00ff9d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+.mission-banner-text {
+  flex: 1;
+}
+.mission-banner-text h4 {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #00ff9d;
+  margin: 0;
+}
+.mission-banner-text p {
+  font-size: 0.7rem;
+  color: #c0d0e6;
+  margin: 2px 0 0 0;
+  line-height: 1.25;
+}
+.mission-score-badge {
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: #8b9bb4;
+}
+.mission-score-badge b {
+  display: block;
+  font-size: 1.2rem;
+  color: #ffea00;
+}
+
+/* FLIR Thermal Overlay */
+.sim-flir-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle, transparent 60%, rgba(0, 255, 100, 0.15) 100%);
+  border: 2px solid rgba(0, 255, 157, 0.3);
+  box-shadow: inset 0 0 80px rgba(0, 255, 100, 0.2);
+}
+.flir-grid-lines {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, rgba(0, 255, 157, 0.05) 0px, rgba(0, 255, 157, 0.05) 1px, transparent 1px, transparent 4px);
+}
+.flir-crosshair {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 40px;
+  height: 40px;
+  transform: translate(-50%, -50%);
+  border: 1px dashed #00ff9d;
+}
+.flir-meta-top {
+  position: absolute;
+  top: 5rem;
+  left: 3rem;
+  display: flex;
+  gap: 1.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: #00ff9d;
+}
+.flir-color-bar {
+  position: absolute;
+  right: 1.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: #00ff9d;
+  gap: 4px;
+}
+.flir-color-bar .gradient-bar {
+  width: 14px;
+  height: 180px;
+  background: linear-gradient(to top, #001133, #0055ff, #00ff9d, #ffff00, #ff0000, #ffffff);
+  border: 1px solid #00ff9d;
+  border-radius: 2px;
+}
+
+/* Mobile Dual-Stick Touch Controls */
+.sim-touch-controls {
+  position: absolute;
+  bottom: 1.5rem;
+  left: 1rem;
+  right: 1rem;
+  display: none;
+  justify-content: space-between;
+  align-items: flex-end;
+  pointer-events: none;
+  z-index: 45;
+}
+
+.touch-throttle-block {
+  width: 110px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: auto;
+}
+.touch-throttle-track {
+  width: 50px;
+  height: 160px;
+  background: rgba(6, 12, 26, 0.85);
+  border: 2px solid #00e5ff;
+  border-radius: 25px;
+  position: relative;
+  touch-action: none;
+}
+.touch-throttle-handle {
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  bottom: 0px;
+  height: 44px;
+  background: linear-gradient(135deg, #00e5ff, #00ff9d);
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: #060b16;
+  font-weight: 800;
+  box-shadow: 0 0 10px #00e5ff;
+  cursor: grab;
+}
+.touch-rudder-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+.touch-rudder-btn {
+  padding: 6px 10px;
+  background: rgba(14, 26, 54, 0.9);
+  border: 1px solid rgba(0, 229, 255, 0.4);
+  color: #00e5ff;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.touch-action-bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  max-width: 320px;
+  pointer-events: auto;
+}
+.touch-act-btn {
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(10, 18, 38, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-family: var(--font-tech);
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+}
+.touch-act-btn.spray-btn { border-color: #00ff9d; color: #00ff9d; }
+.touch-act-btn.salvo-btn { border-color: #ff5500; color: #ff5500; }
+.touch-act-btn.ap-btn { border-color: #e0aaff; color: #e0aaff; }
+
+.touch-joystick-block {
+  width: 140px;
+  height: 160px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: auto;
+}
+.virtual-joystick-zone {
+  width: 130px;
+  height: 130px;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 229, 255, 0.5);
+  background: rgba(6, 12, 26, 0.75);
+  position: relative;
+  touch-action: none;
+}
+.virtual-joystick-knob {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #00e5ff, #0055ff);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 15px rgba(0, 229, 255, 0.7);
+}
+.joystick-label {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  color: #8b9bb4;
+  margin-top: 4px;
+}
+
+/* Professor Mode Overlay */
+.sim-professor-overlay {
+  position: absolute;
+  bottom: 5.5rem;
+  right: 2.5rem;
+  width: 480px;
+  max-width: calc(100% - 3rem);
+  background: rgba(8, 14, 30, 0.95);
+  border: 1px solid #9d4edd;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.8), 0 0 30px rgba(157, 78, 221, 0.35);
+  border-radius: 14px;
+  padding: 1.1rem;
+  z-index: 60;
+  pointer-events: auto;
+  animation: fadeInModal 0.25s ease-out;
+}
+.prof-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(157, 78, 221, 0.3);
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.8rem;
+}
+.prof-title {
+  font-family: var(--font-tech);
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #e0aaff;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.prof-close-btn {
+  background: none;
+  border: none;
+  color: #8b9bb4;
+  font-size: 1rem;
+  cursor: pointer;
+}
+.prof-content-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+.prof-card {
+  background: rgba(14, 26, 54, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 0.6rem 0.8rem;
+}
+.prof-card h5 {
+  font-family: var(--font-tech);
+  font-size: 0.72rem;
+  color: #00e5ff;
+  margin-bottom: 4px;
+}
+.prof-formula {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: #ffea00;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 3px 6px;
+  border-radius: 4px;
+  margin-bottom: 6px;
+}
+.prof-data-row {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: #c0d0e6;
+  padding: 1px 0;
+}
+.prof-data-row.highlight {
+  color: #00ff9d;
+  font-weight: 700;
+  border-top: 1px dashed rgba(255, 255, 255, 0.1);
+  margin-top: 3px;
+  padding-top: 3px;
+}
+
+/* Debriefing Report Modal */
+.sim-debriefing-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 8, 18, 0.88);
+  backdrop-filter: blur(14px);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+.sim-debriefing-card {
+  width: 100%;
+  max-width: 560px;
+  background: #080f22;
+  border: 2px solid #00ff9d;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9), 0 0 40px rgba(0, 255, 157, 0.35);
+  border-radius: 16px;
+  padding: 2rem;
+  position: relative;
+  text-align: center;
+}
+.debriefing-close-btn {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: none;
+  border: none;
+  color: #8b9bb4;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+.debriefing-rank-badge {
+  display: inline-block;
+  padding: 0.4rem 1.2rem;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #00ff9d, #00e5ff);
+  color: #060b16;
+  font-family: var(--font-tech);
+  font-size: 1.6rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  box-shadow: 0 0 20px #00ff9d;
+  margin-bottom: 0.8rem;
+}
+.debriefing-header h3 {
+  font-size: 1.35rem;
+  font-family: var(--font-tech);
+  color: #fff;
+  margin-bottom: 4px;
+}
+.debriefing-header p {
+  font-size: 0.78rem;
+  color: #8b9bb4;
+  font-family: var(--font-mono);
+}
+.debriefing-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin: 1.5rem 0;
+}
+.d-stat-box {
+  background: rgba(14, 26, 54, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 0.75rem;
+  text-align: left;
+}
+.d-lbl {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: #8b9bb4;
+}
+.d-val {
+  font-family: var(--font-mono);
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #fff;
+}
+.d-val.emerald { color: #00ff9d; }
+.d-val.amber { color: #ff5500; }
+.d-val.cyan { color: #00e5ff; }
+
+.debriefing-actions {
+  display: flex;
+  gap: 0.8rem;
+  justify-content: center;
+}
+.btn-debriefing-action {
+  padding: 0.7rem 1.2rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(14, 26, 54, 0.9);
+  color: #fff;
+  font-family: var(--font-tech);
+  font-size: 0.8rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: all var(--trans-fast);
+}
+.btn-debriefing-action.download {
+  background: linear-gradient(135deg, #00e5ff, #00b4d8);
+  color: #060b16;
+  border: none;
+}
+
+/* Simulator Responsive Breakpoints */
+@media (max-width: 1024px) {
+  .sim-speed-tape { left: 1rem; width: 75px; height: 320px; }
+  .sim-alt-tape { right: 1rem; width: 90px; height: 320px; }
+  .sim-compass-tape-wrap { width: 340px; }
+  .sim-eicas-panel { width: 360px; left: 1rem; bottom: 1rem; }
+  .sim-minimap-panel { right: 1rem; width: 200px; }
+  .sim-mission-banner { max-width: calc(100% - 200px); }
+  .sim-touch-controls { display: flex; }
+}
+
+@media (max-width: 768px) {
+  .sim-top-control-bar {
+    left: 0.5rem;
+    right: 0.5rem;
+    top: 0.5rem;
+    padding: 0.4rem;
+  }
+  .sim-pfd-center { width: 320px; height: 320px; }
+  .sim-speed-tape { left: 0.5rem; width: 65px; height: 260px; }
+  .sim-alt-tape { right: 0.5rem; width: 75px; height: 260px; }
+  .sim-compass-tape-wrap { width: 260px; height: 40px; top: 3.5rem; }
+  .sim-eicas-panel {
+    display: none; /* Can be toggled */
+  }
+  .sim-minimap-panel {
+    top: auto;
+    bottom: 5.5rem;
+    right: 0.5rem;
+    width: 140px;
+    padding: 0.4rem;
+  }
+  .minimap-canvas-box { width: 120px; height: 120px; }
+  .minimap-legend { display: none; }
+  .sim-mission-banner {
+    width: calc(100% - 1rem);
+    max-width: 100%;
+    bottom: 12rem;
+  }
+  .sim-touch-controls {
+    display: flex;
+    bottom: 0.5rem;
+  }
+  .touch-throttle-track { height: 120px; width: 44px; }
+  .virtual-joystick-zone { width: 100px; height: 100px; }
+}
+
 
 

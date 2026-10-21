@@ -43,6 +43,7 @@
       <ul class="nav-links">
         <li class="nav-item"><a href="#blueprint-section" class="active"><i class="fa-solid fa-compass-drafting"></i> <span data-i18n="nav_blueprint">Инженерный Паспорт</span></a></li>
         <li class="nav-item"><a href="#hangar-section"><i class="fa-solid fa-cube"></i> <span data-i18n="nav_hangar">3D Ангар</span></a></li>
+        <li class="nav-item"><a href="#simulator-section" class="nav-sim-link" id="nav-simulator-tab"><span class="pulse-indicator-neon"></span><i class="fa-solid fa-gamepad"></i> <span data-i18n="nav_sim">🎮 ПОЛЁТ (MSFS Sim)</span></a></li>
         <li class="nav-item"><a href="#math-section"><i class="fa-solid fa-calculator"></i> <span data-i18n="nav_math">Инженерная Математика</span></a></li>
         <li class="nav-item"><a href="#mission-section"><i class="fa-solid fa-map-location-dot"></i> <span data-i18n="nav_mission">Миссии и Пульт RC</span></a></li>
         <li class="nav-item"><a href="#club-section"><i class="fa-solid fa-users-gear"></i> <span data-i18n="nav_club">Клуб & ИИ Конструктор</span></a></li>
@@ -253,6 +254,385 @@
         <i class="fa-solid fa-crosshairs"></i> <span id="flyout-btn-focus-text">Приблизить камеру к узлу</span>
       </button>
     </aside>
+  </section>
+
+  <!-- ==========================================================================
+       SECTION: 🎮 MSFS FLIGHT SIMULATOR & MISSION GAME (6-DOF AERODYNAMIC ENGINE)
+       ========================================================================== -->
+  <section class="simulator-viewport-section" id="simulator-section">
+    <!-- WebGL Canvas for Simulator -->
+    <canvas id="simulator-canvas"></canvas>
+
+    <!-- Top Simulator Control Bar -->
+    <div class="sim-top-control-bar">
+      <div class="sim-status-chip">
+        <span class="pulse-dot-green"></span>
+        <span>MSFS 2024 ENGINE · 60 FPS</span>
+      </div>
+
+      <!-- Scenarios Selector -->
+      <div class="sim-scenarios-scroll">
+        <button class="sim-scenario-btn active" data-scenario="stol" id="sim-scen-stol" title="Короткий взлёт STOL с грунтовой полосы">
+          <i class="fa-solid fa-plane-departure"></i> <span>1. Взлёт STOL (35м)</span>
+        </button>
+        <button class="sim-scenario-btn" data-scenario="agro" id="sim-scen-agro" title="Опрыскивание сада по NDVI">
+          <i class="fa-solid fa-seedling"></i> <span>2. АГРО Опрыскивание</span>
+        </button>
+        <button class="sim-scenario-btn" data-scenario="fire" id="sim-scen-fire" title="Забор воды на озере и тушение лесного пожара">
+          <i class="fa-solid fa-fire-extinguisher"></i> <span>3. МЧС: Озеро &amp; Пожар</span>
+        </button>
+        <button class="sim-scenario-btn" data-scenario="crosswind" id="sim-scen-crosswind" title="Посадка при боковом ветре 14 м/с">
+          <i class="fa-solid fa-wind"></i> <span>4. Боковой Ветер</span>
+        </button>
+        <button class="sim-scenario-btn auto-ai" data-scenario="auto-demo" id="sim-scen-auto" title="Полный автономный полёт по всем миссиям для Профессора">
+          <i class="fa-solid fa-robot"></i> <span>5. 🤖 Автопилот Демо</span>
+        </button>
+      </div>
+
+      <!-- Quick Tools & Toggles -->
+      <div class="sim-quick-tools">
+        <!-- Live Weather Presets -->
+        <div class="sim-weather-group">
+          <button class="sim-tool-btn active" data-weather="day" id="btn-weather-day" title="☀️ Ясный день">☀️</button>
+          <button class="sim-tool-btn" data-weather="sunset" id="btn-weather-sunset" title="🌅 Золотой закат">🌅</button>
+          <button class="sim-tool-btn" data-weather="night" id="btn-weather-night" title="🌙 Ночной полёт по приборам &amp; FLIR">🌙</button>
+          <button class="sim-tool-btn" data-weather="storm" id="btn-weather-storm" title="🌧️ Турбулентность &amp; Боковой ветер">🌧️</button>
+        </div>
+
+        <!-- Camera Switcher -->
+        <button class="sim-tool-btn" id="btn-sim-cam-toggle" title="Переключить камеру (клавиша C): Chase, Cockpit, FLIR, Wing, Drone">
+          <i class="fa-solid fa-video"></i> <span id="sim-cam-label">Chase Cam</span>
+        </button>
+
+        <!-- Professor Telemetry Mode -->
+        <button class="sim-tool-btn prof-btn" id="btn-sim-professor" title="Показать живые формулы аэродинамики и телеметрию">
+          <i class="fa-solid fa-graduation-cap"></i> <span>📐 Формулы</span>
+        </button>
+
+        <!-- Autopilot Quick Toggle -->
+        <button class="sim-tool-btn ai-btn" id="btn-sim-autopilot-toggle" title="Включить / отключить автономный автопилот">
+          <i class="fa-solid fa-microchip"></i> <span id="sim-ap-label">AI AP: OFF</span>
+        </button>
+
+        <!-- Sound Toggle -->
+        <button class="sim-tool-btn" id="btn-sim-sound" title="Звук моторов и авионики (Web Audio API)">
+          <i class="fa-solid fa-volume-high" id="sim-sound-icon"></i>
+        </button>
+
+        <!-- Touch Controls Toggle -->
+        <button class="sim-tool-btn" id="btn-sim-touch-toggle" title="Показать/скрыть сенсорные джойстики">
+          <i class="fa-solid fa-mobile-screen"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- HUD Overlay Layer (Garmin G1000 Glass Cockpit) -->
+    <div class="sim-hud-overlay" id="sim-hud-overlay">
+      <!-- Center Compass Ribbon Tape -->
+      <div class="sim-compass-tape-wrap">
+        <div class="compass-lubber-line"></div>
+        <div class="sim-compass-ribbon" id="sim-compass-ribbon">
+          <!-- Ticks generated dynamically in sim-engine.js -->
+        </div>
+        <div class="compass-digital-hdg" id="sim-hdg-val">HDG 090°</div>
+        <div class="compass-nav-bugs">
+          <span class="nav-bug bug-rwy" id="sim-bug-rwy">RWY: 090° (0.4 км)</span>
+          <span class="nav-bug bug-agro" id="sim-bug-agro">AGRO: 045° (1.2 км)</span>
+          <span class="nav-bug bug-fire" id="sim-bug-fire">FIRE: 320° (2.1 км)</span>
+          <span class="nav-bug bug-lake" id="sim-bug-lake">LAKE: 210° (1.8 км)</span>
+        </div>
+      </div>
+
+      <!-- Primary Flight Display (PFD) Center: Artificial Horizon -->
+      <div class="sim-pfd-center">
+        <canvas id="sim-horizon-canvas"></canvas>
+        <!-- Flight Path Vector (FPV) marker -->
+        <div class="sim-fpv-marker" id="sim-fpv-marker">
+          <div class="fpv-circle"></div>
+          <div class="fpv-wing-left"></div>
+          <div class="fpv-wing-right"></div>
+          <div class="fpv-fin-top"></div>
+        </div>
+        <!-- Slip Ball -->
+        <div class="sim-slip-indicator">
+          <div class="slip-bracket-left"></div>
+          <div class="slip-bracket-right"></div>
+          <div class="slip-ball" id="sim-slip-ball"></div>
+        </div>
+      </div>
+
+      <!-- Left Vertical Airspeed Tape (IAS) -->
+      <div class="sim-tape-wrap sim-speed-tape">
+        <div class="tape-header-label">IAS km/h</div>
+        <div class="tape-viewport">
+          <div class="tape-ladder" id="sim-speed-ladder">
+            <!-- Ticks generated in sim-engine.js -->
+          </div>
+          <div class="tape-readout-box" id="sim-speed-val">0</div>
+          <div class="speed-trend-vector" id="sim-speed-trend"></div>
+        </div>
+        <div class="tape-sub-data">
+          <div>TAS: <b id="sim-tas-val">0</b> km/h</div>
+          <div>M: <b id="sim-mach-val">0.00</b></div>
+        </div>
+      </div>
+
+      <!-- Right Vertical Altitude & VSI Tape -->
+      <div class="sim-tape-wrap sim-alt-tape">
+        <div class="tape-header-label">ALT MSL (m)</div>
+        <div class="tape-viewport">
+          <div class="tape-ladder" id="sim-alt-ladder">
+            <!-- Ticks generated in sim-engine.js -->
+          </div>
+          <div class="tape-readout-box" id="sim-alt-val">120</div>
+          <div class="vsi-indicator-scale">
+            <div class="vsi-zero-line"></div>
+            <div class="vsi-pointer" id="sim-vsi-pointer"></div>
+            <div class="vsi-digital" id="sim-vsi-digital">+0.0</div>
+          </div>
+        </div>
+        <div class="tape-sub-data agl-box">
+          <div>AGL: <b id="sim-rad-alt-val" style="color: #00ff9d;">1.2</b> m</div>
+          <div>BARO: <b>1013.25</b></div>
+        </div>
+      </div>
+
+      <!-- Bottom-Left: EICAS Engine & Systems Monitoring Panel -->
+      <div class="sim-eicas-panel" id="sim-eicas-panel">
+        <div class="eicas-title-row">
+          <span class="eicas-title"><i class="fa-solid fa-gauge-high"></i> EICAS · BALLARD FC + 4x DEP</span>
+          <span class="eicas-mode" id="sim-pwr-mode">CRUISE (FC 100%)</span>
+        </div>
+        <div class="eicas-grid">
+          <!-- Throttle Dial -->
+          <div>
+            <div class="throttle-gauge-box">
+              <div class="throttle-bar-fill" id="sim-throttle-fill" style="height: 0%;"></div>
+              <span class="throttle-val-text" id="sim-throttle-val">0%</span>
+            </div>
+            <span class="eicas-sub-lbl">THROTTLE</span>
+          </div>
+          <!-- Motors RPM -->
+          <div>
+            <div class="motors-bars-row">
+              <div class="motor-mini-bar"><div class="m-fill" id="sim-m1-fill"></div><span>M1</span></div>
+              <div class="motor-mini-bar"><div class="m-fill" id="sim-m2-fill"></div><span>M2</span></div>
+              <div class="motor-mini-bar"><div class="m-fill" id="sim-m3-fill"></div><span>M3</span></div>
+              <div class="motor-mini-bar"><div class="m-fill" id="sim-m4-fill"></div><span>M4</span></div>
+            </div>
+            <div class="motors-rpm-text"><span id="sim-rpm-val">0</span> RPM · <span id="sim-power-val">0</span> kW</div>
+          </div>
+          <!-- Fluids & Energy Bars -->
+          <div class="eicas-fluids-col">
+            <div class="fluid-metric-row">
+              <span class="f-lbl">H₂ FUEL</span>
+              <div class="f-bar-track"><div class="f-bar-val cyan-bg" id="sim-h2-fill" style="width: 100%;"></div></div>
+              <span class="f-val" id="sim-h2-val">28.5 kg (100%)</span>
+            </div>
+            <div class="fluid-metric-row">
+              <span class="f-lbl">BUFFER</span>
+              <div class="f-bar-track"><div class="f-bar-val emerald-bg" id="sim-lipo-fill" style="width: 95%;"></div></div>
+              <span class="f-val" id="sim-lipo-val">12S 48V (95%)</span>
+            </div>
+            <div class="fluid-metric-row">
+              <span class="f-lbl">TANK</span>
+              <div class="f-bar-track"><div class="f-bar-val amber-bg" id="sim-fluid-fill" style="width: 100%;"></div></div>
+              <span class="f-val" id="sim-fluid-val">600 L (100%)</span>
+            </div>
+          </div>
+        </div>
+        <!-- Annunciators Row -->
+        <div class="eicas-annunciators">
+          <span class="annun-pill active" id="annun-flaps">FLAPS: 0°</span>
+          <span class="annun-pill active" id="annun-gear">GEAR: DOWN</span>
+          <span class="annun-pill" id="annun-spray">SPRAY: OFF</span>
+          <span class="annun-pill" id="annun-water">WATER: FULL</span>
+          <span class="annun-pill" id="annun-ap">AP: READY</span>
+        </div>
+      </div>
+
+      <!-- Top-Right: Tactical Minimap MFD Radar -->
+      <div class="sim-minimap-panel">
+        <div class="minimap-header">
+          <span><i class="fa-solid fa-radar"></i> MFD TACTICAL RADAR (10×10 KM)</span>
+          <span class="wind-readout" id="sim-wind-readout">WIND: 270° / 3 m/s</span>
+        </div>
+        <div class="minimap-canvas-box">
+          <canvas id="sim-minimap-canvas" width="220" height="220"></canvas>
+        </div>
+        <div class="minimap-legend">
+          <span>⚪ ВПП 09/27 (STOL)</span>
+          <span>🟢 Сады NDVI (6 зон)</span>
+          <span>🔴 Очаги Пожара (4)</span>
+          <span>🔵 Озеро (Забор воды)</span>
+        </div>
+      </div>
+
+      <!-- Stall Warning Alert Banner -->
+      <div class="sim-stall-warning" id="sim-stall-warning" style="display: none;">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <span>⚠️ STALL WARNING! PULL DOWN &amp; ADD POWER!</span>
+      </div>
+
+      <!-- Mission Status & Live Objectives Banner -->
+      <div class="sim-mission-banner" id="sim-mission-banner">
+        <div class="mission-banner-icon" id="sim-mission-icon">
+          <i class="fa-solid fa-flag-checkered"></i>
+        </div>
+        <div class="mission-banner-text">
+          <h4 id="sim-mission-title">МИССИЯ 1: ВЗЛЁТ STOL С ГРУНТОВОЙ ВПП</h4>
+          <p id="sim-mission-desc">Дайте газ W/Shift до 100%, разгонитесь по ВПП и потяните штурвал на себя при достижении 45 км/ч!</p>
+        </div>
+        <div class="mission-score-badge">
+          <span>ПРОГРЕСС</span>
+          <b id="sim-mission-score">0%</b>
+        </div>
+      </div>
+
+      <!-- FLIR Thermal & NDVI Gimbal View Overlay (Active in Thermal Cam Mode) -->
+      <div class="sim-flir-overlay" id="sim-flir-overlay" style="display: none;">
+        <div class="flir-grid-lines"></div>
+        <div class="flir-crosshair">
+          <div class="flir-center-reticle"></div>
+          <div class="flir-corner-tick tl"></div>
+          <div class="flir-corner-tick tr"></div>
+          <div class="flir-corner-tick bl"></div>
+          <div class="flir-corner-tick br"></div>
+        </div>
+        <div class="flir-thermal-bar">
+          <span>850°C</span>
+          <div class="flir-grad-track"></div>
+          <span>15°C</span>
+        </div>
+        <div class="flir-meta-badge">
+          <div>SENSOR: <b>LWIR 640×512 + NDVI 850nm</b></div>
+          <div>OPTICAL ZOOM: <b id="flir-zoom-val">2.4x</b></div>
+          <div>HOTSPOTS DETECTED: <b id="flir-hotspots-val" style="color: #ff5500;">4 ACTIVE</b></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile Dual-Stick Touch Controls Overlay -->
+    <div class="sim-touch-controls" id="sim-touch-controls">
+      <!-- Left Stick: Throttle & Rudder -->
+      <div class="touch-throttle-block">
+        <div class="touch-throttle-track" id="touch-throttle-track">
+          <div class="touch-throttle-handle" id="touch-throttle-handle">
+            <span id="touch-throttle-pct">0%</span>
+            <span>THR</span>
+          </div>
+        </div>
+        <div class="touch-rudder-row">
+          <button class="touch-rudder-btn" id="touch-rudder-left">◄ RUD</button>
+          <button class="touch-rudder-btn" id="touch-rudder-right">RUD ►</button>
+        </div>
+      </div>
+
+      <!-- Center Touch Action Buttons -->
+      <div class="touch-action-bar">
+        <button class="touch-act-btn spray-btn" id="btn-touch-spray"><i class="fa-solid fa-spray-can-sparkles"></i> SPRAY</button>
+        <button class="touch-act-btn salvo-btn" id="btn-touch-salvo"><i class="fa-solid fa-droplet"></i> СБРОС</button>
+        <button class="touch-act-btn" id="btn-touch-flaps"><i class="fa-solid fa-angles-down"></i> ЗАКРЫЛКИ</button>
+        <button class="touch-act-btn ap-btn" id="btn-touch-ap"><i class="fa-solid fa-robot"></i> ИИ АВТО</button>
+        <button class="touch-act-btn" id="btn-touch-cam"><i class="fa-solid fa-camera"></i> КАМЕРА</button>
+      </div>
+
+      <!-- Right Stick: Virtual 3D Joystick (Pitch & Roll) -->
+      <div class="touch-joystick-block">
+        <div class="virtual-joystick-zone" id="virtual-joystick-zone">
+          <div class="virtual-joystick-knob" id="virtual-joystick-knob"></div>
+        </div>
+        <span class="joystick-label">PITCH &amp; ROLL</span>
+      </div>
+    </div>
+
+    <!-- Professor Telemetry & Physics Formulas Overlay -->
+    <div class="sim-professor-overlay" id="sim-professor-overlay" style="display: none;">
+      <div class="prof-header">
+        <div class="prof-title">
+          <i class="fa-solid fa-atom"></i>
+          <span>AEROTERRA H2 — LIVE 6-DOF FLIGHT TELEMETRY (PROFESSOR MODE)</span>
+        </div>
+        <button class="prof-close-btn" id="btn-close-prof"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="prof-content-grid">
+        <div class="prof-card">
+          <h5>1. ПОДЪЁМНАЯ СИЛА И ОБДУВ КРЫЛА (BLOWN-WING DEP EFFECT)</h5>
+          <div class="prof-formula">L = 0.5 · ρ(h) · V_eff² · S · CL(α, δ_flaps)</div>
+          <div class="prof-data-row"><span>Эффективный обдув V_eff:</span> <b id="prof-veff">0.0 м/с</b></div>
+          <div class="prof-data-row"><span>Угол атаки (AoA α):</span> <b id="prof-aoa">2.4°</b></div>
+          <div class="prof-data-row"><span>Коэффициент CL:</span> <b id="prof-cl">0.52</b></div>
+          <div class="prof-data-row highlight"><span>Подъёмная сила L:</span> <b id="prof-lift">18,140 Н</b></div>
+        </div>
+        <div class="prof-card">
+          <h5>2. ПОЛЯРА СОПРОТИВЛЕНИЯ И ЭКРАННЫЙ ЭФФЕКТ (MCCORMICK GROUND EFFECT)</h5>
+          <div class="prof-formula">CD = CD0 + ΔCD_flaps + ΔCD_gear + CL² / (π · AR · e) · σ(h/b)</div>
+          <div class="prof-data-row"><span>Фактор экрана σ(h/b):</span> <b id="prof-sigma">1.00 (Out of Ground)</b></div>
+          <div class="prof-data-row"><span>Лобовое сопротивление D:</span> <b id="prof-drag">850 Н</b></div>
+          <div class="prof-data-row highlight"><span>Аэродинамическое качество L/D:</span> <b id="prof-ld">21.3</b></div>
+        </div>
+        <div class="prof-card">
+          <h5>3. ДИНАМИЧЕСКАЯ МАССА, ИНЕРЦИЯ И ЦЕНТРОВКА (MASS &amp; CG SHIFT)</h5>
+          <div class="prof-formula">m(t) = m_empty + m_H2(t) + m_fluid(t) &nbsp;|&nbsp; a = F_net / m</div>
+          <div class="prof-data-row"><span>Текущая масса m(t):</span> <b id="prof-mass">1850.0 кг</b></div>
+          <div class="prof-data-row"><span>Остаток химраствора / воды:</span> <b id="prof-fluid-mass">600.0 кг</b></div>
+          <div class="prof-data-row highlight"><span>Перегрузка G-load (Nz):</span> <b id="prof-gload">1.00 G</b></div>
+        </div>
+        <div class="prof-card">
+          <h5>4. БАЛАНС ЭНЕРГИИ: ВОДОРОДНАЯ ЯЧЕЙКА + БУФЕР LIPO</h5>
+          <div class="prof-formula">P_shaft = η_mot · (P_FC + P_boost_LiPo)</div>
+          <div class="prof-data-row"><span>Ballard PEMFC выход:</span> <b id="prof-pfc">42.0 kW</b></div>
+          <div class="prof-data-row"><span>LiPo буфер буст:</span> <b id="prof-pbuf">0.0 kW (STOL off)</b></div>
+          <div class="prof-data-row highlight"><span>Удельный расход H2:</span> <b id="prof-h2flow">2.4 кг/ч</b></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Debriefing Report Certificate Modal -->
+    <div class="sim-debriefing-modal-overlay" id="sim-debriefing-modal" style="display: none;">
+      <div class="sim-debriefing-card">
+        <button class="debriefing-close-btn" id="btn-close-debriefing"><i class="fa-solid fa-xmark"></i></button>
+        <div class="debriefing-rank-badge" id="debrief-rank">RANK: S (EXCELLENT)</div>
+        <div class="debriefing-header">
+          <h3 id="debrief-title">СЕРТИФИКАТ ЛЁТНЫХ ИСПЫТАНИЙ</h3>
+          <p id="debrief-subtitle">AEROTERRA H2-01 STOL · FLIGHT TEST &amp; MISSION COMPLETION REPORT</p>
+        </div>
+        <div class="debriefing-stats-grid">
+          <div class="d-stat-box">
+            <span class="d-lbl">Точность выполнения миссии</span>
+            <span class="d-val emerald" id="debrief-accuracy">98.4%</span>
+          </div>
+          <div class="d-stat-box">
+            <span class="d-lbl">Дистанция взлёта / посадки STOL</span>
+            <span class="d-val cyan" id="debrief-dist">34.2 м</span>
+          </div>
+          <div class="d-stat-box">
+            <span class="d-lbl">Максимальная перегрузка (G-load)</span>
+            <span class="d-val" id="debrief-gpeak">+1.65 G / -0.2 G</span>
+          </div>
+          <div class="d-stat-box">
+            <span class="d-lbl">Сэкономлено авиакеросина Jet-A1</span>
+            <span class="d-val emerald" id="debrief-fuel-saved">48.2 л</span>
+          </div>
+          <div class="d-stat-box">
+            <span class="d-lbl">Выбросы CO₂ и токсичных оксидов</span>
+            <span class="d-val emerald">0.00 кг (100% Zero Emission)</span>
+          </div>
+          <div class="d-stat-box">
+            <span class="d-lbl">Время в полёте</span>
+            <span class="d-val" id="debrief-time">04:18 мин</span>
+          </div>
+        </div>
+        <div class="debriefing-actions">
+          <button class="btn-debriefing-action download" id="btn-download-cert">
+            <i class="fa-solid fa-file-arrow-down"></i> <span>Скачать Сертификат (PDF)</span>
+          </button>
+          <button class="btn-debriefing-action" id="btn-restart-mission">
+            <i class="fa-solid fa-rotate-right"></i> <span>Повторить Полёт</span>
+          </button>
+        </div>
+      </div>
+    </div>
   </section>
 
   <!-- ==========================================================================
@@ -1594,6 +1974,9 @@
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <!-- html2pdf.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+  <!-- Flight Simulator 6-DOF Engine & Sound Synthesis -->
+  <script src="sim-engine.js"></script>
 
   <!-- Application Logic -->
   <script src="app.js"></script>
