@@ -4,6 +4,9 @@
    ========================================================================== */
 
 :root {
+  /* Header Dimension */
+  --header-height: 72px;
+
   /* Core Theme Colors */
   --bg-deep: #060b16;
   --bg-dark: #0a1124;
@@ -2298,22 +2301,29 @@ a:hover {
 
 @media (max-width: 1024px) {
   .site-header {
-    padding: 0.6rem 1rem;
+    padding: 0.5rem 1rem;
     flex-wrap: wrap;
-    gap: 0.75rem;
+    gap: 0.6rem;
   }
   .nav-links {
     display: flex !important;
-    overflow-x: auto;
-    white-space: nowrap;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    flex-wrap: nowrap !important;
     width: 100%;
-    padding: 0.4rem 0.2rem;
+    padding: 0.35rem 0.2rem;
     gap: 0.5rem;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
   }
   .nav-links::-webkit-scrollbar {
     display: none;
+  }
+  .nav-item {
+    flex-shrink: 0;
+  }
+  .nav-item a {
+    white-space: nowrap !important;
   }
   .calc-grid-layout, .mission-gcs-layout, .club-suite-grid, .charts-2x2-grid, .team-cards-grid, .kpi-cards-row {
     grid-template-columns: 1fr !important;
@@ -2875,6 +2885,22 @@ a:hover {
   transform: translateY(-1px);
 }
 
+.nav-earth-link {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.25), rgba(0, 229, 255, 0.25)) !important;
+  border: 1px solid #3b82f6 !important;
+  color: #fff !important;
+  text-shadow: 0 0 10px rgba(59, 130, 246, 0.6);
+  box-shadow: 0 0 15px rgba(37, 99, 235, 0.35);
+  position: relative;
+  overflow: hidden;
+}
+
+.nav-earth-link:hover {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.4), rgba(0, 229, 255, 0.4)) !important;
+  box-shadow: 0 0 25px rgba(37, 99, 235, 0.6);
+  transform: translateY(-1px);
+}
+
 .sim-pulse-dot, .pulse-indicator-neon {
   width: 7px;
   height: 7px;
@@ -2886,64 +2912,87 @@ a:hover {
   animation: pulseNeon 1.5s infinite;
 }
 
+.pulse-indicator-earth {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #3b82f6;
+  box-shadow: 0 0 8px #3b82f6;
+  display: inline-block;
+  margin-right: 4px;
+  animation: pulseEarth 1.5s infinite;
+}
+
 @keyframes pulseNeon {
   0% { transform: scale(0.9); opacity: 0.8; }
   50% { transform: scale(1.3); opacity: 1; box-shadow: 0 0 14px #00ff9d; }
   100% { transform: scale(0.9); opacity: 0.8; }
 }
 
-/* Viewport Section */
-.simulator-viewport-section {
-  position: relative;
+@keyframes pulseEarth {
+  0% { transform: scale(0.9); opacity: 0.8; }
+  50% { transform: scale(1.3); opacity: 1; box-shadow: 0 0 14px #3b82f6; }
+  100% { transform: scale(0.9); opacity: 0.8; }
+}
+
+/* Viewport Section (Flight Sim & Google 3D Earth) - position:fixed under header */
+.simulator-viewport-section, .earth-viewport-section {
+  position: fixed;
+  inset: 0;
+  top: var(--header-height, 70px);
   width: 100%;
-  height: 92vh;
-  min-height: 650px;
-  background: #030611;
+  height: calc(100vh - var(--header-height, 70px));
+  z-index: 95;
+  background: #020612;
   overflow: hidden;
+  display: none;
 }
 
-.simulator-viewport-section:fullscreen {
-  height: 100vh;
-  width: 100vw;
+.simulator-viewport-section.active, .earth-viewport-section.active {
+  display: block;
 }
 
-#sim-webgl-canvas {
+#simulator-canvas, #sim-webgl-canvas, #cesium-container {
   position: absolute;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
+  width: 100% !important;
+  height: 100% !important;
   outline: none;
   display: block;
 }
 
 /* Top Command & Mission Control Bar */
-.sim-top-control-bar {
+.sim-top-control-bar, .earth-top-control-bar {
   position: absolute;
-  top: 1rem;
-  left: 1.5rem;
-  right: 1.5rem;
-  z-index: 30;
+  top: 0.6rem;
+  left: 1rem;
+  right: 1rem;
+  z-index: 35;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  padding: 0.5rem 0.9rem;
+  gap: 0.75rem;
+  padding: 0.4rem 0.8rem;
   border-radius: 12px;
-  background: rgba(6, 12, 26, 0.88);
+  background: rgba(6, 12, 26, 0.92);
   border: 1px solid rgba(0, 229, 255, 0.3);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.75);
 }
 
-.sim-scenarios-scroll {
+.sim-scenarios-scroll, .earth-airports-scroll {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.45rem;
   overflow-x: auto;
   white-space: nowrap;
+  flex: 1;
+  min-width: 0;
   scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
 }
-.sim-scenarios-scroll::-webkit-scrollbar { display: none; }
+.sim-scenarios-scroll::-webkit-scrollbar,
+.earth-airports-scroll::-webkit-scrollbar { display: none; }
 
 .sim-badge-live {
   display: inline-flex;
@@ -3060,19 +3109,20 @@ a:hover {
   z-index: 20;
 }
 
-/* Center Compass Tape */
+/* Center Compass Tape (Positioned below top control bar without overlapping) */
 .sim-compass-tape-wrap {
   position: absolute;
-  top: 4.5rem;
+  top: 4.2rem;
   left: 50%;
   transform: translateX(-50%);
-  width: 480px;
-  height: 48px;
-  background: rgba(6, 12, 26, 0.75);
+  width: min(480px, 86vw);
+  height: 44px;
+  background: rgba(6, 12, 26, 0.85);
   border: 1px solid rgba(0, 229, 255, 0.3);
   border-radius: 8px;
   overflow: hidden;
   backdrop-filter: blur(8px);
+  z-index: 24;
 }
 
 .compass-lubber-line {
@@ -3156,17 +3206,19 @@ a:hover {
 .bug-fire { background: rgba(255, 77, 0, 0.2); color: #ff5500; border: 1px solid #ff5500; }
 .bug-lake { background: rgba(37, 99, 235, 0.2); color: #3b82f6; border: 1px solid #3b82f6; }
 
-/* Primary Flight Display (PFD) Center */
+/* Primary Flight Display (PFD) Center - Pinned to bottom, unobstructed panoramic view */
 .sim-pfd-center {
   position: absolute;
-  top: 50%;
+  bottom: 1.25rem;
   left: 50%;
-  transform: translate(-50%, -50%);
-  width: 460px;
-  height: 460px;
+  transform: translateX(-50%);
+  width: clamp(260px, 30vw, 380px);
+  height: clamp(260px, 30vw, 380px);
+  pointer-events: none;
+  z-index: 25;
 }
 
-#sim-horizon-canvas {
+#sim-horizon-canvas, #earth-horizon-canvas {
   width: 100%;
   height: 100%;
   display: block;
@@ -3225,7 +3277,7 @@ a:hover {
 /* Slip Ball */
 .sim-slip-indicator {
   position: absolute;
-  bottom: 40px;
+  bottom: 30px;
   left: 50%;
   transform: translateX(-50%);
   width: 70px;
@@ -3256,24 +3308,33 @@ a:hover {
   transition: transform 0.05s ease-out;
 }
 
-/* Vertical Tapes: Airspeed & Altitude */
+/* Vertical Tapes: Airspeed & Altitude flanking PFD, max height 40vh */
 .sim-tape-wrap {
   position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 85px;
-  height: 380px;
-  background: rgba(6, 12, 26, 0.85);
-  border: 1px solid rgba(0, 229, 255, 0.3);
+  bottom: 1.25rem;
+  height: clamp(200px, 38vh, 320px);
+  max-height: 40vh;
+  background: rgba(6, 12, 26, 0.88);
+  border: 1px solid rgba(0, 229, 255, 0.35);
   border-radius: 8px;
   backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  pointer-events: none;
+  z-index: 25;
 }
 
-.sim-speed-tape { left: 2.5rem; }
-.sim-alt-tape { right: 2.5rem; width: 105px; }
+.sim-speed-tape {
+  left: calc(50% - (clamp(260px, 30vw, 380px) / 2) - clamp(75px, 8vw, 92px) - 10px);
+  width: clamp(75px, 8vw, 92px);
+}
+
+.sim-alt-tape {
+  left: calc(50% + (clamp(260px, 30vw, 380px) / 2) + 10px);
+  width: clamp(92px, 10vw, 115px);
+}
 
 .tape-header-label {
   padding: 4px;
@@ -4153,6 +4214,243 @@ a:hover {
   .touch-throttle-track { height: 120px; width: 44px; }
   .virtual-joystick-zone { width: 100px; height: 100px; }
 }
+
+/* ==========================================================================
+   CESIUM 3D GOOGLE PHOTOREALISTIC TILES EARTH ENGINE
+   ========================================================================== */
+.earth-top-control-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.earth-airports-scroll {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  overflow-x: auto;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.earth-airport-btn {
+  padding: 0.35rem 0.65rem;
+  border-radius: 6px;
+  background: rgba(14, 26, 54, 0.85);
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  color: #bfdbfe;
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  transition: all var(--trans-fast);
+}
+
+.earth-airport-btn:hover, .earth-airport-btn.active {
+  background: rgba(37, 99, 235, 0.3);
+  border-color: #3b82f6;
+  color: #fff;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
+}
+
+.earth-search-box {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: rgba(6, 12, 26, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  padding: 2px 6px;
+}
+
+.earth-search-input {
+  background: none;
+  border: none;
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  width: 110px;
+  outline: none;
+}
+.earth-search-input::placeholder {
+  color: #64748b;
+}
+
+.earth-btn-teleport {
+  padding: 0.35rem 0.65rem;
+  background: linear-gradient(135deg, #2563eb, #00e5ff);
+  border: none;
+  color: #fff;
+  font-family: var(--font-tech);
+  font-size: 0.72rem;
+  font-weight: 700;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.earth-btn-teleport:hover {
+  box-shadow: 0 0 15px rgba(0, 229, 255, 0.5);
+  transform: translateY(-1px);
+}
+
+.earth-btn-token {
+  padding: 0.35rem 0.6rem;
+  background: rgba(14, 26, 54, 0.85);
+  border: 1px solid rgba(255, 215, 0, 0.4);
+  color: #ffd700;
+  font-family: var(--font-tech);
+  font-size: 0.7rem;
+  font-weight: 700;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.earth-btn-token:hover {
+  background: rgba(255, 215, 0, 0.2);
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.35);
+}
+
+.earth-notice-banner {
+  position: absolute;
+  top: 4.8rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(10, 18, 38, 0.94);
+  border: 1px solid rgba(255, 215, 0, 0.5);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  z-index: 40;
+  font-size: 0.75rem;
+  color: #f1f5f9;
+  max-width: min(680px, 92vw);
+}
+
+.earth-notice-text b {
+  color: #ffd700;
+}
+
+.earth-notice-btn {
+  padding: 0.25rem 0.6rem;
+  background: #ffd700;
+  color: #060b16;
+  font-weight: 700;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  font-size: 0.7rem;
+}
+
+.earth-notice-close {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+/* Cesium UI adjustments */
+.cesium-viewer-bottom {
+  display: none !important;
+}
+.cesium-widget canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Token Modal */
+.earth-token-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 8, 18, 0.88);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  z-index: 999999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.earth-token-card {
+  width: 100%;
+  max-width: 520px;
+  background: #091224;
+  border: 1px solid #3b82f6;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9), 0 0 35px rgba(59, 130, 246, 0.35);
+  border-radius: 14px;
+  padding: 1.5rem;
+  position: relative;
+}
+
+.earth-token-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 0.6rem;
+}
+
+.earth-token-title {
+  font-family: var(--font-tech);
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #60a5fa;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.earth-token-input {
+  width: 100%;
+  padding: 0.6rem 0.8rem;
+  background: rgba(4, 8, 18, 0.9);
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  border-radius: 8px;
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  margin: 0.6rem 0 1rem 0;
+}
+.earth-token-input:focus {
+  border-color: #00e5ff;
+  outline: none;
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.3);
+}
+
+.earth-token-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+}
+
+.btn-earth-save {
+  padding: 0.5rem 1.1rem;
+  background: linear-gradient(135deg, #2563eb, #00e5ff);
+  color: #fff;
+  font-family: var(--font-tech);
+  font-weight: 700;
+  font-size: 0.78rem;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+}
+
 
 
 

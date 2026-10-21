@@ -17,6 +17,11 @@
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   
+  <!-- CesiumJS (Pinned v1.119.0) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cesium/1.119.0/Widgets/widgets.css">
+  <script>window.CESIUM_BASE_URL = 'https://cdnjs.cloudflare.com/ajax/libs/cesium/1.119.0/';</script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cesium/1.119.0/Cesium.js"></script>
+
   <!-- Custom Stylesheet -->
   <link rel="stylesheet" href="style.css">
 </head>
@@ -44,6 +49,7 @@
         <li class="nav-item"><a href="#blueprint-section" class="active"><i class="fa-solid fa-compass-drafting"></i> <span data-i18n="nav_blueprint">Инженерный Паспорт</span></a></li>
         <li class="nav-item"><a href="#hangar-section"><i class="fa-solid fa-cube"></i> <span data-i18n="nav_hangar">3D Ангар</span></a></li>
         <li class="nav-item"><a href="#simulator-section" class="nav-sim-link" id="nav-simulator-tab"><span class="pulse-indicator-neon"></span><i class="fa-solid fa-gamepad"></i> <span data-i18n="nav_sim">🎮 ПОЛЁТ (MSFS Sim)</span></a></li>
+        <li class="nav-item"><a href="#earth-section" class="nav-earth-link" id="nav-earth-tab"><span class="pulse-indicator-neon" style="background:#10b981;box-shadow:0 0 10px #10b981;"></span><i class="fa-solid fa-earth-americas"></i> <span data-i18n="nav_earth">🌍 ЗЕМЛЯ (Google 3D)</span></a></li>
         <li class="nav-item"><a href="#math-section"><i class="fa-solid fa-calculator"></i> <span data-i18n="nav_math">Инженерная Математика</span></a></li>
         <li class="nav-item"><a href="#mission-section"><i class="fa-solid fa-map-location-dot"></i> <span data-i18n="nav_mission">Миссии и Пульт RC</span></a></li>
         <li class="nav-item"><a href="#club-section"><i class="fa-solid fa-users-gear"></i> <span data-i18n="nav_club">Клуб & ИИ Конструктор</span></a></li>
@@ -631,6 +637,239 @@
             <i class="fa-solid fa-rotate-right"></i> <span>Повторить Полёт</span>
           </button>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================================================
+       SECTION: 🌍 ЗЕМЛЯ (GOOGLE 3D TILES & CESIUMJS 6-DOF FLIGHT SIMULATOR)
+       ========================================================================== -->
+  <section class="earth-viewport-section" id="earth-section">
+    <!-- Cesium 3D Globe Container -->
+    <div id="cesium-container"></div>
+
+    <!-- Top Earth Control Bar -->
+    <div class="earth-top-control-bar">
+      <div class="earth-status-chip">
+        <span class="pulse-dot-green"></span>
+        <span id="earth-tileset-status">GOOGLE 3D TILES · GLOBAL 6-DOF</span>
+      </div>
+
+      <!-- Airports Selector (Ташкент, Самарканд, Турин) -->
+      <div class="earth-airports-scroll">
+        <button class="earth-airport-btn active" data-airport="uttt" id="earth-air-uttt" title="Ташкент UTTT (Южный)">
+          <i class="fa-solid fa-plane-departure"></i> <span>🇺🇿 Ташкент (UTTT)</span>
+        </button>
+        <button class="earth-airport-btn" data-airport="utss" id="earth-air-utss" title="Самарканд UTSS">
+          <i class="fa-solid fa-plane-departure"></i> <span>🇺🇿 Самарканд (UTSS)</span>
+        </button>
+        <button class="earth-airport-btn" data-airport="limf" id="earth-air-limf" title="Турин LIMF (Казелле, Италия)">
+          <i class="fa-solid fa-plane-departure"></i> <span>🇮🇹 Турин (LIMF)</span>
+        </button>
+      </div>
+
+      <!-- Quick Search Geocoding Box -->
+      <div class="earth-search-box">
+        <input type="text" id="earth-search-input" placeholder="Город или координаты (Самарканд, Paris, LIMF)..." />
+        <button id="btn-earth-search" title="Найти координаты"><i class="fa-solid fa-magnifying-glass"></i></button>
+      </div>
+
+      <!-- Lat/Lon Coordinate Inputs -->
+      <div class="earth-coord-box">
+        <input type="number" id="earth-custom-lat" placeholder="Lat" step="0.0001" style="width: 80px;" />
+        <input type="number" id="earth-custom-lon" placeholder="Lon" step="0.0001" style="width: 80px;" />
+      </div>
+
+      <!-- Quick Action Buttons -->
+      <div class="earth-quick-tools">
+        <button class="earth-btn-teleport" id="btn-earth-teleport" title="Мгновенный телепорт в выбранную точку">
+          <i class="fa-solid fa-bolt"></i> <span>Телепорт</span>
+        </button>
+
+        <button class="earth-btn-token" id="btn-earth-token-open" title="Настроить Cesium Ion / Google 3D Tiles токен">
+          <i class="fa-solid fa-key"></i> <span>Ключ 3D</span>
+        </button>
+
+        <!-- Camera Switcher -->
+        <button class="sim-tool-btn" id="btn-earth-cam-toggle" title="Переключить камеру: Chase, Cockpit, Free">
+          <i class="fa-solid fa-video"></i> <span id="earth-cam-label">Chase Cam</span>
+        </button>
+
+        <!-- Sound Toggle -->
+        <button class="sim-tool-btn" id="btn-earth-sound" title="Звук симулятора">
+          <i class="fa-solid fa-volume-high" id="earth-sound-icon"></i>
+        </button>
+
+        <!-- Touch Controls Toggle -->
+        <button class="sim-tool-btn" id="btn-earth-touch-toggle" title="Сенсорное управление">
+          <i class="fa-solid fa-mobile-screen"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Notice Banner (When running on OSM / Terrain fallback or missing token) -->
+    <div class="earth-notice-banner" id="earth-notice-banner" style="display: none;">
+      <i class="fa-solid fa-circle-info"></i>
+      <span id="earth-notice-text">Используется Cesium World Terrain + OSM. Для Google Photorealistic 3D Tiles добавьте свой Cesium Ion токен.</span>
+      <button id="earth-notice-btn"><i class="fa-solid fa-key"></i> Ввести токен</button>
+    </div>
+
+    <!-- HUD Overlay Layer for Earth (PFD, Tapes, Heading, EICAS) -->
+    <div class="sim-hud-overlay" id="earth-hud-overlay">
+      <!-- Center Compass Ribbon Tape -->
+      <div class="sim-compass-tape-wrap">
+        <div class="compass-lubber-line"></div>
+        <div class="sim-compass-ribbon" id="earth-compass-ribbon"></div>
+        <div class="compass-digital-hdg" id="earth-hdg-val">HDG 090°</div>
+      </div>
+
+      <!-- Primary Flight Display (PFD) Center -->
+      <div class="sim-pfd-center">
+        <canvas id="earth-horizon-canvas"></canvas>
+        <div class="sim-fpv-marker" id="earth-fpv-marker">
+          <div class="fpv-circle"></div>
+          <div class="fpv-wing-left"></div>
+          <div class="fpv-wing-right"></div>
+          <div class="fpv-fin-top"></div>
+        </div>
+        <div class="sim-slip-indicator">
+          <div class="slip-bracket-left"></div>
+          <div class="slip-bracket-right"></div>
+          <div class="slip-ball" id="earth-slip-ball"></div>
+        </div>
+      </div>
+
+      <!-- Left Vertical Airspeed Tape (IAS) -->
+      <div class="sim-tape-wrap sim-speed-tape">
+        <div class="tape-header-label">IAS km/h</div>
+        <div class="tape-viewport">
+          <div class="tape-ladder" id="earth-speed-ladder"></div>
+          <div class="tape-readout-box" id="earth-speed-val">0</div>
+          <div class="speed-trend-vector" id="earth-speed-trend"></div>
+        </div>
+        <div class="tape-sub-data">
+          <div>TAS: <b id="earth-tas-val">0</b> km/h</div>
+        </div>
+      </div>
+
+      <!-- Right Vertical Altitude & VSI Tape -->
+      <div class="sim-tape-wrap sim-alt-tape">
+        <div class="tape-header-label">ALT MSL (m)</div>
+        <div class="tape-viewport">
+          <div class="tape-ladder" id="earth-alt-ladder"></div>
+          <div class="tape-readout-box" id="earth-alt-val">0</div>
+          <div class="vsi-indicator-scale">
+            <div class="vsi-zero-line"></div>
+            <div class="vsi-pointer" id="earth-vsi-pointer"></div>
+            <div class="vsi-digital" id="earth-vsi-digital">+0.0</div>
+          </div>
+        </div>
+        <div class="tape-sub-data agl-box">
+          <div>AGL: <b id="earth-rad-alt-val" style="color: #00ff9d;">0.0</b> m</div>
+        </div>
+      </div>
+
+      <!-- Bottom-Left: EICAS Status -->
+      <div class="sim-eicas-panel" id="earth-eicas-panel">
+        <div class="eicas-title-row">
+          <span class="eicas-title"><i class="fa-solid fa-gauge-high"></i> EICAS · BALLARD FC + 4x DEP</span>
+          <span class="eicas-mode" id="earth-pwr-mode">CRUISE (FC 100%)</span>
+        </div>
+        <div class="eicas-grid">
+          <div>
+            <div class="throttle-gauge-box">
+              <div class="throttle-bar-fill" id="earth-throttle-fill" style="height: 0%;"></div>
+              <span class="throttle-val-text" id="earth-throttle-val">0%</span>
+            </div>
+            <span class="eicas-sub-lbl">THROTTLE</span>
+          </div>
+          <div>
+            <div class="motors-bars-row">
+              <div class="motor-mini-bar"><div class="m-fill" id="earth-m1-fill"></div><span>M1</span></div>
+              <div class="motor-mini-bar"><div class="m-fill" id="earth-m2-fill"></div><span>M2</span></div>
+              <div class="motor-mini-bar"><div class="m-fill" id="earth-m3-fill"></div><span>M3</span></div>
+              <div class="motor-mini-bar"><div class="m-fill" id="earth-m4-fill"></div><span>M4</span></div>
+            </div>
+            <div class="motors-rpm-text"><span id="earth-rpm-val">0</span> RPM · <span id="earth-power-val">0</span> kW</div>
+          </div>
+          <div class="eicas-fluids-col">
+            <div class="fluid-metric-row">
+              <span class="f-lbl">H₂ FUEL</span>
+              <div class="f-bar-track"><div class="f-bar-val cyan-bg" id="earth-h2-fill" style="width: 100%;"></div></div>
+              <span class="f-val" id="earth-h2-val">28.5 kg (100%)</span>
+            </div>
+            <div class="fluid-metric-row">
+              <span class="f-lbl">BUFFER</span>
+              <div class="f-bar-track"><div class="f-bar-val emerald-bg" id="earth-lipo-fill" style="width: 95%;"></div></div>
+              <span class="f-val" id="earth-lipo-val">12S 48V (95%)</span>
+            </div>
+          </div>
+        </div>
+        <div class="eicas-annunciators">
+          <span class="annun-pill active" id="earth-annun-flaps">FLAPS: 0°</span>
+          <span class="annun-pill active" id="earth-annun-gear">GEAR: DOWN</span>
+          <span class="annun-pill active" id="earth-annun-loc">LOC: UTTT</span>
+        </div>
+      </div>
+
+      <!-- Stall Warning Alert Banner -->
+      <div class="sim-stall-warning" id="earth-stall-warning" style="display: none;">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <span>⚠️ STALL WARNING! PULL DOWN &amp; ADD POWER!</span>
+      </div>
+
+      <!-- Crash Warning Banner -->
+      <div class="sim-stall-warning" id="earth-crash-warning" style="display: none; background: rgba(220, 38, 38, 0.9); border-color: #ef4444;">
+        <i class="fa-solid fa-burst"></i>
+        <span>💥 ТЕРРЕЙН КРАШ! ПЕРЕЗАГРУЗКА В ТОЧКЕ СТАРТА...</span>
+      </div>
+    </div>
+
+    <!-- Mobile Dual-Stick Touch Controls Overlay for Earth -->
+    <div class="sim-touch-controls" id="earth-touch-controls">
+      <div class="touch-throttle-block">
+        <div class="touch-throttle-track" id="earth-touch-throttle-track">
+          <div class="touch-throttle-handle" id="earth-touch-throttle-handle">
+            <span id="earth-touch-throttle-pct">0%</span>
+            <span>THR</span>
+          </div>
+        </div>
+        <div class="touch-rudder-row">
+          <button class="touch-rudder-btn" id="earth-touch-rudder-left">◄ RUD</button>
+          <button class="touch-rudder-btn" id="earth-touch-rudder-right">RUD ►</button>
+        </div>
+      </div>
+
+      <div class="touch-action-bar">
+        <button class="touch-act-btn" id="btn-earth-touch-flaps"><i class="fa-solid fa-angles-down"></i> ЗАКРЫЛКИ</button>
+        <button class="touch-act-btn" id="btn-earth-touch-cam"><i class="fa-solid fa-camera"></i> КАМЕРА</button>
+      </div>
+
+      <div class="touch-joystick-block">
+        <div class="virtual-joystick-zone" id="earth-virtual-joystick-zone">
+          <div class="virtual-joystick-knob" id="earth-virtual-joystick-knob"></div>
+        </div>
+        <span class="joystick-label">PITCH &amp; ROLL</span>
+      </div>
+    </div>
+
+    <!-- Cesium Ion & Google 3D Tiles Token Modal -->
+    <div class="earth-token-modal-overlay" id="earth-token-modal" style="display: none;">
+      <div class="earth-token-card">
+        <button class="earth-token-close-btn" id="btn-close-earth-token"><i class="fa-solid fa-xmark"></i></button>
+        <h3><i class="fa-solid fa-key" style="color: var(--accent-cyan);"></i> Токен Cesium Ion &amp; Google 3D Tiles</h3>
+        <p>Для загрузки фотореалистичных 3D-зданий и текстур всего мира Google Photorealistic 3D Tiles (Asset 2275207) укажите персональный Cesium Ion Access Token. Он сохранится локально в вашем браузере.</p>
+        
+        <div class="token-input-group">
+          <label for="earth-ion-token-input">Cesium Ion Access Token:</label>
+          <input type="text" id="earth-ion-token-input" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." />
+        </div>
+
+        <div class="token-modal-actions">
+          <button class="btn-token-save" id="btn-save-earth-token"><i class="fa-solid fa-check"></i> Сохранить и Загрузить Google 3D</button>
+          <button class="btn-token-clear" id="btn-clear-earth-token"><i class="fa-solid fa-trash-can"></i> Очистить (Использовать OSM)</button>
+        </div>
+        <p class="token-hint">Бесплатный токен можно получить на <a href="https://ion.cesium.com/tokens" target="_blank" rel="noopener">cesium.com/ion</a>.</p>
       </div>
     </div>
   </section>
@@ -1977,6 +2216,9 @@
 
   <!-- Flight Simulator 6-DOF Engine & Sound Synthesis -->
   <script src="sim-engine.js"></script>
+
+  <!-- CesiumJS Earth Google 3D Tiles Flight Simulator -->
+  <script src="earth-sim.js"></script>
 
   <!-- Application Logic -->
   <script src="app.js"></script>

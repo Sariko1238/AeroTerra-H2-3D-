@@ -90,6 +90,7 @@
       btn_dl_poster: 'Скачать Весь Инженерный Паспорт (А1 HD)',
       nav_hangar: '3D Ангар',
       nav_sim: '🎮 ПОЛЁТ (MSFS Sim)',
+      nav_earth: '🌍 ЗЕМЛЯ (Google 3D)',
       nav_math: 'Инженерная Математика',
       nav_mission: 'Миссии и Пульт RC',
       nav_club: 'Клуб & ИИ Конструктор',
@@ -207,6 +208,7 @@
       btn_dl_poster: 'Download Master Technical Poster (A1 HD)',
       nav_hangar: '3D Hangar',
       nav_sim: '🎮 FLIGHT (MSFS Sim)',
+      nav_earth: '🌍 EARTH (Google 3D)',
       nav_math: 'Engineering Math',
       nav_mission: 'Missions & RC GCS',
       nav_club: 'Club & AI Chief Designer',
@@ -2724,9 +2726,40 @@
             audio.playClick();
             document.querySelectorAll('.nav-links a').forEach(l => l.classList.remove('active'));
             this.classList.add('active');
-            target.scrollIntoView({ behavior: 'smooth' });
-            if (href === '#simulator-section' && window.AeroTerraSim) {
+
+            const simSec = document.getElementById('simulator-section');
+            const earthSec = document.getElementById('earth-section');
+
+            if (href === '#simulator-section') {
+              if (earthSec) {
+                earthSec.classList.remove('active');
+                if (window.AeroTerraEarth && window.AeroTerraEarth.onHide) window.AeroTerraEarth.onHide();
+              }
+              if (simSec) simSec.classList.add('active');
+              if (window.AeroTerraSim && window.AeroTerraSim.onShow) {
+                window.AeroTerraSim.onShow();
+              }
               window.dispatchEvent(new Event('resize'));
+            } else if (href === '#earth-section') {
+              if (simSec) {
+                simSec.classList.remove('active');
+                if (window.AeroTerraSim && window.AeroTerraSim.onHide) window.AeroTerraSim.onHide();
+              }
+              if (earthSec) earthSec.classList.add('active');
+              if (window.AeroTerraEarth && window.AeroTerraEarth.onShow) {
+                window.AeroTerraEarth.onShow();
+              }
+              window.dispatchEvent(new Event('resize'));
+            } else {
+              if (simSec) {
+                simSec.classList.remove('active');
+                if (window.AeroTerraSim && window.AeroTerraSim.onHide) window.AeroTerraSim.onHide();
+              }
+              if (earthSec) {
+                earthSec.classList.remove('active');
+                if (window.AeroTerraEarth && window.AeroTerraEarth.onHide) window.AeroTerraEarth.onHide();
+              }
+              target.scrollIntoView({ behavior: 'smooth' });
             }
           }
         }
@@ -3559,6 +3592,15 @@
     setTimeout(() => {
       selectHotspot('wing');
     }, 150);
+
+    // Initial hash check
+    if (window.location.hash === '#simulator-section') {
+      const simLink = document.getElementById('nav-simulator-tab');
+      if (simLink) simLink.click();
+    } else if (window.location.hash === '#earth-section') {
+      const earthLink = document.getElementById('nav-earth-tab');
+      if (earthLink) earthLink.click();
+    }
   });
 
 })();

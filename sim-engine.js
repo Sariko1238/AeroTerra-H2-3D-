@@ -459,8 +459,8 @@
     // Apply default weather preset
     setWeatherPreset('day');
 
-    // Handle Window Resize
-    window.addEventListener('resize', onWindowResize);
+    // Handle Container & Window Resize via ResizeObserver
+    initResizeObserver();
   }
 
   // --- Sky Dome ---
@@ -2718,14 +2718,62 @@
     if (hud) hud.style.display = SIM.hudVisible ? 'block' : 'none';
   }
 
-  function onWindowResize() {
-    if (!renderer || !camera || !simCanvas) return;
-    const width = simCanvas.clientWidth;
-    const height = simCanvas.clientHeight;
-    camera.aspect = width / height;
+  function handleResize(width, height) {
+    if (!renderer || !camera) return;
+    const container = document.getElementById('simulator-section');
+    const w = width || (container && container.clientWidth > 0 ? container.clientWidth : (simCanvas ? simCanvas.clientWidth : window.innerWidth));
+    const h = height || (container && container.clientHeight > 0 ? container.clientHeight : (simCanvas ? simCanvas.clientHeight : (window.innerHeight - 72)));
+    if (w <= 0 || h <= 0) return;
+
+    camera.aspect = w / h;
     camera.updateProjectionMatrix();
-    renderer.setSize(width, height);
+    renderer.setSize(w, h, false);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+    // Responsive PFD canvas update
+    if (horizonCanvas) {
+      const pfdSize = Math.min(380, Math.max(260, window.innerWidth * 0.3));
+      horizonCanvas.width = pfdSize;
+      horizonCanvas.height = pfdSize;
+    }
   }
+
+  function initResizeObserver() {
+    const container = document.getElementById('simulator-section');
+    if (container && window.ResizeObserver) {
+      const ro = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const cr = entry.contentRect;
+          if (cr.width > 0 && cr.height > 0) {
+            handleResize(cr.width, cr.height);
+          }
+        }
+      });
+      ro.observe(container);
+    }
+    window.addEventListener('resize', () => handleResize());
+  }
+
+  // Triggered whenever the user switches to the 3D Flight Simulator tab
+  SIM.onShow = function () {
+    SIM.running = true;
+    SIM.paused = false;
+    const container = document.getElementById('simulator-section');
+    if (container) {
+      container.classList.add('active');
+      const w = container.clientWidth || window.innerWidth;
+      const h = container.clientHeight || (window.innerHeight - 72);
+      handleResize(w, h);
+    }
+  };
+
+  // Triggered when switching to other tabs
+  SIM.onHide = function () {
+    const container = document.getElementById('simulator-section');
+    if (container) {
+      container.classList.remove('active');
+    }
+  };
 
   // ----------------------------------------------------------------------------
   // 14. MAIN ANIMATION & SIMULATION LOOP (60 FPS)
