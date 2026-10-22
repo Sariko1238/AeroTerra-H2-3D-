@@ -322,9 +322,9 @@
           <i class="fa-solid fa-volume-high" id="sim-sound-icon"></i>
           <span id="sim-sound-txt">Звук ВКЛ</span>
         </button>
-        <button class="sim-top-btn" id="btn-sim-reset-700" title="Сбросить самолёт в воздух на высоту 700 м">
+        <button class="sim-top-btn" id="btn-sim-reset-700" title="Сбросить самолёт в воздух на высоту 700 м (скорость 140 км/ч, тяга 65%)">
           <i class="fa-solid fa-rotate-right"></i>
-          <span>Сброс 700 м</span>
+          <span>🔄 Сброс в полёт (700 м)</span>
         </button>
         <button class="sim-top-btn" id="btn-sim-start-rwy" title="Начать разбег с взлётно-посадочной полосы">
           <i class="fa-solid fa-plane-departure"></i>
@@ -378,9 +378,14 @@
           <span>ПРИБОРЫ И ТЕЛЕМЕТРИЯ AEROTERRA H2</span>
         </div>
 
-        <button class="btn-h2-boost" id="btn-h2-boost" title="Активировать максимальный буст LiPo буфера для STOL взлёта">
-          <i class="fa-solid fa-bolt"></i> <span>⚡ БУСТ H2-LI-PO</span>
-        </button>
+        <div class="sim-left-actions-row">
+          <button class="btn-h2-boost" id="btn-h2-boost" title="Активировать максимальный буст LiPo буфера для STOL взлёта">
+            <i class="fa-solid fa-bolt"></i> <span>⚡ БУСТ H2-LI-PO</span>
+          </button>
+          <button class="btn-h2-boost btn-sim-reset-inline" id="btn-sim-reset-telem" title="Экстренный сброс в полёт (700 м, 140 км/ч, тяга 65%)">
+            <i class="fa-solid fa-rotate-right"></i> <span>🔄 СБРОС (700 М)</span>
+          </button>
+        </div>
 
         <div class="sim-telemetry-grid">
           <!-- Altitude row -->
@@ -388,7 +393,7 @@
             <span class="telem-label">ВЫСОТА (ALT):</span>
             <div class="telem-val-group">
               <b class="telem-main" id="sim-alt-m">700 м</b>
-              <span class="telem-sub" id="sim-alt-ft">2296 ft</span>
+              <span class="telem-sub" id="sim-alt-ft">(2297 ft)</span>
             </div>
             <span class="telem-vsi" id="sim-vsi-val">VSI: +0.0 м/с</span>
           </div>
@@ -397,22 +402,22 @@
           <div class="sim-telem-item">
             <span class="telem-label">СКОРОСТЬ (SPD):</span>
             <div class="telem-val-group">
-              <b class="telem-main" id="sim-spd-kmh">180 км/ч</b>
-              <span class="telem-sub" id="sim-spd-kts">97 kts</span>
+              <b class="telem-main" id="sim-spd-kmh">140 км/ч</b>
+              <span class="telem-sub" id="sim-spd-kts">(76 kts)</span>
             </div>
             <span class="telem-mode-badge" id="sim-mode-badge">STOL CRUISE</span>
           </div>
 
           <!-- AoA -->
           <div class="sim-telem-item">
-            <span class="telem-label">УГОЛ АТАКИ (W/S):</span>
-            <b class="telem-main cyan" id="sim-aoa-deg">-1.5°</b>
+            <span class="telem-label">УГОЛ АТАКИ (AoA):</span>
+            <b class="telem-main cyan" id="sim-aoa-deg">AoA: 0.0°</b>
             <span class="telem-sub">AoA STABLE</span>
           </div>
 
           <!-- Roll -->
           <div class="sim-telem-item">
-            <span class="telem-label">КРЕН (A/D):</span>
+            <span class="telem-label">КРЕН (Roll):</span>
             <b class="telem-main" id="sim-roll-deg">0.0° КУРС</b>
             <span class="telem-sub" id="sim-gload-val">G: 1.00</span>
           </div>

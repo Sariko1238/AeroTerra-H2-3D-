@@ -43,6 +43,14 @@
   const SIM = window.AeroTerraSim;
 
   // ----------------------------------------------------------------------------
+  // ROBUST SANITIZATION & AERODYNAMIC SAFETY ENVELOPE
+  // ----------------------------------------------------------------------------
+  function sanitize(val, fallback, min, max) {
+    if (typeof val !== 'number' || isNaN(val) || !isFinite(val)) return fallback;
+    return Math.min(Math.max(val, min), max);
+  }
+
+  // ----------------------------------------------------------------------------
   // 1. LOCATIONS & SATELLITE COORDINATES TABLE
   // ----------------------------------------------------------------------------
   const LOCATIONS = {
@@ -283,27 +291,53 @@
     canvas.height = 256;
     const ctx = canvas.getContext('2d');
 
-    // Procedural terrain pattern
-    const hue = ((tx * 13 + ty * 37) % 60) + 70; // Natural green-earth tones
-    ctx.fillStyle = `hsl(${hue}, 42%, 28%)`;
+    // Deterministic pseudo-random seed based on tile coordinates
+    const seed = Math.abs(Math.sin(tx * 12.9898 + ty * 78.233) * 43758.5453) % 1;
+    const baseHue = 75 + Math.floor(seed * 35); // 75-110: natural olive green, pasture, valley
+    const baseSat = 28 + Math.floor(seed * 18);  // 28-46%
+    const baseLight = 24 + Math.floor(seed * 12); // 24-36%
+
+    // 1. Natural gradient background
+    const grad = ctx.createLinearGradient(0, 0, 256, 256);
+    grad.addColorStop(0, `hsl(${baseHue}, ${baseSat}%, ${baseLight}%)`);
+    grad.addColorStop(0.5, `hsl(${baseHue + 6}, ${baseSat + 4}%, ${baseLight + 3}%)`);
+    grad.addColorStop(1, `hsl(${baseHue - 5}, ${baseSat - 2}%, ${baseLight - 2}%)`);
+    ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 256, 256);
 
-    // Patchy field / orchard grid
-    for (let i = 0; i < 8; i++) {
-      for (let j = 0; j < 8; j++) {
-        const patchHue = hue + ((i * 7 + j * 11) % 25) - 12;
-        ctx.fillStyle = `hsla(${patchHue}, 48%, ${24 + (i + j) % 10}%, 0.7)`;
-        ctx.fillRect(i * 32 + 2, j * 32 + 2, 28, 28);
+    // 2. Soft organic agrarian fields (irregular patches with soft edges, NO rigid checkerboards!)
+    const numFields = 6;
+    for (let f = 0; f < numFields; f++) {
+      const fSeed = Math.abs(Math.sin(seed * 100 + f * 31.7) * 1000) % 1;
+      const fHue = baseHue + ((f * 17) % 25) - 10;
+      const fLight = baseLight + ((f * 7) % 12) - 4;
+      const fx = (f % 3) * 85 + 10;
+      const fy = Math.floor(f / 3) * 120 + 10;
+      const fw = 65 + (fSeed * 20);
+      const fh = 95 + (fSeed * 25);
+
+      ctx.fillStyle = `hsla(${fHue}, ${baseSat + 10}%, ${fLight}%, 0.45)`;
+      ctx.beginPath();
+      if (typeof ctx.roundRect === 'function') {
+        ctx.roundRect(fx, fy, fw, fh, 6);
+      } else {
+        ctx.rect(fx, fy, fw, fh);
       }
+      ctx.fill();
     }
 
-    // Road / river streak
-    ctx.strokeStyle = 'rgba(70, 60, 50, 0.4)';
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(0, (tx * 31) % 256);
-    ctx.bezierCurveTo(90, 80, 160, 180, 256, (ty * 43) % 256);
-    ctx.stroke();
+    // 3. Subtle river/road vein
+    const roadSeed = Math.abs(Math.sin(tx * 45.1 + ty * 23.9) * 1000) % 1;
+    if (roadSeed > 0.35) {
+      ctx.strokeStyle = 'rgba(160, 150, 130, 0.28)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      const startY = (tx * 73) % 256;
+      const endY = (ty * 97) % 256;
+      ctx.moveTo(0, startY);
+      ctx.bezierCurveTo(90, startY + 40, 160, endY - 30, 256, endY);
+      ctx.stroke();
+    }
 
     const tex = new THREE.CanvasTexture(canvas);
     tex.wrapS = THREE.ClampToEdgeWrapping;
@@ -438,6 +472,16 @@
     fuselageMesh.castShadow = true;
     fuselageMesh.receiveShadow = true;
     planeGroup.add(fuselageMesh);
+
+    // Aerodynamic Tail Boattail Cone (Tapered rear fairing seamlessly closing pod)
+    const tailConeGeo = new THREE.ConeGeometry(0.55, 1.6, 24);
+    tailConeGeo.rotateX(-Math.PI / 2);
+    const tailConeMesh = new THREE.Mesh(tailConeGeo, carbonWhiteMat);
+    tailConeMesh.position.set(0, 0, -4.0);
+    tailConeMesh.scale.set(1.0, 1.1, 1.0);
+    tailConeMesh.castShadow = true;
+    tailConeMesh.receiveShadow = true;
+    planeGroup.add(tailConeMesh);
 
     // Nose Cone
     const noseGeo = new THREE.ConeGeometry(0.42, 1.2, 24);
@@ -1046,15 +1090,25 @@
     if (Math.abs(flight.pitchInput) < 0.05) {
       flight.rot.x += (-flight.aoa * (Math.PI / 180) * 0.75 - flight.rot.x * 0.2) * dt;
     }
-    // Lateral stability (wings level)
+    // Lateral stability / Roll auto-stabilization (smooth return to 0° at 1.5 rad/s)
     if (Math.abs(flight.rollInput) < 0.05 && !SIM.apMode.level) {
-      flight.rot.z *= (1.0 - 0.5 * dt);
+      if (flight.rot.z > 0) {
+        flight.rot.z = Math.max(0, flight.rot.z - 1.5 * dt);
+      } else if (flight.rot.z < 0) {
+        flight.rot.z = Math.min(0, flight.rot.z + 1.5 * dt);
+      }
+    }
+    // Stall recovery physics: when AoA exceeds 18°, force nose down to recover airflow
+    if (flight.aoa > 18.0) {
+      flight.rot.x += 1.8 * dt; // pitch down
     }
     // Turn coordination: banking turns heading smoothly
     flight.rot.y += (flight.rot.z * 0.55) * dt;
 
-    // Clamp pitch attitude to safe flight envelope: [-60°, +60°]
-    flight.rot.x = THREE.MathUtils.clamp(flight.rot.x, -1.05, 1.05);
+    // Sanitize and clamp attitudes to safe flight envelope: [-60°, +60°]
+    flight.rot.x = sanitize(flight.rot.x, 0.0, -1.05, 1.05);
+    flight.rot.y = sanitize(flight.rot.y, 0.0, -100000, 100000);
+    flight.rot.z = sanitize(flight.rot.z, 0.0, -1.5, 1.5);
 
     flight.quat.setFromEuler(flight.rot);
 
@@ -1066,11 +1120,11 @@
     const tas = Math.max(0.1, flight.vel.length());
     const uV = flight.vel.clone().normalize();
 
-    // True 3D Angle of Attack (AoA)
+    // True 3D Angle of Attack (AoA) clamped to aerodynamic envelope [-15°, +22°]
     const V_fwd = flight.vel.dot(fwd);
     const V_down = -flight.vel.dot(up);
     const aoaRad = Math.atan2(V_down, Math.max(1.5, V_fwd));
-    flight.aoa = THREE.MathUtils.clamp(aoaRad * 180 / Math.PI, -25.0, 25.0);
+    flight.aoa = sanitize(aoaRad * 180 / Math.PI, 0.0, -15.0, 22.0);
 
     // ISA Atmosphere: exponential air density decay with altitude
     const alt = Math.max(0, flight.pos.y);
@@ -1143,14 +1197,26 @@
     // Integrate velocity
     flight.vel.addScaledVector(acc, dt);
 
-    // Update speeds
-    flight.tas = flight.vel.length();
-    flight.ias = flight.tas * 3.6 * Math.sqrt(rho / 1.225); // km/h
-    flight.kts = flight.tas * 1.94384;
-    flight.vsi = flight.vel.y;
+    // Aerodynamic Safety Clamps: Velocity components & VSI (-45 to +35 m/s)
+    flight.vel.x = sanitize(flight.vel.x, 0, -110, 110);
+    flight.vel.y = sanitize(flight.vel.y, 0, -45.0, 35.0);
+    flight.vel.z = sanitize(flight.vel.z, 38.89, -110, 110);
+
+    // Update speeds with strictly enforced safety bounds (IAS: 0 to 380 km/h)
+    flight.tas = Math.max(0.1, flight.vel.length());
+    const maxTas = 380 / 3.6; // ~105.56 m/s
+    if (flight.tas > maxTas) {
+      flight.vel.setLength(maxTas);
+      flight.tas = maxTas;
+    }
+    flight.ias = sanitize(flight.tas * 3.6 * Math.sqrt(rho / 1.225), 140, 0, 380.0);
+    flight.kts = flight.ias * 0.539957;
+    flight.vsi = sanitize(flight.vel.y, 0, -45.0, 35.0);
 
     // Move aircraft in world space
     flight.pos.addScaledVector(flight.vel, dt);
+    flight.pos.x = sanitize(flight.pos.x, 0, -200000, 200000);
+    flight.pos.z = sanitize(flight.pos.z, 0, -200000, 200000);
 
     // Ground collision & Runway Roll physics
     const groundLevel = 1.25;
@@ -1172,20 +1238,23 @@
     } else {
       flight.altAGL = flight.pos.y - 1.25;
     }
-    flight.altMSL = flight.pos.y;
 
-    // Absolute service ceiling safety clamp (cannot fly into space!)
-    if (flight.pos.y >= 4000.0) {
-      flight.pos.y = 4000.0;
+    // Altitude (ALT) safety envelope: 0 to 8500 m
+    flight.pos.y = sanitize(flight.pos.y, 700, groundLevel, 8500.0);
+    if (flight.pos.y >= 8500.0) {
+      flight.pos.y = 8500.0;
       flight.vel.y = Math.min(0, flight.vel.y);
     }
+    flight.altMSL = sanitize(flight.pos.y, 700, 0, 8500.0);
+    flight.altAGL = Math.max(0, flight.altMSL - groundLevel);
 
-    flight.gLoad = 1.0 + (acc.y / 9.80665);
+    flight.gLoad = sanitize(1.0 + (acc.y / 9.80665), 1.0, -4.0, 9.0);
 
-    // Stall Warning
+    // Stall Warning Banner (Active if AoA > 18° or near stall at low speed)
     const stallBanner = document.getElementById('sim-stall-warning');
     if (stallBanner) {
-      stallBanner.style.display = (Math.abs(flight.aoa) > 15.0 && flight.ias < 75) ? 'flex' : 'none';
+      const isStall = (flight.aoa > 18.0) || (Math.abs(flight.aoa) > 15.0 && flight.ias < 75);
+      stallBanner.style.display = isStall ? 'flex' : 'none';
     }
 
     // Update 3D mesh transforms
@@ -1356,22 +1425,24 @@
     const altEl = document.getElementById('sim-alt-m');
     const altFtEl = document.getElementById('sim-alt-ft');
     const vsiEl = document.getElementById('sim-vsi-val');
-    if (altEl) altEl.textContent = `${Math.round(flight.altMSL)} м`;
-    if (altFtEl) altFtEl.textContent = `${Math.round(flight.altMSL * 3.28084)} ft`;
+    const altVal = sanitize(flight.altMSL, 700, 0, 8500);
+    const vsiVal = sanitize(flight.vsi, 0, -45.0, 35.0);
+    if (altEl) altEl.textContent = `${Math.round(altVal)} м`;
+    if (altFtEl) altFtEl.textContent = `(${Math.round(altVal * 3.28084)} ft)`;
     if (vsiEl) {
-      const vsiSign = flight.vsi >= 0 ? '+' : '';
-      vsiEl.textContent = `VSI: ${vsiSign}${flight.vsi.toFixed(1)} м/с`;
+      vsiEl.textContent = `VSI: ${vsiVal > 0 ? '+' : ''}${vsiVal.toFixed(1)} м/с`;
     }
 
     // 2. Speed
     const spdKmhEl = document.getElementById('sim-spd-kmh');
     const spdKtsEl = document.getElementById('sim-spd-kts');
     const modeBadge = document.getElementById('sim-mode-badge');
-    if (spdKmhEl) spdKmhEl.textContent = `${Math.round(flight.ias)} км/ч`;
-    if (spdKtsEl) spdKtsEl.textContent = `${Math.round(flight.kts)} kts`;
+    const iasVal = sanitize(flight.ias, 140, 0, 380);
+    if (spdKmhEl) spdKmhEl.textContent = `${Math.round(iasVal)} км/ч`;
+    if (spdKtsEl) spdKtsEl.textContent = `(${Math.round(iasVal * 0.539957)} kts)`;
     if (modeBadge) {
-      if (flight.ias < 60) modeBadge.textContent = 'STOL APPROACH';
-      else if (flight.vsi > 4) modeBadge.textContent = 'STOL CLIMB';
+      if (iasVal < 60) modeBadge.textContent = 'STOL APPROACH';
+      else if (vsiVal > 3.0) modeBadge.textContent = 'STOL CLIMB';
       else modeBadge.textContent = 'STOL CRUISE';
     }
 
@@ -1379,22 +1450,22 @@
     const aoaEl = document.getElementById('sim-aoa-deg');
     const rollEl = document.getElementById('sim-roll-deg');
     const gLoadEl = document.getElementById('sim-gload-val');
+    const aoaVal = sanitize(flight.aoa, 0, -15.0, 22.0);
     if (aoaEl) {
-      const aoaSign = flight.aoa >= 0 ? '+' : '';
-      aoaEl.textContent = `${aoaSign}${flight.aoa.toFixed(1)}°`;
+      aoaEl.textContent = `AoA: ${aoaVal.toFixed(1)}°`;
     }
     if (rollEl) {
-      const rollDeg = (flight.rot.z * 180 / Math.PI);
+      const rollDeg = sanitize(flight.rot.z * 180 / Math.PI, 0, -90, 90);
       if (Math.abs(rollDeg) < 1.0) rollEl.textContent = '0.0° КУРС';
       else if (rollDeg > 0) rollEl.textContent = `${rollDeg.toFixed(1)}° ВЛЕВО`;
       else rollEl.textContent = `${Math.abs(rollDeg).toFixed(1)}° ВПРАВО`;
     }
-    if (gLoadEl) gLoadEl.textContent = `G: ${flight.gLoad.toFixed(2)}`;
+    if (gLoadEl) gLoadEl.textContent = `G: ${sanitize(flight.gLoad, 1.0, -4, 9).toFixed(2)}`;
 
     // 4. Throttle
     const thrValEl = document.getElementById('sim-throttle-val');
     const thrSlider = document.getElementById('sim-slider-throttle');
-    const thrPct = Math.round(flight.throttle * 100);
+    const thrPct = Math.round(sanitize(flight.throttle, 0.65, 0, 1.0) * 100);
     if (thrValEl) thrValEl.textContent = `${thrPct}%`;
     if (thrSlider && document.activeElement !== thrSlider) thrSlider.value = thrPct;
 
@@ -1421,18 +1492,20 @@
 
     const hdgDeg = Math.round(((-flight.rot.y * 180 / Math.PI) % 360 + 360) % 360);
     if (radarHdg) radarHdg.textContent = `${String(hdgDeg).padStart(3, '0')}°`;
-    if (radarSpd) radarSpd.textContent = `${Math.round(flight.ias)} км/ч`;
-    if (radarAgl) radarAgl.textContent = `${Math.round(flight.altAGL)} м`;
+    if (radarSpd) radarSpd.textContent = `${Math.round(iasVal)} км/ч`;
+    if (radarAgl) radarAgl.textContent = `${Math.round(sanitize(flight.altAGL, 0, 0, 8500))} м`;
 
     if (radarCoords) {
-      const deltaZ = flight.pos.z;
-      const deltaX = flight.pos.x;
-      const curLat = THREE.MathUtils.clamp(currentOriginLat - (deltaZ / 111132), -85.0, 85.0);
-      const cosLat = Math.max(0.1, Math.cos(currentOriginLat * Math.PI / 180));
-      const curLon = THREE.MathUtils.clamp(currentOriginLon + (deltaX / (111132 * cosLat)), -180.0, 180.0);
+      const deltaZ = sanitize(flight.pos.z, 0, -200000, 200000);
+      const deltaX = sanitize(flight.pos.x, 0, -200000, 200000);
+      let curLat = currentOriginLat - (deltaZ / 111132);
+      curLat = sanitize(curLat, currentOriginLat, -85.0, 85.0);
+      const cosLat = Math.max(0.1, Math.cos(curLat * Math.PI / 180));
+      let curLon = currentOriginLon + (deltaX / (111132 * cosLat));
+      curLon = sanitize(curLon, currentOriginLon, -180.0, 180.0);
       const latHem = curLat >= 0 ? 'N' : 'S';
       const lonHem = curLon >= 0 ? 'E' : 'W';
-      radarCoords.textContent = `${Math.abs(curLat).toFixed(4)}°${latHem} ${Math.abs(curLon).toFixed(4)}°${lonHem}`;
+      radarCoords.textContent = `${Math.abs(curLat).toFixed(6)}° ${latHem}, ${Math.abs(curLon).toFixed(6)}° ${lonHem}`;
     }
 
     // 7. FPV Reticle & Pitch Ladder (moves UP when nose pitches up)
@@ -1611,6 +1684,53 @@
   // ----------------------------------------------------------------------------
   // 14. TELEPORT & SCENARIO RESET
   // ----------------------------------------------------------------------------
+  function resetToAirFlight700() {
+    flight.pos.set(0, 700, 0);
+    const speedMs = 140 / 3.6; // 140 km/h = 38.89 m/s
+    flight.vel.set(0, 0, speedMs);
+    flight.rot.set(0, 0, 0);
+    flight.vsi = 0;
+    flight.throttle = 0.65; // 65%
+    flight.propRpm = 600 + 0.65 * 2400;
+    flight.aoa = 0;
+    flight.ias = 140;
+    flight.tas = speedMs;
+    flight.kts = 140 * 0.539957;
+    flight.pitchInput = 0;
+    flight.rollInput = 0;
+    flight.yawInput = 0;
+    flight.gearTarget = 0.0;
+    flight.gearPos = 0.0;
+    flight.flapsStage = 0;
+    flight.spoilersActive = false;
+    flight.waterDropping = false;
+    flight.agroSpraying = false;
+    SIM.boostActive = false;
+    SIM.apMode.level = false;
+    SIM.apMode.alt = false;
+    SIM.apMode.hdg = false;
+
+    if (planeGroup) {
+      planeGroup.position.copy(flight.pos);
+      planeGroup.quaternion.setFromEuler(flight.rot);
+    }
+    if (camera) {
+      SIM.cameraMode = 'chase';
+      const behindOffset = new THREE.Vector3(0, 2.5, -12.5);
+      camera.position.copy(flight.pos).add(behindOffset);
+      const lookTarget = flight.pos.clone().add(new THREE.Vector3(0, 0.8, 8.0));
+      camera.lookAt(lookTarget);
+    }
+
+    const thrSlider = document.getElementById('sim-slider-throttle');
+    const thrValEl = document.getElementById('sim-throttle-val');
+    if (thrSlider) thrSlider.value = 65;
+    if (thrValEl) thrValEl.textContent = '65%';
+    document.querySelectorAll('.btn-thr-preset').forEach(b => b.classList.remove('active'));
+
+    showToast('🔄 СБРОС В ПОЛЁТ: ВЫСОТА 700 М, СКОРОСТЬ 140 КМ/Ч, ТЯГА 65%');
+  }
+
   function teleportToLocation(locKey, targetAlt = 700) {
     const loc = LOCATIONS[locKey] || LOCATIONS.charvak;
     SIM.locationId = loc.id;
@@ -1729,19 +1849,23 @@
       });
     }
 
-    // Virtual 3D Flight Stick (Pitch & Roll)
+    // 1. Virtual 3D Flight Stick (Pitch & Roll) with Independent Pointer & Touch Identifier Tracking
     if (joyZone && joyKnob) {
-      let isJoyDragging = false;
+      let joyActive = false;
+      let joyPointerId = null;
+      let joyTouchId = null;
       const maxR = 48;
 
       const resetJoy = () => {
-        isJoyDragging = false;
+        joyActive = false;
+        joyPointerId = null;
+        joyTouchId = null;
         joyKnob.style.transform = 'translate(-50%, -50%)';
         flight.pitchInput = 0;
         flight.rollInput = 0;
       };
 
-      const updateJoy = (clientX, clientY) => {
+      const updateJoyCoords = (clientX, clientY) => {
         const rect = joyZone.getBoundingClientRect();
         const centerX = rect.left + rect.width / 2;
         const centerY = rect.top + rect.height / 2;
@@ -1754,36 +1878,88 @@
         }
         joyKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
 
+        // Aviation convention:
         // dx > 0 -> drag right -> roll right (+rollInput)
         // dy > 0 -> drag down -> stick back -> pitch up (+pitchInput)
         flight.rollInput = THREE.MathUtils.clamp(dx / maxR, -1.0, 1.0);
         flight.pitchInput = THREE.MathUtils.clamp(dy / maxR, -1.0, 1.0);
       };
 
+      // Pointer Events
       joyZone.addEventListener('pointerdown', (e) => {
-        isJoyDragging = true;
-        joyZone.setPointerCapture(e.pointerId);
-        updateJoy(e.clientX, e.clientY);
+        e.preventDefault();
+        joyActive = true;
+        joyPointerId = e.pointerId;
+        try { joyZone.setPointerCapture(e.pointerId); } catch (_) {}
+        updateJoyCoords(e.clientX, e.clientY);
         initAudioEngine();
       });
 
       joyZone.addEventListener('pointermove', (e) => {
-        if (isJoyDragging) updateJoy(e.clientX, e.clientY);
+        if (joyActive && e.pointerId === joyPointerId) {
+          e.preventDefault();
+          updateJoyCoords(e.clientX, e.clientY);
+        }
       });
 
-      joyZone.addEventListener('pointerup', (e) => {
-        resetJoy();
-        try { joyZone.releasePointerCapture(e.pointerId); } catch (_) {}
-      });
+      const onJoyPointerEnd = (e) => {
+        if (e.pointerId === joyPointerId) {
+          e.preventDefault();
+          try { joyZone.releasePointerCapture(e.pointerId); } catch (_) {}
+          resetJoy();
+        }
+      };
 
-      joyZone.addEventListener('pointercancel', resetJoy);
+      joyZone.addEventListener('pointerup', onJoyPointerEnd);
+      joyZone.addEventListener('pointercancel', onJoyPointerEnd);
+
+      // Native Touch Events Fallback (prevents mobile page drag / zoom)
+      joyZone.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        if (joyTouchId === null && e.changedTouches.length > 0) {
+          const t = e.changedTouches[0];
+          joyTouchId = t.identifier;
+          joyActive = true;
+          updateJoyCoords(t.clientX, t.clientY);
+          initAudioEngine();
+        }
+      }, { passive: false });
+
+      joyZone.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        if (joyTouchId !== null) {
+          for (let i = 0; i < e.changedTouches.length; i++) {
+            if (e.changedTouches[i].identifier === joyTouchId) {
+              updateJoyCoords(e.changedTouches[i].clientX, e.changedTouches[i].clientY);
+              break;
+            }
+          }
+        }
+      }, { passive: false });
+
+      const onJoyTouchEnd = (e) => {
+        if (joyTouchId !== null) {
+          for (let i = 0; i < e.changedTouches.length; i++) {
+            if (e.changedTouches[i].identifier === joyTouchId) {
+              e.preventDefault();
+              resetJoy();
+              break;
+            }
+          }
+        }
+      };
+
+      joyZone.addEventListener('touchend', onJoyTouchEnd, { passive: false });
+      joyZone.addEventListener('touchcancel', onJoyTouchEnd, { passive: false });
     }
 
-    // Touch Throttle Slider
+    // 2. Touch Throttle Slider with Independent Multi-Hand Tracking
     if (thrTrack && thrHandle) {
-      let isThrDragging = false;
+      let thrActive = false;
+      let thrPointerId = null;
+      let thrTouchId = null;
 
-      const updateThr = (clientY) => {
+      const updateThrCoords = (clientY) => {
         const rect = thrTrack.getBoundingClientRect();
         const trackH = rect.height;
         const relY = THREE.MathUtils.clamp((rect.bottom - clientY) / trackH, 0.0, 1.0);
@@ -1795,21 +1971,71 @@
       };
 
       thrTrack.addEventListener('pointerdown', (e) => {
-        isThrDragging = true;
-        thrTrack.setPointerCapture(e.pointerId);
-        updateThr(e.clientY);
+        e.preventDefault();
+        thrActive = true;
+        thrPointerId = e.pointerId;
+        try { thrTrack.setPointerCapture(e.pointerId); } catch (_) {}
+        updateThrCoords(e.clientY);
       });
 
       thrTrack.addEventListener('pointermove', (e) => {
-        if (isThrDragging) updateThr(e.clientY);
+        if (thrActive && e.pointerId === thrPointerId) {
+          e.preventDefault();
+          updateThrCoords(e.clientY);
+        }
       });
 
-      thrTrack.addEventListener('pointerup', (e) => {
-        isThrDragging = false;
-        try { thrTrack.releasePointerCapture(e.pointerId); } catch (_) {}
-      });
+      const onThrPointerEnd = (e) => {
+        if (e.pointerId === thrPointerId) {
+          e.preventDefault();
+          try { thrTrack.releasePointerCapture(e.pointerId); } catch (_) {}
+          thrActive = false;
+          thrPointerId = null;
+        }
+      };
 
-      thrTrack.addEventListener('pointercancel', () => { isThrDragging = false; });
+      thrTrack.addEventListener('pointerup', onThrPointerEnd);
+      thrTrack.addEventListener('pointercancel', onThrPointerEnd);
+
+      // Touch fallback
+      thrTrack.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        if (thrTouchId === null && e.changedTouches.length > 0) {
+          const t = e.changedTouches[0];
+          thrTouchId = t.identifier;
+          thrActive = true;
+          updateThrCoords(t.clientY);
+          initAudioEngine();
+        }
+      }, { passive: false });
+
+      thrTrack.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        if (thrTouchId !== null) {
+          for (let i = 0; i < e.changedTouches.length; i++) {
+            if (e.changedTouches[i].identifier === thrTouchId) {
+              updateThrCoords(e.changedTouches[i].clientY);
+              break;
+            }
+          }
+        }
+      }, { passive: false });
+
+      const onThrTouchEnd = (e) => {
+        if (thrTouchId !== null) {
+          for (let i = 0; i < e.changedTouches.length; i++) {
+            if (e.changedTouches[i].identifier === thrTouchId) {
+              e.preventDefault();
+              thrActive = false;
+              thrTouchId = null;
+              break;
+            }
+          }
+        }
+      };
+
+      thrTrack.addEventListener('touchend', onThrTouchEnd, { passive: false });
+      thrTrack.addEventListener('touchcancel', onThrTouchEnd, { passive: false });
     }
 
     // Touch Rudder Buttons
@@ -2016,7 +2242,10 @@
     if (btnSound) btnSound.addEventListener('click', toggleSound);
 
     const btnReset700 = document.getElementById('btn-sim-reset-700');
-    if (btnReset700) btnReset700.addEventListener('click', () => teleportToLocation(SIM.locationId, 700));
+    if (btnReset700) btnReset700.addEventListener('click', resetToAirFlight700);
+
+    const btnResetTelem = document.getElementById('btn-sim-reset-telem');
+    if (btnResetTelem) btnResetTelem.addEventListener('click', resetToAirFlight700);
 
     const btnStartRwy = document.getElementById('btn-sim-start-rwy');
     if (btnStartRwy) btnStartRwy.addEventListener('click', startFromRunway);
@@ -2350,7 +2579,15 @@
   // ----------------------------------------------------------------------------
   // 16. GUARANTEED RESIZE LOGIC
   // ----------------------------------------------------------------------------
+  function syncHeaderHeight() {
+    const header = document.querySelector('.site-header');
+    if (header && header.offsetHeight > 0) {
+      document.documentElement.style.setProperty('--header-height', `${header.offsetHeight}px`);
+    }
+  }
+
   function handleResize(forcedW, forcedH) {
+    syncHeaderHeight();
     if (!renderer || !camera) return;
     const container = document.getElementById('simulator-section') || document.body;
     const w = forcedW || (container.clientWidth > 0 ? container.clientWidth : window.innerWidth);
@@ -2445,7 +2682,8 @@
       return;
     }
 
-    const dt = Math.min(0.05, Math.max(0.001, clock.getDelta()));
+    const rawDelta = clock.getDelta();
+    const dt = Math.min(Math.max(rawDelta, 0.001), 0.033); // Strict delta time clamping (<= 33ms) to prevent physics explosion
 
     // 1. Aerodynamic Physics
     updatePhysics(dt);

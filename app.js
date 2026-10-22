@@ -387,7 +387,7 @@
     wing: {
       nodeNumber: 1,
       category: 'CATIA V5 / AERODYNAMICS',
-      title: { ru: '🪽 Крыло Class-A (NACA 64-215)', en: '🪽 Wing Class-A (NACA 64-215)' },
+      title: { ru: '🪽 Несущее крыло Class-A (NACA 64-215)', en: '🪽 Wing Class-A Surface (NACA 64-215)' },
       massKg: 86.4,
       mtowPct: '19.2%',
       material: { ru: 'CFRP Углепластик T800 Class-A', en: 'CFRP T800 Carbon Class-A' },
@@ -399,10 +399,10 @@
         { label: { ru: 'Аэродинам. качество:', en: 'Max L/D Ratio:' }, val: 'L/D = 21.4' },
         { label: { ru: 'Материал кессона:', en: 'Spar Material:' }, val: 'CFRP T800 Carbon' }
       ],
-      formula: 'L = 0.5 · ρ · V² · S · CL  |  CDi = CL² / (π · AR · e)',
+      formula: 'L = ½ · ρ · V² · S · CL  |  CDi = CL² / (π · AR · e)',
       desc: {
-        ru: 'Высоконесущее крыло большого удлинения с каплевидным профилем NACA 64-215, спроектированное в CATIA V5 ICEM Surf по стандартам непрерывности кривизны G2/G3. Снижает индуктивное сопротивление на 24% и обеспечивает устойчивый полет на сверхнизких скоростях при обдуве от распределенных моторов.',
-        en: 'High aspect ratio laminar wing with authentic NACA 64-215 teardrop airfoil lofted in CATIA V5 ICEM Surf complying with G2/G3 curvature continuity. Reduces induced drag by 24% and delivers steady flight at ultralow speeds through blown-wing distributed propulsion.'
+        ru: 'Высоконесущее крыло большого удлинения (AR = 11.5) с ламинарным обтеканием по профилю NACA 64-215. Поверхности Class-A спроектированы в CATIA V5 ICEM Surf по стандартам непрерывности кривизны G2/G3. Снижает индуктивное сопротивление на 24% и обеспечивает устойчивый полёт на околосваливающих скоростях при активном обдуве распределённой силовой установкой (DEP).',
+        en: 'High-lift, high aspect ratio wing (AR = 11.5) with laminar flow along the NACA 64-215 airfoil. Class-A surfaces engineered in CATIA V5 ICEM Surf complying with G2/G3 curvature continuity. Reduces induced drag by 24% and delivers steady flight at near-stall speeds through active blown-wing distributed electric propulsion (DEP).'
       },
       chartData: {
         x: ['100', '140', '180', '210', '250', '290'],
@@ -413,22 +413,22 @@
     tank: {
       nodeNumber: 2,
       category: 'HYDROGEN CRYOGENICS',
-      title: { ru: '💧 Криогенный Водородный Бак (LH2)', en: '💧 LH2 Cryogenic Fuel Tank' },
+      title: { ru: '💧 Криогенный водородный бак (LH2 350 Bar)', en: '💧 LH2 Cryo-Tank 350 Bar' },
       massKg: 42.0,
-      mtowPct: '9.3%',
+      mtowPct: '6.8%',
       material: { ru: 'Type IV Toray T1000 + MLI Вакуум', en: 'Type IV Toray T1000 + MLI' },
       targetPos: { x: 0, y: 0.45, z: -0.7 },
       camPos: { x: 2.2, y: 2.2, z: 2.6 },
       specs: [
-        { label: { ru: 'Емкость водорода:', en: 'LH2 Capacity:' }, val: '38 кг (1265 кВт·ч)' },
-        { label: { ru: 'Давление хранения:', en: 'Nominal Pressure:' }, val: '350 / 700 Bar' },
-        { label: { ru: 'Удельная энергия:', en: 'Specific Energy:' }, val: '33.3 кВт·ч/кг (2.8x керосин)' },
-        { label: { ru: 'Изоляция:', en: 'Insulation Layer:' }, val: 'MLI Vacuum Barrier' }
+        { label: { ru: 'Запас водорода (M_H2):', en: 'H2 Mass Storage:' }, val: '28.5 кг' },
+        { label: { ru: 'Рабочее давление:', en: 'Working Pressure:' }, val: '350 / 700 Bar' },
+        { label: { ru: 'Доля массы в MTOW:', en: 'MTOW Mass Fraction:' }, val: '6.8%' },
+        { label: { ru: 'Удельная энергоёмкость:', en: 'Specific Energy:' }, val: '33.3 кВт·ч/кг (2.8x керосин)' }
       ],
-      formula: 'E_total = m_H2 · 120 MJ/kg  |  q_boiloff < 0.8% / 24h',
+      formula: 'E_total = m_H2 · 33.3 kWh/kg (120 MJ/kg)  |  q_boiloff < 0.6% / 24h',
       desc: {
-        ru: 'Многослойный композитный баллон типа IV (алюминиевый лейнер + намотка углеволокном Toray T1000) с вакуумной экранно-изоляционной защитой (MLI). Виден сквозь полупрозрачную верхнюю обшивку и светится неоново-голубым изнутри фюзеляжа.',
-        en: 'Type IV composite pressure vessel with Toray T1000 carbon fiber overwrap and multi-layer vacuum insulation (MLI). Visible through the translucent upper composite skin with an interior cyan neon glow.'
+        ru: 'Композитный облегчённый бак типа IV для хранения компримированного/жидкого водорода с многослойной вакуумной экранной изоляцией (MLI). Обеспечивает удельную энергоёмкость до 33.3 кВт·ч/кг, что в 2.8 раза превышает энергоёмкость традиционного авиакеросина Jet A-1.',
+        en: 'Type IV lightweight composite tank for compressed/liquid hydrogen storage with multilayer vacuum insulation (MLI). Delivers a specific energy density up to 33.3 kWh/kg, 2.8 times higher than conventional Jet A-1 aviation kerosene.'
       },
       chartData: {
         x: ['Li-Po', 'Kerosene', 'Green H2'],
@@ -439,22 +439,23 @@
     fuelcell: {
       nodeNumber: 3,
       category: 'CLEAN PROPULSION',
-      title: { ru: '⚡ ТЭК PEM Fuel Cell + Li-Po буфер', en: '⚡ PEM Fuel Cell + Li-Po Buffer' },
+      title: { ru: '⚡ Водородная топливная ячейка и Li-Po буфер', en: '⚡ PEM Fuel Cell & Li-Po Buffer' },
       massKg: 58.0,
       mtowPct: '12.9%',
       material: { ru: 'Графитовые биполярные пластины / Pt', en: 'Graphite Bipolar Plates / Pt' },
       targetPos: { x: 0, y: 0.48, z: 0.85 },
       camPos: { x: 2.4, y: 2.2, z: 2.8 },
       specs: [
-        { label: { ru: 'Мощность стека:', en: 'Continuous Power:' }, val: '120 кВт (Электро)' },
-        { label: { ru: 'КПД преобразования:', en: 'System Efficiency:' }, val: '58.5% (ТЭК)' },
-        { label: { ru: 'Пиковый буфер:', en: 'Li-Po Peak Buffer:' }, val: '35 кВт·ч (150 кВт STOL)' },
-        { label: { ru: 'Выхлоп:', en: 'Emissions:' }, val: 'Чистый пар H2O (0% CO2)' }
+        { label: { ru: 'Мощность PEM стека:', en: 'PEM Continuous Power:' }, val: '120 кВт' },
+        { label: { ru: 'КПД преобразования:', en: 'Fuel Cell Efficiency:' }, val: '58%' },
+        { label: { ru: 'Буферный Li-Po аккумулятор:', en: 'Li-Po Peak Buffer:' }, val: '18 кВт·ч' },
+        { label: { ru: 'Выбросы CO₂:', en: 'Emissions:' }, val: '0 г/пасс-км (выхлоп: дистиллированный водяной пар)' },
+        { label: { ru: 'Ресурс ячейки:', en: 'Cell Lifespan:' }, val: '10 000 лётных часов' }
       ],
-      formula: '2 H2 + O2 -> 2 H2O + Electricity + Heat (ΔH = -286 kJ/mol)',
+      formula: '2 H2 + O2 -> 2 H2O + Electricity + Heat  |  η_FC = 58%',
       desc: {
-        ru: 'Протонообменная мембрана (PEM) последнего поколения с платиновым катализатором. Вырабатывает непрерывную крейсерскую мощность 120 кВт. Подсвечена изнутри фюзеляжа изумрудным светом и видна сквозь X-Ray обшивку.',
-        en: 'High-density Proton Exchange Membrane (PEM) fuel cell stack providing continuous 120 kW cruise power. Glowing emerald from within the fuselage, visible through the X-Ray composite canopy.'
+        ru: 'Энергоустановка на базе протонообменных мембран (PEM Fuel Cell) мощностью 120 кВт с КПД преобразования 58%. Буферный Li-Po аккумулятор ёмкостью 18 кВт·ч сглаживает пиковые нагрузки при взлёте в режиме STOL и отказе одного из 4 моторов.',
+        en: 'Proton exchange membrane power plant (PEM Fuel Cell) rated at 120 kW with 58% conversion efficiency. An 18 kWh Li-Po buffer battery levels peak loads during STOL takeoff and provides redundancy in the event of engine failure.'
       },
       chartData: {
         x: ['Idle', 'Cruise', 'Climb', 'STOL Max'],
@@ -465,22 +466,22 @@
     payload: {
       nodeNumber: 4,
       category: 'DUAL-ROLE MISSION POD',
-      title: { ru: '🔄 Быстросъемный Отсек Нагрузки', en: '🔄 Quick-Swap Modular Mission Pod' },
+      title: { ru: '🔄 Модульный отсек быстрой смены полезной нагрузки (Quick-Swap Pod)', en: '🔄 Quick-Swap Modular Mission Pod' },
       massKg: 120.0,
       mtowPct: '26.7%',
-      material: { ru: 'Композит CFRP + клапаны Salvo', en: 'CFRP Carbon + Salvo Dump Gates' },
+      material: { ru: 'Композит CFRP + замки Cam-Lock', en: 'CFRP Carbon + Cam-Lock Latches' },
       targetPos: { x: 0, y: -0.45, z: 0.2 },
       camPos: { x: 3.2, y: -0.6, z: 3.0 },
       specs: [
-        { label: { ru: 'Время замены отсека:', en: 'Swap Turnaround:' }, val: '< 10 минут' },
-        { label: { ru: 'Агро-конфигурация:', en: 'Agro Payload:' }, val: '600 л бак + 18м форсунки' },
-        { label: { ru: 'Пожарный сброс:', en: 'Firefighting Pod:' }, val: '800 л воды/ретарданта' },
-        { label: { ru: 'Створки сброса:', en: 'Salvo Bomb Doors:' }, val: '2 створки гидравлические' }
+        { label: { ru: 'Конфигурация "Агро":', en: 'Agro Pod Spec:' }, val: 'Бак 600 л + 6 форсунок ULV' },
+        { label: { ru: 'Конфигурация "МЧС / Пожарный":', en: 'Fire Rescue Pod:' }, val: 'Сброс 800 л воды/ретарданта за 2.2 с' },
+        { label: { ru: 'Время смены модуля:', en: 'Swap Turnaround:' }, val: '< 10 минут (замки Cam-Lock)' },
+        { label: { ru: 'Створки сброса:', en: 'Salvo Dump Gates:' }, val: 'Гидробомболюк Salvo' }
       ],
-      formula: 'Flow_rate = A_valve · √(2 · g · h) = 180 L/s (Dump salvo)',
+      formula: 'Flow_rate = A_valve · √(2 · g · h) = 360 L/s (Dump salvo in 2.2s)',
       desc: {
-        ru: 'Инженерная модульная капсула на быстросъемных замках Cam-Lock с нижними створками пожарного водяного бомболюка и подкрыльевой штангой опрыскивания с 6 форсунками.',
-        en: 'Modular ventral pod with aerospace Cam-Lock latches, twin hydraulic water drop salvo doors on fuselage belly, and underwing spray boom with 6 visible nozzles.'
+        ru: 'Универсальный подфюзеляжный узел крепления модулей. Конфигурация "Агро": бак на 600 л биопрепаратов и подкрыльевые штанги с 6 ультрамалообъёмными форсунками (ULV). Конфигурация "МЧС / Пожарный": водозаборный люк и гидробомболюк со сбросом 800 л воды/пенного ретарданта за 2.2 секунды.',
+        en: 'Universal ventral payload mounting bay. "Agro" configuration: 600L biochemical tank and underwing spray booms with 6 ultra-low volume (ULV) nozzles. "Emergency/Fire" configuration: water scoop hatch and salvo dump bay releasing 800L of water/retardant in 2.2 seconds.'
       },
       chartData: {
         x: ['Tank Empty', 'Agro 600L', 'Fire 800L'],

@@ -2300,6 +2300,9 @@ a:hover {
 }
 
 @media (max-width: 1024px) {
+  :root {
+    --header-height: 98px;
+  }
   .site-header {
     padding: 0.5rem 1rem;
     flex-wrap: wrap;
@@ -2350,6 +2353,9 @@ a:hover {
 }
 
 @media (max-width: 768px) {
+  :root {
+    --header-height: 138px;
+  }
   .site-header {
     flex-direction: column;
     align-items: stretch;
@@ -3295,6 +3301,30 @@ a:hover {
   max-width: 320px;
   padding: 0.75rem;
   flex-shrink: 0;
+}
+
+.sim-left-actions-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 0.5rem;
+}
+.sim-left-actions-row .btn-h2-boost {
+  flex: 1;
+  margin-bottom: 0;
+  font-size: 0.68rem;
+  padding: 0.4rem 0.25rem;
+  white-space: nowrap;
+}
+.btn-sim-reset-inline {
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.25), rgba(59, 130, 246, 0.25)) !important;
+  border-color: #38bdf8 !important;
+  color: #38bdf8 !important;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.25) !important;
+}
+.btn-sim-reset-inline:hover {
+  background: linear-gradient(135deg, #0284c7, #2563eb) !important;
+  color: #fff !important;
+  box-shadow: 0 0 18px rgba(56, 189, 248, 0.7) !important;
 }
 
 .btn-h2-boost {
@@ -4264,6 +4294,7 @@ a:hover {
   box-shadow: 0 0 35px rgba(255, 0, 0, 0.8);
   animation: stallPulse 0.4s infinite alternate;
   z-index: 50;
+  pointer-events: none;
 }
 @keyframes stallPulse {
   from { opacity: 0.7; transform: translateX(-50%) scale(0.98); }
