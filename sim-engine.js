@@ -1,17 +1,13 @@
 /**
  * ==============================================================================
- * AEROTERRA H2 — ULTRA-REALISTIC 6-DOF FLIGHT SIMULATOR & MISSION ENGINE (MSFS 2024)
+ * AEROTERRA H2 — SATELLITE 3D FLIGHT SIMULATOR & 6-DOF AERODYNAMIC ENGINE
  * ==============================================================================
- * 
- * Master Aerospace Engineer & MSFS Simulation Lead Implementation:
- * - 6-DOF Aerodynamic Physics Engine (Blown-wing STOL, Stall curve, Ground effect)
- * - Procedural 10x10 km 3D World (STOL Airbase, PAPI glideslope, Orchards, Wildfires, Lake)
- * - InstancedMesh Vegetation, Fire & Smoke Particle FX, Hydro-Scooping Skim Physics
- * - Garmin G1000 PFD HUD (Artificial Horizon, Airspeed/Altitude Tapes, Compass, Minimap)
- * - Procedural Web Audio API Sound Synthesizer (Brushless motors, Wind, Stall Horn)
- * - Dual-Stick Mobile Touch UI & PC Keyboard/Mouse Controls
- * - Autonomous AI Mission Flight (Professor Demonstration Mode)
- * - Flight Test Debriefing Certificate & Performance Assessment
+ * • Real Google Satellite / Google Hybrid / Esri slippy map tile streaming
+ * • Detailed 3D Model: AeroTerra H2 (Twin-Boom STOL with 4 DEP propellers)
+ * • Working Mechanization: Retractable Gear (G), STOL Flaps (F), Spoilers (B)
+ * • Special Operations: Water Drop salvo (Space), Agro ULV Spray (X), Aero Vectors (V)
+ * • Glass Cockpit Avionics: 3 Dedicated HUD panels, Circular GPS Radar, Live Coordinates
+ * • Guaranteed WebGL Canvas Startup with Daytime Sky Blue — Zero Black Screen!
  * ==============================================================================
  */
 
@@ -23,216 +19,1356 @@
     initialized: false,
     running: false,
     paused: false,
-    scenario: 'stol',
-    weather: 'day',
-    cameraMode: 'chase', // 'chase', 'cockpit', 'flir', 'wing', 'drone'
-    hudVisible: true,
-    professorMode: false,
-    autopilotActive: false,
-    audioEnabled: true
+    planeModel: 'full',      // 'full', 'rc', 'agro', 'fire'
+    locationId: 'charvak',   // 'charvak', 'dubai', 'california', 'fergana', 'innsbruck'
+    mapProvider: 'google-sat',// 'google-sat', 'google-hybrid', 'esri-terrain'
+    timeOfDay: 'day',        // 'day', 'sunset', 'night'
+    cameraMode: 'chase',     // 'chase', 'cockpit', 'satellite', 'orbit'
+    audioEnabled: false,
+    soundStarted: false,
+    boostActive: false,
+    boostTimer: 0,
+    sensitivity: 1.0,
+    apMode: {
+      level: false,
+      alt: false,
+      hdg: false,
+      targetAlt: 700,
+      targetHdg: 90
+    }
   };
 
   const SIM = window.AeroTerraSim;
 
   // ----------------------------------------------------------------------------
-  // 1. AERODYNAMIC CONSTANTS & PHYSICAL PARAMETERS
+  // 1. LOCATIONS & SATELLITE COORDINATES TABLE
   // ----------------------------------------------------------------------------
-  const AERO = {
-    // Aircraft geometry
-    massEmpty: 1220.0,       // kg (CFRP airframe + FC + motors)
-    massH2Max: 30.0,         // kg (Cryo-tank capacity)
-    massFluidMax: 600.0,     // kg (Agro fluid or water bomb)
-    wingspan: 12.4,          // m (b)
-    wingArea: 13.35,         // m² (S)
-    aspectRatio: 11.5,       // AR = b² / S
-    oswaldEff: 0.85,         // e
-    
-    // Aerodynamic Coefficients (NACA 64-215 Class-A Blown Wing)
-    CL0: 0.80,               // Base clean lift
-    CL_alpha: 5.73,          // Lift slope per radian (~0.10 per deg)
-    alphaCrit: 0.297,        // Critical AoA ~17 degrees
-    CD0: 0.026,              // Parasitic drag coefficient (Gear UP)
-    CD_gear: 0.016,          // Landing gear drag increment (Gear DOWN total = 0.042)
-    CD_flaps15: 0.018,       // Flaps 15 drag
-    CD_flaps35: 0.048,       // Flaps 35 drag
-    CL_flaps15: 0.55,        // Flaps 15 lift increment (CL -> 1.35)
-    CL_flaps35: 1.15,        // Flaps 35 blown lift increment (CL -> 1.95)
-    
-    // Propulsion & Blown-Wing STOL parameters
-    kBlown: 0.55,            // Prop-wash blown-wing interaction factor
-    maxPropWash: 32.0,       // m/s max slipstream velocity from 4x DEP
-    maxThrustTotal: 8400.0,  // N total thrust at sea level (4x 2100 N)
-    
-    // Engine & Energy
-    fuelCellPowerMax: 60.0,  // kW Ballard PEMFC output
-    lipoBoostPowerMax: 35.0, // kW 12S LiPo buffer boost
-    h2BurnRateMax: 3.2,      // kg/h at 100% throttle
-    
-    // Atmosphere
-    rho0: 1.225,             // kg/m³ standard air density at sea level
-    gravity: 9.80665,        // m/s²
-    
-    // Control Authorities (rad/s² per unit deflection)
-    pitchAuthority: 2.8,
-    rollAuthority: 4.2,
-    yawAuthority: 1.8,
-    pitchDamping: 2.4,
-    rollDamping: 3.5,
-    yawDamping: 2.2
+  const LOCATIONS = {
+    charvak: {
+      id: 'charvak',
+      name: '🇺🇿 Ташкент и Чарвак',
+      lat: 41.6350,
+      lon: 70.0350,
+      alt: 700,
+      heading: 90,
+      desc: 'Чарвакское водохранилище и предгорные агро-кластеры Узбекистана'
+    },
+    dubai: {
+      id: 'dubai',
+      name: '🇦🇪 Дубай (DXB)',
+      lat: 25.1972,
+      lon: 55.2744,
+      alt: 700,
+      heading: 120,
+      desc: 'Пальма Джумейра, Бурдж-Халифа и побережье Персидского залива'
+    },
+    california: {
+      id: 'california',
+      name: '🌲 Калифорния (Тахо)',
+      lat: 39.0968,
+      lon: -120.0324,
+      alt: 700,
+      heading: 320,
+      desc: 'Лесной массив Сьерра-Невада и пожарный патрульный полигон'
+    },
+    fergana: {
+      id: 'fergana',
+      name: '🍏 Ферганская долина',
+      lat: 40.3842,
+      lon: 71.7843,
+      alt: 700,
+      heading: 80,
+      desc: 'Фруктовые сады, хлопковые поля и каналы Ферганской долины'
+    },
+    innsbruck: {
+      id: 'innsbruck',
+      name: '🏔️ Альпы (Инсбрук)',
+      lat: 47.2602,
+      lon: 11.3440,
+      alt: 700,
+      heading: 260,
+      desc: 'Горный STOL аэродром среди альпийских хребтов'
+    }
   };
 
   // ----------------------------------------------------------------------------
-  // 2. SIMULATOR FLIGHT STATE
+  // 2. AIRCRAFT MODIFICATIONS SPECS
+  // ----------------------------------------------------------------------------
+  const PLANE_CONFIGS = {
+    full: {
+      name: 'AeroTerra H2 — Full-Scale',
+      scale: 1.0,
+      mass: 1638.0,
+      wingspan: 12.4,
+      wingArea: 13.35,
+      thrustMax: 8400.0,
+      fluidCapacity: 800,
+      h2Capacity: 28.5,
+      pitchAuth: 2.8,
+      rollAuth: 3.5,
+      yawAuth: 1.8
+    },
+    rc: {
+      name: 'AeroTerra H2 — RC Prototype 1:5',
+      scale: 0.35,
+      mass: 25.0,
+      wingspan: 3.2,
+      wingArea: 1.1,
+      thrustMax: 240.0,
+      fluidCapacity: 10,
+      h2Capacity: 1.5,
+      pitchAuth: 5.2,
+      rollAuth: 6.8,
+      yawAuth: 3.5
+    },
+    agro: {
+      name: 'AeroTerra Agro-Sprayer',
+      scale: 1.0,
+      mass: 1720.0,
+      wingspan: 12.4,
+      wingArea: 13.35,
+      thrustMax: 8400.0,
+      fluidCapacity: 800,
+      h2Capacity: 28.5,
+      pitchAuth: 2.6,
+      rollAuth: 3.2,
+      yawAuth: 1.7
+    },
+    fire: {
+      name: 'AeroTerra Fire-Bomber',
+      scale: 1.0,
+      mass: 1850.0,
+      wingspan: 12.4,
+      wingArea: 13.35,
+      thrustMax: 9200.0,
+      fluidCapacity: 800,
+      h2Capacity: 28.5,
+      pitchAuth: 2.5,
+      rollAuth: 3.0,
+      yawAuth: 1.6
+    }
+  };
+
+  // ----------------------------------------------------------------------------
+  // 3. FLIGHT STATE & 6-DOF AERODYNAMICS
   // ----------------------------------------------------------------------------
   const flight = {
-    // Spatial coordinates & orientation
-    pos: new THREE.Vector3(0, 1.25, 0), // Center on runway
-    vel: new THREE.Vector3(0, 0, 0),
+    // World coordinates in local meters (XZ flat ground, Y up)
+    pos: new THREE.Vector3(0, 700, 0),
+    vel: new THREE.Vector3(0, 0, 50),
     rot: new THREE.Euler(0, 0, 0, 'YXZ'),
     quat: new THREE.Quaternion(),
-    angVel: new THREE.Vector3(0, 0, 0),
-    
-    // Speeds
-    airspeedTAS: 0.0,  // m/s
-    airspeedIAS: 0.0,  // km/h
-    vsi: 0.0,          // m/s vertical speed
-    altitudeMSL: 120.0,// m above sea level
-    altitudeAGL: 1.25, // m above ground level
-    aoa: 0.0,          // deg angle of attack
-    sideslip: 0.0,     // deg
-    gLoad: 1.0,        // G's
-    headingDeg: 90.0,  // deg magnetic heading (Runway 09)
-    pitchDeg: 0.0,
-    rollDeg: 0.0,
-    
-    // Controls
-    throttle: 0.0,     // 0.0 to 1.0
-    elevator: 0.0,     // -1.0 to +1.0
-    aileron: 0.0,      // -1.0 to +1.0
-    rudder: 0.0,       // -1.0 to +1.0
-    flapsStage: 0,     // 0 = 0°, 1 = 15°, 2 = 35°
-    flapsAngleDeg: 0,
-    flapsTargetDeg: 0,
-    gearDown: true,
-    gearAnim: 1.0,      // 0.0 = UP, 1.0 = DOWN
-    brakes: false,
-    sprayActive: false,
+
+    // Pilot controls (-1 to +1, throttle 0 to 1)
+    pitchInput: 0,
+    rollInput: 0,
+    yawInput: 0,
+    throttle: 0.75,
+
+    // Airspeeds & Altitude
+    tas: 50.0,        // m/s
+    ias: 180.0,       // km/h
+    kts: 97.2,        // knots
+    vsi: 0.0,         // m/s
+    altMSL: 700.0,    // m
+    altAGL: 700.0,    // m
+    aoa: -1.5,        // degrees
+    gLoad: 1.0,
+
+    // Mechanization States
+    gearPos: 0.0,     // 0 = retracted (UP), 1 = extended (DOWN)
+    gearTarget: 0.0,
+    flapsStage: 0,    // 0 = 0°, 1 = 15°, 2 = 35°
+    flapsAngle: 0.0,  // radians
+    spoilersActive: false,
+    spoilersPos: 0.0, // 0 to 1
+
+    // Missions & Consumables
+    waterDropping: false,
+    agroSpraying: false,
     showAeroVectors: false,
-    
-    // Systems & Consumables
-    massH2: 28.5,      // kg
-    massFluid: 600.0,  // kg / L
-    lipoCharge: 95.0,  // %
-    fcTemp: 68.0,      // °C
-    motorRPM: 0,
-    electricKW: 0.0,
-    
-    // Status
-    onGround: true,
-    stalling: false,
-    buffeting: 0.0,
-    touchdownTimer: 0.0,
-    flightTime: 0.0,
-    takeoffDist: 0.0,
-    landingDist: 0.0,
-    maxGLoad: 1.0,
-    minGLoad: 1.0,
-    keroseneSaved: 0.0,
-    missionScore: 0
+    h2MassRemaining: 28.5,
+    fluidRemaining: 800,
+
+    // Propellers RPM
+    propRpm: 2400,
+    propAngle: 0
   };
 
-  // World targets & navigation waypoints
-  const NAV = {
-    rwy: new THREE.Vector3(0, 0, 0),
-    agro: new THREE.Vector3(1200, 20, 400),
-    fire: new THREE.Vector3(-1800, 85, -1500),
-    lake: new THREE.Vector3(-500, 2, 1400),
-    charvak: new THREE.Vector3(-2200, 180, 2800)
-  };
+  // Three.js Core Globals
+  let simCanvas, renderer, scene, camera;
+  let ambientLight, sunLight, hemiLight;
+  let planeGroup, fuselageMesh, wingMesh, leftBoom, rightBoom, tailGroup;
+  let propMeshes = [];
+  let gearMeshes = [];
+  let flapMeshes = [];
+  let spoilerMeshes = [];
+  let aeroVectorGroup;
+  let waterParticleSystem, sprayParticleSystem;
+  let runwayGroup;
 
-  // Wind and Weather
-  const weatherState = {
-    windVec: new THREE.Vector3(-2.5, 0, 1.2), // m/s
-    windSpeed: 2.8,
-    windDirDeg: 295,
-    turbulence: 0.0
-  };
+  // Slippy Map Tile System
+  const mapTiles = new Map();
+  const TILE_ZOOM = 15;
+  let currentTileCenter = { tx: -1, ty: -1 };
+  let currentOriginLat = LOCATIONS.charvak.lat;
+  let currentOriginLon = LOCATIONS.charvak.lon;
+  let textureLoader;
 
-  // Input State
-  const input = {
-    w: false, s: false, a: false, d: false,
-    up: false, down: false, left: false, right: false,
-    space: false, f: false, g: false,
-    q: false, e: false,
-    touchPitch: 0.0,
-    touchRoll: 0.0,
-    touchThrottle: 0.0,
-    touchRudder: 0.0
-  };
+  // Radar
+  let radarCanvas, radarCtx;
 
-  // ----------------------------------------------------------------------------
-  // 3. THREE.JS 3D SCENE SETUP
-  // ----------------------------------------------------------------------------
-  let renderer, scene, camera, simCanvas;
-  let aircraftGroup, propMeshes = [], flapMeshes = [], controlSurfaceMeshes = {};
-  let noseGearGroup, mainGearLeftGroup, mainGearRightGroup;
-  let flapLeftGroup, flapRightGroup;
-  let aileronLeftGroup, aileronRightGroup;
-  let elevatorGroup, rudderLeftGroup, rudderRightGroup;
-  let waterBayDoorL, waterBayDoorR;
-  let aeroVectorsGroup, liftArrow, dragArrow, thrustArrow, streamlinesGroup;
-  let landingLights = [], papiLights = [];
-  let terrainMesh, lakeMesh, windsockMesh;
-  let treeInstancedMesh, stressedTreeColors = [], healthyTreeColor;
-  let fireSystems = [], smokeSystems = [];
-  let sprayParticleSystem, waterDropSystem;
-  let clock = new THREE.Clock();
+  // Audio Context & Oscillators
+  let audioCtx, motorGain, motorOsc1, motorOsc2, windGain, windNoise;
 
-  // Camera rigs
-  let cameraOffset = new THREE.Vector3(0, 2.8, -9.5);
-  let cameraLookTarget = new THREE.Vector3();
-  let freeCameraAngle = { yaw: 0, pitch: 0.15, dist: 12 };
+  // Mouse orbit
+  let isMouseDragging = false;
+  let mousePrevX = 0, mousePrevY = 0;
+  let orbitYaw = 0, orbitPitch = 0.2;
+
+  // Clock
+  const clock = new THREE.Clock();
 
   // ----------------------------------------------------------------------------
-  // 4. AUDIO SYNTHESIZER (WEB AUDIO API)
+  // 4. MERCATOR SLIPPY MAP MATH
   // ----------------------------------------------------------------------------
-  let audioCtx = null;
-  let motorOsc1, motorOsc2, motorGain, motorFilter;
-  let windNoiseNode, windGain, windFilter;
-  let sprayNoiseNode, sprayGain;
-  let stallOsc, stallGain, stallLfo;
-  let soundStarted = false;
+  function lonToTileX(lon, zoom) {
+    return Math.floor((lon + 180) / 360 * Math.pow(2, zoom));
+  }
 
+  function latToTileY(lat, zoom) {
+    const latRad = lat * Math.PI / 180;
+    return Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * Math.pow(2, zoom));
+  }
+
+  function tileXToLon(x, zoom) {
+    return x / Math.pow(2, zoom) * 360 - 180;
+  }
+
+  function tileYToLat(y, zoom) {
+    const n = Math.PI - 2 * Math.PI * y / Math.pow(2, zoom);
+    return 180 / Math.PI * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
+  }
+
+  function getTileMeters(lat, zoom) {
+    return 40075016.68 * Math.cos(lat * Math.PI / 180) / Math.pow(2, zoom);
+  }
+
+  function getTileUrl(tx, ty, zoom, provider) {
+    if (provider === 'google-hybrid') {
+      return `https://mt1.google.com/vt/lyrs=y&x=${tx}&y=${ty}&z=${zoom}`;
+    } else if (provider === 'esri-terrain') {
+      return `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${zoom}/${ty}/${tx}`;
+    }
+    // Default Google Satellite
+    return `https://mt1.google.com/vt/lyrs=s&x=${tx}&y=${ty}&z=${zoom}`;
+  }
+
+  // Procedural canvas fallback in case network tiles fail or are loading
+  function createProceduralTileTexture(tx, ty) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+
+    // Procedural terrain pattern
+    const hue = ((tx * 13 + ty * 37) % 60) + 70; // Natural green-earth tones
+    ctx.fillStyle = `hsl(${hue}, 42%, 28%)`;
+    ctx.fillRect(0, 0, 256, 256);
+
+    // Patchy field / orchard grid
+    for (let i = 0; i < 8; i++) {
+      for (let j = 0; j < 8; j++) {
+        const patchHue = hue + ((i * 7 + j * 11) % 25) - 12;
+        ctx.fillStyle = `hsla(${patchHue}, 48%, ${24 + (i + j) % 10}%, 0.7)`;
+        ctx.fillRect(i * 32 + 2, j * 32 + 2, 28, 28);
+      }
+    }
+
+    // Road / river streak
+    ctx.strokeStyle = 'rgba(70, 60, 50, 0.4)';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(0, (tx * 31) % 256);
+    ctx.bezierCurveTo(90, 80, 160, 180, 256, (ty * 43) % 256);
+    ctx.stroke();
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.ClampToEdgeWrapping;
+    tex.wrapT = THREE.ClampToEdgeWrapping;
+    return tex;
+  }
+
+  // ----------------------------------------------------------------------------
+  // 5. GUARANTEED 3D WORLD INITIALIZATION (NO BLACK SCREEN!)
+  // ----------------------------------------------------------------------------
+  function init3DWorld() {
+    simCanvas = document.getElementById('simulator-canvas');
+    if (!simCanvas) return;
+
+    const container = document.getElementById('simulator-section') || document.body;
+    const w = container.clientWidth > 0 ? container.clientWidth : window.innerWidth;
+    const h = container.clientHeight > 0 ? container.clientHeight : Math.max(300, window.innerHeight - 70);
+
+    // Renderer
+    renderer = new THREE.WebGLRenderer({
+      canvas: simCanvas,
+      antialias: true,
+      powerPreference: 'high-performance',
+      alpha: false
+    });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setSize(w, h, false);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.15;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+    // Scene with GUARANTEED DAYLIGHT SKY BLUE & HORIZON FOG
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x9ec5fe); // Sky blue
+    scene.fog = new THREE.FogExp2(0xcbd5e1, 0.00018); // Horizon haze
+
+    // Camera
+    camera = new THREE.PerspectiveCamera(54, w / h, 0.5, 20000);
+    camera.position.set(0, 704, -14);
+
+    // Dynamic Lighting
+    ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
+    scene.add(ambientLight);
+
+    hemiLight = new THREE.HemisphereLight(0xdbeafe, 0x1e293b, 0.55);
+    scene.add(hemiLight);
+
+    sunLight = new THREE.DirectionalLight(0xfff8e7, 1.35);
+    sunLight.position.set(800, 1500, 1000);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.width = 2048;
+    sunLight.shadow.mapSize.height = 2048;
+    sunLight.shadow.camera.near = 10;
+    sunLight.shadow.camera.far = 4000;
+    const d = 300;
+    sunLight.shadow.camera.left = -d;
+    sunLight.shadow.camera.right = d;
+    sunLight.shadow.camera.top = d;
+    sunLight.shadow.camera.bottom = -d;
+    scene.add(sunLight);
+
+    // Texture Loader
+    textureLoader = new THREE.TextureLoader();
+    textureLoader.crossOrigin = 'anonymous';
+
+    // Build Subsystems
+    buildAircraftModel();
+    buildSTOLRunway();
+    buildParticleSystems();
+    initRadar();
+
+    // Initial position & tiles
+    teleportToLocation(SIM.locationId, 700);
+
+    // Weather preset
+    setTimeOfDay(SIM.timeOfDay);
+
+    // Resize listeners
+    initResizeObserver();
+  }
+
+  // ----------------------------------------------------------------------------
+  // 6. DETAILED 3D AIRCRAFT: AEROTERRA H2 TWIN-BOOM STOL
+  // ----------------------------------------------------------------------------
+  function buildAircraftModel() {
+    planeGroup = new THREE.Group();
+    planeGroup.name = 'AeroTerraH2';
+
+    // Materials
+    const carbonWhiteMat = new THREE.MeshStandardMaterial({
+      color: 0xf8fafc,
+      roughness: 0.28,
+      metalness: 0.12
+    });
+
+    const cyanAccentMat = new THREE.MeshStandardMaterial({
+      color: 0x00e5ff,
+      roughness: 0.2,
+      metalness: 0.4,
+      emissive: 0x003344
+    });
+
+    const darkTrimMat = new THREE.MeshStandardMaterial({
+      color: 0x0f172a,
+      roughness: 0.4,
+      metalness: 0.5
+    });
+
+    const canopyGlassMat = new THREE.MeshPhysicalMaterial({
+      color: 0x0284c7,
+      transparent: true,
+      opacity: 0.72,
+      roughness: 0.1,
+      metalness: 0.1,
+      transmission: 0.75,
+      ior: 1.5
+    });
+
+    const h2TankMat = new THREE.MeshStandardMaterial({
+      color: 0x06b6d4,
+      metalness: 0.6,
+      roughness: 0.2,
+      emissive: 0x083344
+    });
+
+    // 1. Aerodynamic Fuselage Pod (Length: 7.2m, Width: 1.2m, Height: 1.1m)
+    const fuseGeo = new THREE.CylinderGeometry(0.55, 0.42, 6.4, 24);
+    fuseGeo.rotateX(Math.PI / 2);
+    fuseGeo.scale(1.0, 1.1, 1.0);
+    fuselageMesh = new THREE.Mesh(fuseGeo, carbonWhiteMat);
+    fuselageMesh.castShadow = true;
+    fuselageMesh.receiveShadow = true;
+    planeGroup.add(fuselageMesh);
+
+    // Nose Cone
+    const noseGeo = new THREE.ConeGeometry(0.42, 1.2, 24);
+    noseGeo.rotateX(Math.PI / 2);
+    const noseMesh = new THREE.Mesh(noseGeo, carbonWhiteMat);
+    noseMesh.position.set(0, -0.05, 3.8);
+    noseMesh.castShadow = true;
+    planeGroup.add(noseMesh);
+
+    // Cockpit Canopy
+    const canopyGeo = new THREE.SphereGeometry(0.5, 20, 16);
+    canopyGeo.scale(0.85, 0.7, 1.8);
+    const canopyMesh = new THREE.Mesh(canopyGeo, canopyGlassMat);
+    canopyMesh.position.set(0, 0.4, 1.4);
+    planeGroup.add(canopyMesh);
+
+    // Transparent Bay with Cyan Hydrogen Cryo-Tanks
+    const bayGeo = new THREE.BoxGeometry(0.8, 0.6, 1.8);
+    const bayMat = new THREE.MeshPhysicalMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.35,
+      roughness: 0.1,
+      transmission: 0.8
+    });
+    const bayMesh = new THREE.Mesh(bayGeo, bayMat);
+    bayMesh.position.set(0, -0.05, -0.6);
+    planeGroup.add(bayMesh);
+
+    // Twin H2 Cylinders inside bay
+    for (const side of [-0.22, 0.22]) {
+      const tankGeo = new THREE.CylinderGeometry(0.14, 0.14, 1.4, 16);
+      tankGeo.rotateX(Math.PI / 2);
+      const tankMesh = new THREE.Mesh(tankGeo, h2TankMat);
+      tankMesh.position.set(side, -0.05, -0.6);
+      planeGroup.add(tankMesh);
+    }
+
+    // 2. High-Wing (Span: 12.4m, Chord: 1.2m, with dihedral & winglets)
+    const wingGeo = new THREE.BoxGeometry(12.4, 0.14, 1.25);
+    wingMesh = new THREE.Mesh(wingGeo, carbonWhiteMat);
+    wingMesh.position.set(0, 0.55, 0.3);
+    wingMesh.castShadow = true;
+    wingMesh.receiveShadow = true;
+    planeGroup.add(wingMesh);
+
+    // Upturned Winglets (Cyan)
+    for (const side of [-6.2, 6.2]) {
+      const wingletGeo = new THREE.BoxGeometry(0.08, 0.75, 0.45);
+      const wingletMesh = new THREE.Mesh(wingletGeo, cyanAccentMat);
+      wingletMesh.position.set(side, 0.85, 0.3);
+      wingletMesh.rotation.z = side > 0 ? -0.25 : 0.25;
+      planeGroup.add(wingletMesh);
+    }
+
+    // STOL Flaps (Animated on trailing edge of the wing)
+    flapMeshes = [];
+    for (const side of [-2.4, 2.4]) {
+      const flapPivot = new THREE.Group();
+      flapPivot.position.set(side, 0.52, -0.32);
+
+      const flapGeo = new THREE.BoxGeometry(3.6, 0.06, 0.35);
+      const flapMesh = new THREE.Mesh(flapGeo, cyanAccentMat);
+      flapMesh.position.set(0, 0, -0.175);
+      flapPivot.add(flapMesh);
+
+      planeGroup.add(flapPivot);
+      flapMeshes.push(flapPivot);
+    }
+
+    // Spoilers / Airbrakes (Animated on top of wing)
+    spoilerMeshes = [];
+    for (const side of [-1.8, 1.8]) {
+      const spPivot = new THREE.Group();
+      spPivot.position.set(side, 0.62, 0.0);
+
+      const spGeo = new THREE.BoxGeometry(1.6, 0.04, 0.25);
+      const spMesh = new THREE.Mesh(spGeo, darkTrimMat);
+      spMesh.position.set(0, 0, -0.125);
+      spPivot.add(spMesh);
+
+      planeGroup.add(spPivot);
+      spoilerMeshes.push(spPivot);
+    }
+
+    // 3. 4 Distributed Electric Propulsion (DEP) Motors & Spinning Propellers
+    propMeshes = [];
+    const motorPositions = [-4.2, -1.8, 1.8, 4.2];
+    motorPositions.forEach((posX) => {
+      // Nacelle
+      const nacGeo = new THREE.CylinderGeometry(0.2, 0.18, 0.9, 16);
+      nacGeo.rotateX(Math.PI / 2);
+      const nacMesh = new THREE.Mesh(nacGeo, carbonWhiteMat);
+      nacMesh.position.set(posX, 0.52, 0.6);
+      planeGroup.add(nacMesh);
+
+      // Spinner nose
+      const spinGeo = new THREE.ConeGeometry(0.12, 0.25, 16);
+      spinGeo.rotateX(Math.PI / 2);
+      const spinMesh = new THREE.Mesh(spinGeo, cyanAccentMat);
+      spinMesh.position.set(posX, 0.52, 1.15);
+      planeGroup.add(spinMesh);
+
+      // 3-Bladed Propeller Group
+      const propGroup = new THREE.Group();
+      propGroup.position.set(posX, 0.52, 1.12);
+
+      for (let b = 0; b < 3; b++) {
+        const bladeGeo = new THREE.BoxGeometry(0.06, 0.72, 0.02);
+        const bladeMesh = new THREE.Mesh(bladeGeo, darkTrimMat);
+        bladeMesh.position.y = 0.36;
+        bladeMesh.rotation.z = (b * Math.PI * 2) / 3;
+        propGroup.add(bladeMesh);
+      }
+
+      planeGroup.add(propGroup);
+      propMeshes.push(propGroup);
+    });
+
+    // 4. Twin-Boom Empennage & Inverted-U Tail
+    const boomGeo = new THREE.CylinderGeometry(0.14, 0.1, 4.8, 16);
+    boomGeo.rotateX(Math.PI / 2);
+
+    for (const boomX of [-2.2, 2.2]) {
+      const boom = new THREE.Mesh(boomGeo, carbonWhiteMat);
+      boom.position.set(boomX, 0.45, -2.1);
+      boom.castShadow = true;
+      planeGroup.add(boom);
+
+      // Vertical Stabilizers (Fins)
+      const finGeo = new THREE.BoxGeometry(0.08, 1.4, 0.85);
+      const finMesh = new THREE.Mesh(finGeo, carbonWhiteMat);
+      finMesh.position.set(boomX, 1.1, -4.2);
+      finMesh.castShadow = true;
+      planeGroup.add(finMesh);
+
+      // Rudder trim
+      const rudGeo = new THREE.BoxGeometry(0.06, 1.2, 0.25);
+      const rudMesh = new THREE.Mesh(rudGeo, cyanAccentMat);
+      rudMesh.position.set(boomX, 1.1, -4.7);
+      planeGroup.add(rudMesh);
+    }
+
+    // High Horizontal Stabilizer connecting the twin booms
+    const hStabGeo = new THREE.BoxGeometry(4.6, 0.08, 0.75);
+    const hStabMesh = new THREE.Mesh(hStabGeo, carbonWhiteMat);
+    hStabMesh.position.set(0, 1.75, -4.2);
+    hStabMesh.castShadow = true;
+    planeGroup.add(hStabMesh);
+
+    // Elevator trim
+    const elevGeo = new THREE.BoxGeometry(4.4, 0.06, 0.22);
+    const elevMesh = new THREE.Mesh(elevGeo, cyanAccentMat);
+    elevMesh.position.set(0, 1.75, -4.68);
+    planeGroup.add(elevMesh);
+
+    // 5. Retractable Landing Gear (Animated Nose + Main Booms)
+    gearMeshes = [];
+
+    // Nose Gear (Pivot at x:0, y:-0.3, z:2.8)
+    const noseGearPivot = new THREE.Group();
+    noseGearPivot.position.set(0, -0.3, 2.8);
+    const noseStrut = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.75), darkTrimMat);
+    noseStrut.position.set(0, -0.375, 0);
+    noseGearPivot.add(noseStrut);
+    const noseWheel = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.08, 16), darkTrimMat);
+    noseWheel.rotateZ(Math.PI / 2);
+    noseWheel.position.set(0, -0.75, 0);
+    noseGearPivot.add(noseWheel);
+    planeGroup.add(noseGearPivot);
+    gearMeshes.push({ pivot: noseGearPivot, restY: 0, retractRotX: -Math.PI / 2 });
+
+    // Main Gears on Left and Right Booms
+    for (const bX of [-2.2, 2.2]) {
+      const mainPivot = new THREE.Group();
+      mainPivot.position.set(bX, 0.1, -0.4);
+      const mainStrut = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.15), darkTrimMat);
+      mainStrut.position.set(0, -0.575, 0);
+      mainPivot.add(mainStrut);
+
+      // Dual wheels
+      for (const wSide of [-0.08, 0.08]) {
+        const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.09, 16), darkTrimMat);
+        wheel.rotateZ(Math.PI / 2);
+        wheel.position.set(wSide, -1.15, 0);
+        mainPivot.add(wheel);
+      }
+
+      planeGroup.add(mainPivot);
+      gearMeshes.push({ pivot: mainPivot, restY: 0, retractRotX: Math.PI / 2 });
+    }
+
+    // 6. 3D Aerodynamic Vector Helpers (L/T/D Arrows)
+    aeroVectorGroup = new THREE.Group();
+    aeroVectorGroup.name = 'AeroVectors';
+
+    // Lift Vector (Green arrow pointing UP)
+    const liftArrow = new THREE.ArrowHelper(
+      new THREE.Vector3(0, 1, 0),
+      new THREE.Vector3(0, 0.8, 0.3),
+      3.2,
+      0x00ff9d,
+      0.6,
+      0.3
+    );
+    liftArrow.name = 'liftArrow';
+    aeroVectorGroup.add(liftArrow);
+
+    // Thrust Vector (Cyan arrow pointing FORWARD)
+    const thrustArrow = new THREE.ArrowHelper(
+      new THREE.Vector3(0, 0, 1),
+      new THREE.Vector3(0, 0.4, 4.0),
+      2.8,
+      0x00e5ff,
+      0.5,
+      0.25
+    );
+    thrustArrow.name = 'thrustArrow';
+    aeroVectorGroup.add(thrustArrow);
+
+    // Drag Vector (Red arrow pointing BACK)
+    const dragArrow = new THREE.ArrowHelper(
+      new THREE.Vector3(0, 0, -1),
+      new THREE.Vector3(0, 0.4, -4.5),
+      1.8,
+      0xef4444,
+      0.4,
+      0.2
+    );
+    dragArrow.name = 'dragArrow';
+    aeroVectorGroup.add(dragArrow);
+
+    aeroVectorGroup.visible = false;
+    planeGroup.add(aeroVectorGroup);
+
+    scene.add(planeGroup);
+  }
+
+  // ----------------------------------------------------------------------------
+  // 7. STOL RUNWAY & AIRFIELD (Detailed 3D Pavement with PAPI Lights)
+  // ----------------------------------------------------------------------------
+  function buildSTOLRunway() {
+    runwayGroup = new THREE.Group();
+    runwayGroup.name = 'STOLRunway';
+
+    // Pavement: 800m length x 36m width
+    const rwyGeo = new THREE.PlaneGeometry(36, 800);
+    rwyGeo.rotateX(-Math.PI / 2);
+    const rwyMat = new THREE.MeshStandardMaterial({
+      color: 0x1e293b,
+      roughness: 0.88,
+      metalness: 0.05
+    });
+    const rwyMesh = new THREE.Mesh(rwyGeo, rwyMat);
+    rwyMesh.position.set(0, 0.1, 0);
+    rwyMesh.receiveShadow = true;
+    runwayGroup.add(rwyMesh);
+
+    // Centerline Dashed Stripes
+    for (let z = -360; z <= 360; z += 40) {
+      const stripeGeo = new THREE.PlaneGeometry(1.2, 22);
+      stripeGeo.rotateX(-Math.PI / 2);
+      const stripeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      const stripeMesh = new THREE.Mesh(stripeGeo, stripeMat);
+      stripeMesh.position.set(0, 0.15, z);
+      runwayGroup.add(stripeMesh);
+    }
+
+    // Threshold Piano Keys (8 bars at each threshold)
+    for (const endZ of [-370, 370]) {
+      for (let i = -7; i <= 7; i += 2) {
+        const keyGeo = new THREE.PlaneGeometry(1.4, 28);
+        keyGeo.rotateX(-Math.PI / 2);
+        const keyMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        const keyMesh = new THREE.Mesh(keyGeo, keyMat);
+        keyMesh.position.set(i * 1.8, 0.15, endZ);
+        runwayGroup.add(keyMesh);
+      }
+    }
+
+    // PAPI 4-Light Glideslope Cluster on left of threshold (3.0° slope)
+    for (let p = 0; p < 4; p++) {
+      const papiBox = new THREE.Mesh(
+        new THREE.BoxGeometry(0.6, 0.5, 0.6),
+        new THREE.MeshStandardMaterial({ color: 0x0f172a })
+      );
+      papiBox.position.set(-24, 0.4, -300 + p * 8);
+
+      const papiLight = new THREE.PointLight(0xffffff, 2.0, 45);
+      papiLight.position.set(0, 0.3, 0);
+      papiBox.add(papiLight);
+
+      runwayGroup.add(papiBox);
+    }
+
+    scene.add(runwayGroup);
+  }
+
+  // ----------------------------------------------------------------------------
+  // 8. 3D PARTICLE SYSTEMS: WATER SALVO & AGRO SPRAY MIST
+  // ----------------------------------------------------------------------------
+  function buildParticleSystems() {
+    // 1. Water Cascade Drop (Space / Fire Bombing)
+    const waterCount = 350;
+    const waterGeo = new THREE.BufferGeometry();
+    const waterPos = new Float32Array(waterCount * 3);
+    const waterVels = new Float32Array(waterCount * 3);
+
+    for (let i = 0; i < waterCount; i++) {
+      waterPos[i * 3 + 0] = 0;
+      waterPos[i * 3 + 1] = -9999;
+      waterPos[i * 3 + 2] = 0;
+      waterVels[i * 3 + 0] = (Math.random() - 0.5) * 4;
+      waterVels[i * 3 + 1] = -15 - Math.random() * 25;
+      waterVels[i * 3 + 2] = (Math.random() - 0.5) * 4;
+    }
+
+    waterGeo.setAttribute('position', new THREE.BufferAttribute(waterPos, 3));
+    const waterMat = new THREE.PointsMaterial({
+      color: 0x38bdf8,
+      size: 4.5,
+      transparent: true,
+      opacity: 0.85,
+      blending: THREE.NormalBlending
+    });
+    waterParticleSystem = new THREE.Points(waterGeo, waterMat);
+    waterParticleSystem.userData = { vels: waterVels, count: waterCount };
+    scene.add(waterParticleSystem);
+
+    // 2. Agro Spray Mist (X / ULV Crop Protection)
+    const sprayCount = 400;
+    const sprayGeo = new THREE.BufferGeometry();
+    const sprayPos = new Float32Array(sprayCount * 3);
+    const sprayVels = new Float32Array(sprayCount * 3);
+
+    for (let i = 0; i < sprayCount; i++) {
+      sprayPos[i * 3 + 0] = 0;
+      sprayPos[i * 3 + 1] = -9999;
+      sprayPos[i * 3 + 2] = 0;
+      sprayVels[i * 3 + 0] = (Math.random() - 0.5) * 3;
+      sprayVels[i * 3 + 1] = -4 - Math.random() * 6;
+      sprayVels[i * 3 + 2] = -25 - Math.random() * 15;
+    }
+
+    sprayGeo.setAttribute('position', new THREE.BufferAttribute(sprayPos, 3));
+    const sprayMat = new THREE.PointsMaterial({
+      color: 0x4ade80,
+      size: 3.5,
+      transparent: true,
+      opacity: 0.75,
+      blending: THREE.AdditiveBlending
+    });
+    sprayParticleSystem = new THREE.Points(sprayGeo, sprayMat);
+    sprayParticleSystem.userData = { vels: sprayVels, count: sprayCount };
+    scene.add(sprayParticleSystem);
+  }
+
+  function updateParticles(dt) {
+    // 1. Water Salvo Update
+    if (waterParticleSystem) {
+      const posAttr = waterParticleSystem.geometry.attributes.position;
+      const vels = waterParticleSystem.userData.vels;
+      const count = waterParticleSystem.userData.count;
+
+      for (let i = 0; i < count; i++) {
+        const idx = i * 3;
+        if (flight.waterDropping && Math.random() < 0.25) {
+          // Spawn new drops under belly
+          posAttr.array[idx + 0] = flight.pos.x + (Math.random() - 0.5) * 1.2;
+          posAttr.array[idx + 1] = flight.pos.y - 0.6;
+          posAttr.array[idx + 2] = flight.pos.z + (Math.random() - 0.5) * 2.0;
+        } else if (posAttr.array[idx + 1] > 0) {
+          posAttr.array[idx + 0] += vels[idx + 0] * dt;
+          posAttr.array[idx + 1] += vels[idx + 1] * dt;
+          posAttr.array[idx + 2] += vels[idx + 2] * dt;
+        } else {
+          posAttr.array[idx + 1] = -9999;
+        }
+      }
+      posAttr.needsUpdate = true;
+
+      if (flight.waterDropping) {
+        flight.fluidRemaining = Math.max(0, flight.fluidRemaining - 140 * dt);
+        if (flight.fluidRemaining <= 0) flight.waterDropping = false;
+      }
+    }
+
+    // 2. Agro Spray Mist Update
+    if (sprayParticleSystem) {
+      const posAttr = sprayParticleSystem.geometry.attributes.position;
+      const vels = sprayParticleSystem.userData.vels;
+      const count = sprayParticleSystem.userData.count;
+      const nozzleOffsets = [-4.5, -2.8, -1.2, 1.2, 2.8, 4.5];
+
+      for (let i = 0; i < count; i++) {
+        const idx = i * 3;
+        if (flight.agroSpraying && Math.random() < 0.3) {
+          const nX = nozzleOffsets[Math.floor(Math.random() * nozzleOffsets.length)];
+          const spawnPos = new THREE.Vector3(nX, 0.4, -0.6).applyQuaternion(flight.quat).add(flight.pos);
+          posAttr.array[idx + 0] = spawnPos.x;
+          posAttr.array[idx + 1] = spawnPos.y;
+          posAttr.array[idx + 2] = spawnPos.z;
+        } else if (posAttr.array[idx + 1] > 0) {
+          posAttr.array[idx + 0] += vels[idx + 0] * dt;
+          posAttr.array[idx + 1] += vels[idx + 1] * dt;
+          posAttr.array[idx + 2] += vels[idx + 2] * dt;
+        } else {
+          posAttr.array[idx + 1] = -9999;
+        }
+      }
+      posAttr.needsUpdate = true;
+
+      if (flight.agroSpraying) {
+        flight.fluidRemaining = Math.max(0, flight.fluidRemaining - 25 * dt);
+        if (flight.fluidRemaining <= 0) flight.agroSpraying = false;
+      }
+    }
+  }
+
+  // ----------------------------------------------------------------------------
+  // 9. DYNAMIC SLIPPY MAP TILE STREAMING (GOOGLE SATELLITE TILES)
+  // ----------------------------------------------------------------------------
+  function updateSatelliteTiles() {
+    // Current plane lat/lon
+    const deltaZ = flight.pos.z;
+    const deltaX = flight.pos.x;
+    const currentLat = currentOriginLat - (deltaZ / 111132);
+    const currentLon = currentOriginLon + (deltaX / (111132 * Math.cos(currentOriginLat * Math.PI / 180)));
+
+    const txCenter = lonToTileX(currentLon, TILE_ZOOM);
+    const tyCenter = latToTileY(currentLat, TILE_ZOOM);
+
+    if (txCenter === currentTileCenter.tx && tyCenter === currentTileCenter.ty) {
+      return; // Already up to date
+    }
+
+    currentTileCenter.tx = txCenter;
+    currentTileCenter.ty = tyCenter;
+
+    const tileMeters = getTileMeters(currentLat, TILE_ZOOM);
+    const gridRadius = 3; // 7x7 grid = 49 tiles surrounding aircraft
+    const activeKeys = new Set();
+
+    for (let dx = -gridRadius; dx <= gridRadius; dx++) {
+      for (let dy = -gridRadius; dy <= gridRadius; dy++) {
+        const tx = txCenter + dx;
+        const ty = tyCenter + dy;
+        const tileKey = `${SIM.mapProvider}_${TILE_ZOOM}_${tx}_${ty}`;
+        activeKeys.add(tileKey);
+
+        if (!mapTiles.has(tileKey)) {
+          // Calculate tile world position in local meters
+          const tileLon = tileXToLon(tx, TILE_ZOOM);
+          const tileLat = tileYToLat(ty, TILE_ZOOM);
+
+          const worldX = (tileLon - currentOriginLon) * (111132 * Math.cos(currentOriginLat * Math.PI / 180));
+          const worldZ = (currentOriginLat - tileLat) * 111132;
+
+          const tileGeo = new THREE.PlaneGeometry(tileMeters, tileMeters);
+          tileGeo.rotateX(-Math.PI / 2);
+
+          // Procedural fallback texture initially so no black screen
+          const fallbackTex = createProceduralTileTexture(tx, ty);
+          const tileMat = new THREE.MeshStandardMaterial({
+            map: fallbackTex,
+            roughness: 0.9,
+            metalness: 0.05
+          });
+
+          const tileMesh = new THREE.Mesh(tileGeo, tileMat);
+          tileMesh.position.set(worldX + tileMeters / 2, 0, worldZ + tileMeters / 2);
+          tileMesh.receiveShadow = true;
+          scene.add(tileMesh);
+
+          // Load Real Satellite Tile
+          const tileUrl = getTileUrl(tx, ty, TILE_ZOOM, SIM.mapProvider);
+          textureLoader.load(
+            tileUrl,
+            (loadedTex) => {
+              loadedTex.wrapS = THREE.ClampToEdgeWrapping;
+              loadedTex.wrapT = THREE.ClampToEdgeWrapping;
+              tileMesh.material.map = loadedTex;
+              tileMesh.material.needsUpdate = true;
+            },
+            undefined,
+            () => {
+              // On error: load Esri backup
+              const backupUrl = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${TILE_ZOOM}/${ty}/${tx}`;
+              textureLoader.load(backupUrl, (esriTex) => {
+                tileMesh.material.map = esriTex;
+                tileMesh.material.needsUpdate = true;
+              });
+            }
+          );
+
+          mapTiles.set(tileKey, tileMesh);
+        }
+      }
+    }
+
+    // Dispose tiles that have drifted out of range
+    for (const [key, mesh] of mapTiles.entries()) {
+      if (!activeKeys.has(key)) {
+        scene.remove(mesh);
+        if (mesh.geometry) mesh.geometry.dispose();
+        if (mesh.material) {
+          if (mesh.material.map) mesh.material.map.dispose();
+          mesh.material.dispose();
+        }
+        mapTiles.delete(key);
+      }
+    }
+  }
+
+  function clearAllTiles() {
+    for (const [, mesh] of mapTiles.entries()) {
+      scene.remove(mesh);
+      if (mesh.geometry) mesh.geometry.dispose();
+      if (mesh.material) {
+        if (mesh.material.map) mesh.material.map.dispose();
+        mesh.material.dispose();
+      }
+    }
+    mapTiles.clear();
+    currentTileCenter.tx = -1;
+    currentTileCenter.ty = -1;
+  }
+
+  // ----------------------------------------------------------------------------
+  // 10. 6-DOF AERODYNAMIC FLIGHT PHYSICS ENGINE
+  // ----------------------------------------------------------------------------
+  function updatePhysics(dt) {
+    const cfg = PLANE_CONFIGS[SIM.planeModel] || PLANE_CONFIGS.full;
+
+    // 1. Throttle & Propeller dynamics
+    let effectiveThrottle = flight.throttle;
+    if (SIM.boostActive) {
+      effectiveThrottle = Math.min(1.0, flight.throttle + 0.35);
+      SIM.boostTimer -= dt;
+      if (SIM.boostTimer <= 0) SIM.boostActive = false;
+    }
+
+    // Prop RPM tracks throttle
+    const targetRPM = 600 + effectiveThrottle * 2400;
+    flight.propRpm += (targetRPM - flight.propRpm) * 4 * dt;
+    flight.propAngle += (flight.propRpm * (Math.PI * 2) / 60) * dt;
+
+    // Spin 4 propellers
+    propMeshes.forEach((p) => {
+      p.rotation.z = flight.propAngle;
+    });
+
+    // 2. Mechanization Animations
+    // Flaps rotation
+    const targetFlapRad = (flight.flapsStage * 17.5 * Math.PI) / 180;
+    flight.flapsAngle += (targetFlapRad - flight.flapsAngle) * 6 * dt;
+    flapMeshes.forEach((f) => {
+      f.rotation.x = -flight.flapsAngle;
+    });
+
+    // Spoilers deployment
+    const targetSpoiler = flight.spoilersActive ? 0.78 : 0.0;
+    flight.spoilersPos += (targetSpoiler - flight.spoilersPos) * 8 * dt;
+    spoilerMeshes.forEach((s) => {
+      s.rotation.x = flight.spoilersPos;
+    });
+
+    // Landing Gear extend/retract
+    flight.gearPos += (flight.gearTarget - flight.gearPos) * 2 * dt;
+    gearMeshes.forEach((g) => {
+      g.pivot.rotation.x = g.retractRotX * (1.0 - flight.gearPos);
+    });
+
+    // 3. Autopilot logic
+    if (SIM.apMode.level) {
+      // Auto-level pitch and roll
+      flight.pitchInput += (0.02 - flight.rot.x) * 2.5 * dt;
+      flight.rollInput += (0.0 - flight.rot.z) * 3.5 * dt;
+    }
+    if (SIM.apMode.alt) {
+      // Pitch towards target altitude
+      const altErr = SIM.apMode.targetAlt - flight.pos.y;
+      const desiredPitch = Math.max(-0.25, Math.min(0.25, altErr * 0.005));
+      flight.pitchInput += (desiredPitch - flight.rot.x) * 2.5 * dt;
+    }
+    if (SIM.apMode.hdg) {
+      // Steer heading
+      const curHdg = ((-flight.rot.y * 180 / Math.PI) % 360 + 360) % 360;
+      let hdgDiff = SIM.apMode.targetHdg - curHdg;
+      if (hdgDiff > 180) hdgDiff -= 360;
+      if (hdgDiff < -180) hdgDiff += 360;
+      flight.rollInput += Math.max(-0.6, Math.min(0.6, hdgDiff * 0.02)) * dt;
+    }
+
+    // 4. Pilot Angular Accelerations
+    const sens = SIM.sensitivity;
+    const pitchRate = flight.pitchInput * cfg.pitchAuth * sens;
+    const rollRate = -flight.rollInput * cfg.rollAuth * sens;
+    const yawRate = -flight.yawInput * cfg.yawAuth * sens;
+
+    // Apply Euler rotations
+    flight.rot.x += pitchRate * dt;
+    flight.rot.y += yawRate * dt;
+    flight.rot.z += rollRate * dt;
+
+    // Natural stability & damping
+    flight.rot.x *= (1.0 - 0.4 * dt);
+    if (!SIM.apMode.level && Math.abs(flight.rollInput) < 0.05) {
+      flight.rot.z *= (1.0 - 0.6 * dt); // Soft wing-leveling
+    }
+
+    flight.quat.setFromEuler(flight.rot);
+
+    // 5. Speed & Aerodynamic Forces
+    // Forward direction vector
+    const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(flight.quat);
+
+    // Thrust
+    const thrustN = effectiveThrottle * cfg.thrustMax;
+    const thrustAcc = thrustN / cfg.mass;
+
+    // Blown-Wing STOL Lift: DEP propwash keeps lift high even at low forward speeds!
+    const propWashVel = effectiveThrottle * 28.0;
+    const effectiveAirspeed = flight.tas + propWashVel * 0.55;
+
+    // Lift coefficient: Base + Flap increments
+    const baseCL = 0.55 + flight.flapsStage * 0.45;
+    const liftForceN = 0.5 * 1.225 * Math.pow(effectiveAirspeed, 2) * cfg.wingArea * baseCL;
+    const liftAcc = liftForceN / cfg.mass;
+
+    // Drag: Parasite + Gear + Flaps + Spoilers
+    const cdGear = (1.0 - flight.gearPos) * 0.01 + flight.gearPos * 0.035;
+    const cdFlaps = flight.flapsStage * 0.025;
+    const cdSpoilers = flight.spoilersPos * 0.06;
+    const totalCD = 0.026 + cdGear + cdFlaps + cdSpoilers;
+    const dragForceN = 0.5 * 1.225 * Math.pow(flight.tas, 2) * cfg.wingArea * totalCD;
+    const dragAcc = dragForceN / cfg.mass;
+
+    // Acceleration vector
+    const acc = new THREE.Vector3();
+    acc.addScaledVector(fwd, thrustAcc - dragAcc);
+    acc.y += liftAcc - 9.80665; // Lift vs Gravity
+
+    // Integrate velocity
+    flight.vel.addScaledVector(acc, dt);
+
+    // Speed limits & ground interaction
+    flight.tas = flight.vel.length();
+    flight.ias = flight.tas * 3.6; // km/h
+    flight.kts = flight.tas * 1.94384;
+    flight.vsi = flight.vel.y;
+
+    // Move aircraft in world space
+    flight.pos.addScaledVector(flight.vel, dt);
+
+    // Ground collision / Roll physics on runway
+    const groundLevel = 1.25;
+    if (flight.pos.y <= groundLevel) {
+      flight.pos.y = groundLevel;
+      flight.vel.y = Math.max(0, flight.vel.y);
+      flight.rot.x = Math.max(-0.02, flight.rot.x);
+      flight.rot.z = 0; // Level on wheels
+      flight.altAGL = 0;
+    } else {
+      flight.altAGL = flight.pos.y;
+    }
+    flight.altMSL = flight.pos.y;
+
+    // Angle of Attack (AoA)
+    flight.aoa = (flight.rot.x * 180 / Math.PI) - (Math.atan2(flight.vel.y, Math.max(1, flight.tas)) * 180 / Math.PI);
+    flight.gLoad = 1.0 + (acc.y / 9.80665);
+
+    // Stall Warning (AoA > 15° with low speed)
+    const stallBanner = document.getElementById('sim-stall-warning');
+    if (stallBanner) {
+      stallBanner.style.display = (flight.aoa > 15.0 && flight.ias < 70) ? 'flex' : 'none';
+    }
+
+    // Update 3D plane mesh transform
+    planeGroup.position.copy(flight.pos);
+    planeGroup.quaternion.copy(flight.quat);
+
+    // Hydrogen consumption
+    flight.h2MassRemaining = Math.max(0, flight.h2MassRemaining - (effectiveThrottle * 0.0008 * dt));
+
+    // Update Aerodynamic Vector Helpers
+    if (flight.showAeroVectors && aeroVectorGroup) {
+      const lArrow = aeroVectorGroup.getObjectByName('liftArrow');
+      const tArrow = aeroVectorGroup.getObjectByName('thrustArrow');
+      const dArrow = aeroVectorGroup.getObjectByName('dragArrow');
+      if (lArrow) lArrow.setLength(Math.min(6, Math.max(0.5, liftAcc * 0.4)));
+      if (tArrow) tArrow.setLength(Math.min(6, Math.max(0.5, thrustAcc * 0.4)));
+      if (dArrow) dArrow.setLength(Math.min(6, Math.max(0.5, dragAcc * 0.4)));
+    }
+  }
+
+  // ----------------------------------------------------------------------------
+  // 11. CAMERA FOLLOW & MULTI-VIEW MODES
+  // ----------------------------------------------------------------------------
+  function updateCamera() {
+    if (!camera || !planeGroup) return;
+
+    if (SIM.cameraMode === 'chase') {
+      // Smooth third-person chase camera behind the aircraft
+      const offset = new THREE.Vector3(0, 3.2, -12.5).applyQuaternion(flight.quat);
+      const targetCamPos = flight.pos.clone().add(offset);
+      camera.position.lerp(targetCamPos, 0.12);
+
+      const lookTarget = flight.pos.clone().add(new THREE.Vector3(0, 0.8, 8.0).applyQuaternion(flight.quat));
+      camera.lookAt(lookTarget);
+
+    } else if (SIM.cameraMode === 'cockpit') {
+      // Inside pilot seat looking forward
+      const cockpitOffset = new THREE.Vector3(0, 0.45, 1.2).applyQuaternion(flight.quat);
+      camera.position.copy(flight.pos).add(cockpitOffset);
+
+      const forwardTarget = flight.pos.clone().add(new THREE.Vector3(0, 0.45, 50.0).applyQuaternion(flight.quat));
+      camera.lookAt(forwardTarget);
+
+    } else if (SIM.cameraMode === 'satellite') {
+      // Top-down satellite view looking directly at the terrain & plane
+      camera.position.set(flight.pos.x, flight.pos.y + 1200, flight.pos.z - 200);
+      camera.lookAt(flight.pos.x, flight.pos.y, flight.pos.z);
+
+    } else if (SIM.cameraMode === 'orbit') {
+      // Mouse draggable orbit camera around aircraft
+      const dist = 14.0;
+      const ox = dist * Math.sin(orbitYaw) * Math.cos(orbitPitch);
+      const oy = dist * Math.sin(orbitPitch);
+      const oz = dist * Math.cos(orbitYaw) * Math.cos(orbitPitch);
+      camera.position.set(flight.pos.x + ox, flight.pos.y + oy, flight.pos.z + oz);
+      camera.lookAt(flight.pos);
+    }
+  }
+
+  // ----------------------------------------------------------------------------
+  // 12. CIRCULAR GPS RADAR & INSTRUMENTS UPDATE
+  // ----------------------------------------------------------------------------
+  function initRadar() {
+    radarCanvas = document.getElementById('sim-gps-radar');
+    if (!radarCanvas) return;
+    radarCtx = radarCanvas.getContext('2d');
+  }
+
+  function updateRadar() {
+    if (!radarCtx || !radarCanvas) return;
+    const ctx = radarCtx;
+    const w = radarCanvas.width;
+    const h = radarCanvas.height;
+    const cx = w / 2;
+    const cy = h / 2;
+    const r = w / 2 - 4;
+
+    ctx.clearRect(0, 0, w, h);
+
+    // Circular background
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fillStyle = '#060d1f';
+    ctx.fill();
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = 'rgba(0, 229, 255, 0.5)';
+    ctx.stroke();
+
+    // Range rings (2 km, 5 km, 10 km)
+    ctx.strokeStyle = 'rgba(0, 229, 255, 0.2)';
+    ctx.lineWidth = 1;
+    [r * 0.33, r * 0.66, r * 0.95].forEach((ringR) => {
+      ctx.beginPath();
+      ctx.arc(cx, cy, ringR, 0, Math.PI * 2);
+      ctx.stroke();
+    });
+
+    // Crosshairs
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - r);
+    ctx.lineTo(cx, cy + r);
+    ctx.moveTo(cx - r, cy);
+    ctx.lineTo(cx + r, cy);
+    ctx.stroke();
+
+    // Compass Heading
+    const hdgDeg = ((-flight.rot.y * 180 / Math.PI) % 360 + 360) % 360;
+
+    // Draw rotating compass rose markings
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(flight.rot.y); // Rotate opposite to heading
+
+    ctx.font = 'bold 9px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    ctx.fillStyle = '#00ff9d';
+    ctx.fillText('N', 0, -r + 12);
+    ctx.fillStyle = '#8b9bb4';
+    ctx.fillText('E', r - 12, 0);
+    ctx.fillText('S', 0, r - 12);
+    ctx.fillText('W', -r + 12, 0);
+
+    // Target waypoint (Runway at 0, 0)
+    const relX = -flight.pos.x * (r / 5000);
+    const relZ = flight.pos.z * (r / 5000);
+    if (Math.hypot(relX, relZ) < r - 8) {
+      ctx.fillStyle = '#ffea00';
+      ctx.beginPath();
+      ctx.arc(relX, relZ, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.restore();
+
+    // Center Airplane Icon (always points UP)
+    ctx.fillStyle = '#00ff9d';
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 8);
+    ctx.lineTo(cx - 6, cy + 6);
+    ctx.lineTo(cx, cy + 3);
+    ctx.lineTo(cx + 6, cy + 6);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function updateHUDInstruments() {
+    // 1. Altitude
+    const altEl = document.getElementById('sim-alt-m');
+    const altFtEl = document.getElementById('sim-alt-ft');
+    const vsiEl = document.getElementById('sim-vsi-val');
+    if (altEl) altEl.textContent = `${Math.round(flight.altMSL)} м`;
+    if (altFtEl) altFtEl.textContent = `${Math.round(flight.altMSL * 3.28084)} ft`;
+    if (vsiEl) {
+      const vsiSign = flight.vsi >= 0 ? '+' : '';
+      vsiEl.textContent = `VSI: ${vsiSign}${flight.vsi.toFixed(1)} м/с`;
+    }
+
+    // 2. Speed
+    const spdKmhEl = document.getElementById('sim-spd-kmh');
+    const spdKtsEl = document.getElementById('sim-spd-kts');
+    const modeBadge = document.getElementById('sim-mode-badge');
+    if (spdKmhEl) spdKmhEl.textContent = `${Math.round(flight.ias)} км/ч`;
+    if (spdKtsEl) spdKtsEl.textContent = `${Math.round(flight.kts)} kts`;
+    if (modeBadge) {
+      if (flight.ias < 60) modeBadge.textContent = 'STOL APPROACH';
+      else if (flight.vsi > 4) modeBadge.textContent = 'STOL CLIMB';
+      else modeBadge.textContent = 'STOL CRUISE';
+    }
+
+    // 3. AoA and Roll
+    const aoaEl = document.getElementById('sim-aoa-deg');
+    const rollEl = document.getElementById('sim-roll-deg');
+    const gLoadEl = document.getElementById('sim-gload-val');
+    if (aoaEl) {
+      const aoaSign = flight.aoa >= 0 ? '+' : '';
+      aoaEl.textContent = `${aoaSign}${flight.aoa.toFixed(1)}°`;
+    }
+    if (rollEl) {
+      const rollDeg = (flight.rot.z * 180 / Math.PI);
+      if (Math.abs(rollDeg) < 1.0) rollEl.textContent = '0.0° КУРС';
+      else if (rollDeg > 0) rollEl.textContent = `${rollDeg.toFixed(1)}° ВЛЕВО`;
+      else rollEl.textContent = `${Math.abs(rollDeg).toFixed(1)}° ВПРАВО`;
+    }
+    if (gLoadEl) gLoadEl.textContent = `G: ${flight.gLoad.toFixed(2)}`;
+
+    // 4. Throttle
+    const thrValEl = document.getElementById('sim-throttle-val');
+    const thrSlider = document.getElementById('sim-slider-throttle');
+    const thrPct = Math.round(flight.throttle * 100);
+    if (thrValEl) thrValEl.textContent = `${thrPct}%`;
+    if (thrSlider && document.activeElement !== thrSlider) thrSlider.value = thrPct;
+
+    // 5. Tanks
+    const h2Fill = document.getElementById('sim-h2-fill');
+    const h2Val = document.getElementById('sim-h2-val');
+    const fluidFill = document.getElementById('sim-fluid-fill');
+    const fluidVal = document.getElementById('sim-fluid-val');
+
+    const cfg = PLANE_CONFIGS[SIM.planeModel] || PLANE_CONFIGS.full;
+    const h2Pct = Math.max(0, Math.min(100, (flight.h2MassRemaining / cfg.h2Capacity) * 100));
+    const fluidPct = Math.max(0, Math.min(100, (flight.fluidRemaining / cfg.fluidCapacity) * 100));
+
+    if (h2Fill) h2Fill.style.width = `${h2Pct}%`;
+    if (h2Val) h2Val.textContent = `${flight.h2MassRemaining.toFixed(1)} кг (${Math.round(h2Pct)}%)`;
+    if (fluidFill) fluidFill.style.width = `${fluidPct}%`;
+    if (fluidVal) fluidVal.textContent = `${Math.round(flight.fluidRemaining)} л (${Math.round(fluidPct)}%)`;
+
+    // 6. Right Radar Metrics
+    const radarHdg = document.getElementById('sim-radar-hdg');
+    const radarSpd = document.getElementById('sim-radar-spd');
+    const radarCoords = document.getElementById('sim-radar-coords');
+    const radarAgl = document.getElementById('sim-radar-agl');
+
+    const hdgDeg = Math.round(((-flight.rot.y * 180 / Math.PI) % 360 + 360) % 360);
+    if (radarHdg) radarHdg.textContent = `${String(hdgDeg).padStart(3, '0')}°`;
+    if (radarSpd) radarSpd.textContent = `${Math.round(flight.ias)} км/ч`;
+    if (radarAgl) radarAgl.textContent = `${Math.round(flight.altAGL)} м`;
+
+    if (radarCoords) {
+      const deltaZ = flight.pos.z;
+      const deltaX = flight.pos.x;
+      const curLat = currentOriginLat - (deltaZ / 111132);
+      const curLon = currentOriginLon + (deltaX / (111132 * Math.cos(currentOriginLat * Math.PI / 180)));
+      const latHem = curLat >= 0 ? 'N' : 'S';
+      const lonHem = curLon >= 0 ? 'E' : 'W';
+      radarCoords.textContent = `${Math.abs(curLat).toFixed(4)}°${latHem} ${Math.abs(curLon).toFixed(4)}°${lonHem}`;
+    }
+
+    // 7. FPV Reticle & Pitch Ladder
+    const fpvWrap = document.getElementById('sim-fpv-marker');
+    if (fpvWrap) {
+      const pitchPx = THREE.MathUtils.clamp(-flight.rot.x * 250, -120, 120);
+      const rollDeg = -flight.rot.z * 180 / Math.PI;
+      fpvWrap.style.transform = `translate(-50%, calc(-50% + ${pitchPx}px)) rotate(${rollDeg}deg)`;
+    }
+  }
+
+  // ----------------------------------------------------------------------------
+  // 13. PROCEDURAL WEB AUDIO API FLIGHT SOUND
+  // ----------------------------------------------------------------------------
   function initAudioEngine() {
-    if (audioCtx) return;
+    if (SIM.soundStarted) return;
     try {
       const AudioContext = window.AudioContext || window.webkitAudioContext;
       audioCtx = new AudioContext();
 
-      // --- Motors Sound Synth ---
-      motorOsc1 = audioCtx.createOscillator();
-      motorOsc2 = audioCtx.createOscillator();
-      motorOsc1.type = 'sawtooth';
-      motorOsc2.type = 'triangle';
-      motorOsc1.frequency.setValueAtTime(60, audioCtx.currentTime);
-      motorOsc2.frequency.setValueAtTime(120, audioCtx.currentTime);
-
-      motorFilter = audioCtx.createBiquadFilter();
-      motorFilter.type = 'lowpass';
-      motorFilter.frequency.setValueAtTime(450, audioCtx.currentTime);
-
+      // Master Motor Gain
       motorGain = audioCtx.createGain();
-      motorGain.gain.setValueAtTime(0.0, audioCtx.currentTime);
-
-      motorOsc1.connect(motorFilter);
-      motorOsc2.connect(motorFilter);
-      motorFilter.connect(motorGain);
+      motorGain.gain.setValueAtTime(0.12, audioCtx.currentTime);
       motorGain.connect(audioCtx.destination);
 
+      // 4x DEP Brushless Harmonic Drone
+      motorOsc1 = audioCtx.createOscillator();
+      motorOsc1.type = 'sawtooth';
+      motorOsc1.frequency.setValueAtTime(110, audioCtx.currentTime);
+      motorOsc1.connect(motorGain);
       motorOsc1.start();
+
+      motorOsc2 = audioCtx.createOscillator();
+      motorOsc2.type = 'triangle';
+      motorOsc2.frequency.setValueAtTime(220, audioCtx.currentTime);
+      motorOsc2.connect(motorGain);
       motorOsc2.start();
 
-      // --- Wind Noise Synth (White Noise Buffer) ---
+      // Wind Rush Noise
       const bufferSize = audioCtx.sampleRate * 2;
       const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
       const output = noiseBuffer.getChannelData(0);
@@ -240,3334 +1376,559 @@
         output[i] = Math.random() * 2 - 1;
       }
 
-      windNoiseNode = audioCtx.createBufferSource();
-      windNoiseNode.buffer = noiseBuffer;
-      windNoiseNode.loop = true;
+      const whiteNoise = audioCtx.createBufferSource();
+      whiteNoise.buffer = noiseBuffer;
+      whiteNoise.loop = true;
 
-      windFilter = audioCtx.createBiquadFilter();
-      windFilter.type = 'bandpass';
-      windFilter.frequency.setValueAtTime(350, audioCtx.currentTime);
-      windFilter.Q.setValueAtTime(1.5, audioCtx.currentTime);
+      const bandpass = audioCtx.createBiquadFilter();
+      bandpass.type = 'bandpass';
+      bandpass.frequency.value = 450;
 
       windGain = audioCtx.createGain();
-      windGain.gain.setValueAtTime(0.0, audioCtx.currentTime);
+      windGain.gain.setValueAtTime(0.04, audioCtx.currentTime);
 
-      windNoiseNode.connect(windFilter);
-      windFilter.connect(windGain);
+      whiteNoise.connect(bandpass);
+      bandpass.connect(windGain);
       windGain.connect(audioCtx.destination);
-      windNoiseNode.start();
+      whiteNoise.start();
 
-      // --- Spray Hiss Synth ---
-      sprayNoiseNode = audioCtx.createBufferSource();
-      sprayNoiseNode.buffer = noiseBuffer;
-      sprayNoiseNode.loop = true;
-
-      const sprayFilter = audioCtx.createBiquadFilter();
-      sprayFilter.type = 'highpass';
-      sprayFilter.frequency.setValueAtTime(2200, audioCtx.currentTime);
-
-      sprayGain = audioCtx.createGain();
-      sprayGain.gain.setValueAtTime(0.0, audioCtx.currentTime);
-
-      sprayNoiseNode.connect(sprayFilter);
-      sprayFilter.connect(sprayGain);
-      sprayGain.connect(audioCtx.destination);
-      sprayNoiseNode.start();
-
-      // --- Stall Siren Synth ---
-      stallOsc = audioCtx.createOscillator();
-      stallOsc.type = 'sawtooth';
-      stallOsc.frequency.setValueAtTime(880, audioCtx.currentTime);
-
-      stallGain = audioCtx.createGain();
-      stallGain.gain.setValueAtTime(0.0, audioCtx.currentTime);
-
-      stallOsc.connect(stallGain);
-      stallGain.connect(audioCtx.destination);
-      stallOsc.start();
-
-      soundStarted = true;
+      SIM.soundStarted = true;
+      SIM.audioEnabled = true;
+      updateSoundButtonUI();
     } catch (e) {
-      console.warn('Web Audio API not supported or blocked:', e);
+      console.warn('AudioContext failed:', e);
     }
   }
 
-  function updateAudio(dt) {
-    if (!audioCtx || !soundStarted || !SIM.audioEnabled) {
+  function updateAudio() {
+    if (!SIM.soundStarted || !audioCtx) return;
+    if (audioCtx.state === 'suspended' && SIM.audioEnabled) {
+      audioCtx.resume();
+    }
+
+    if (!SIM.audioEnabled) {
       if (motorGain) motorGain.gain.setValueAtTime(0, audioCtx.currentTime);
       if (windGain) windGain.gain.setValueAtTime(0, audioCtx.currentTime);
-      if (sprayGain) sprayGain.gain.setValueAtTime(0, audioCtx.currentTime);
-      if (stallGain) stallGain.gain.setValueAtTime(0, audioCtx.currentTime);
       return;
     }
 
-    const t = audioCtx.currentTime;
-    const rpm = flight.motorRPM;
-    
-    // Motor pitch & volume
-    const baseFreq = 45 + (rpm / 3800) * 220;
-    motorOsc1.frequency.setTargetAtTime(baseFreq, t, 0.05);
-    motorOsc2.frequency.setTargetAtTime(baseFreq * 2, t, 0.05);
-    motorFilter.frequency.setTargetAtTime(300 + (rpm / 3800) * 1200, t, 0.05);
-    
-    const targetMotorVol = (0.05 + flight.throttle * 0.35) * (rpm > 100 ? 1 : 0);
-    motorGain.gain.setTargetAtTime(targetMotorVol, t, 0.08);
+    // Motor sound frequency tracks RPM
+    const freq1 = 70 + (flight.propRpm / 3000) * 160;
+    const freq2 = freq1 * 2;
+    if (motorOsc1) motorOsc1.frequency.setTargetAtTime(freq1, audioCtx.currentTime, 0.05);
+    if (motorOsc2) motorOsc2.frequency.setTargetAtTime(freq2, audioCtx.currentTime, 0.05);
+    if (motorGain) {
+      const vol = 0.05 + flight.throttle * 0.18 + (SIM.boostActive ? 0.1 : 0);
+      motorGain.gain.setTargetAtTime(vol, audioCtx.currentTime, 0.05);
+    }
 
-    // Wind slipstream noise
-    const speedRatio = Math.min(1.0, flight.airspeedTAS / 60.0);
-    windFilter.frequency.setTargetAtTime(200 + speedRatio * 800, t, 0.1);
-    windGain.gain.setTargetAtTime(speedRatio * 0.28, t, 0.1);
+    // Wind volume tracks airspeed
+    if (windGain) {
+      const windVol = Math.min(0.2, (flight.tas / 80) * 0.15);
+      windGain.gain.setTargetAtTime(windVol, audioCtx.currentTime, 0.1);
+    }
+  }
 
-    // Spray Hiss
-    sprayGain.gain.setTargetAtTime(flight.sprayActive ? 0.22 : 0.0, t, 0.05);
-
-    // Stall Warning Siren (pulsing beep)
-    if (flight.stalling && !flight.onGround) {
-      const pulse = Math.sin(t * 16) > 0 ? 0.25 : 0.0;
-      stallGain.gain.setTargetAtTime(pulse, t, 0.02);
+  function toggleSound() {
+    if (!SIM.soundStarted) {
+      initAudioEngine();
     } else {
-      stallGain.gain.setTargetAtTime(0.0, t, 0.04);
+      SIM.audioEnabled = !SIM.audioEnabled;
+      updateSoundButtonUI();
     }
   }
 
-  function playTouchdownSound() {
-    if (!audioCtx || !SIM.audioEnabled) return;
-    try {
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(140, audioCtx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(35, audioCtx.currentTime + 0.18);
-      gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.22);
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.start();
-      osc.stop(audioCtx.currentTime + 0.25);
-    } catch (e) {}
-  }
-
-  function playSalvoSound() {
-    if (!audioCtx || !SIM.audioEnabled) return;
-    try {
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(90, audioCtx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 0.4);
-      gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.45);
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.start();
-      osc.stop(audioCtx.currentTime + 0.5);
-    } catch (e) {}
-  }
-
-  function playFanfareSound() {
-    if (!audioCtx || !SIM.audioEnabled) return;
-    try {
-      const notes = [523.25, 659.25, 783.99, 1046.50]; // C - E - G - High C
-      notes.forEach((freq, idx) => {
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(freq, audioCtx.currentTime + idx * 0.12);
-        gain.gain.setValueAtTime(0, audioCtx.currentTime);
-        gain.gain.setValueAtTime(0.3, audioCtx.currentTime + idx * 0.12);
-        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + idx * 0.12 + 0.6);
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start(audioCtx.currentTime + idx * 0.12);
-        osc.stop(audioCtx.currentTime + idx * 0.12 + 0.65);
-      });
-    } catch (e) {}
-  }
-
-  // ----------------------------------------------------------------------------
-  // 5. PROCEDURAL 3D WORLD BUILDER (10×10 KM)
-  // ----------------------------------------------------------------------------
-  function init3DWorld() {
-    simCanvas = document.getElementById('simulator-canvas');
-    if (!simCanvas) return;
-
-    // Renderer
-    renderer = new THREE.WebGLRenderer({
-      canvas: simCanvas,
-      antialias: true,
-      powerPreference: 'high-performance'
-    });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.setSize(simCanvas.clientWidth, simCanvas.clientHeight);
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.05;
-
-    // Scene & Fog
-    scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x8bc34a);
-    scene.fog = new THREE.FogExp2(0x90caf9, 0.00018);
-
-    // Camera
-    camera = new THREE.PerspectiveCamera(
-      55,
-      simCanvas.clientWidth / simCanvas.clientHeight,
-      0.1,
-      14000
-    );
-    camera.position.set(0, 3, -12);
-
-    // Dynamic Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.45);
-    ambientLight.name = 'ambientLight';
-    scene.add(ambientLight);
-
-    const hemiLight = new THREE.HemisphereLight(0xdbeafe, 0x1e3a1e, 0.55);
-    hemiLight.name = 'hemiLight';
-    scene.add(hemiLight);
-
-    const sunLight = new THREE.DirectionalLight(0xfff8e7, 1.3);
-    sunLight.name = 'sunLight';
-    sunLight.position.set(1200, 2400, 1800);
-    sunLight.castShadow = true;
-    sunLight.shadow.mapSize.width = 2048;
-    sunLight.shadow.mapSize.height = 2048;
-    sunLight.shadow.camera.near = 10;
-    sunLight.shadow.camera.far = 4000;
-    const shadowD = 350;
-    sunLight.shadow.camera.left = -shadowD;
-    sunLight.shadow.camera.right = shadowD;
-    sunLight.shadow.camera.top = shadowD;
-    sunLight.shadow.camera.bottom = -shadowD;
-    sunLight.shadow.bias = -0.0004;
-    scene.add(sunLight);
-
-    // Sky Dome
-    createSkyDome();
-
-    // Procedural Terrain 10x10 km
-    createTerrain();
-
-    // STOL Runway, PAPI, Tower, Hangar
-    createAirbase();
-
-    // Zone 1: Agro Orchards with InstancedMesh Trees
-    createAgroOrchards();
-
-    // Zone 2: Forest Fire Emergency with Flame Particles
-    createWildfireZone();
-
-    // Zone 3: Hydro-Scooping Lake
-    createHydroLake();
-
-    // The Aircraft Model
-    createAircraftModel();
-
-    // Particle Systems: Spray mist & Water Salvo
-    createParticleSystems();
-
-    // Apply default weather preset
-    setWeatherPreset('day');
-
-    // Handle Container & Window Resize via ResizeObserver
-    initResizeObserver();
-  }
-
-  // --- Sky Dome ---
-  let skyDomeMesh;
-  function createSkyDome() {
-    const skyGeo = new THREE.SphereGeometry(9500, 32, 24);
-    const skyMat = new THREE.MeshBasicMaterial({
-      color: 0x64b5f6,
-      side: THREE.BackSide
-    });
-    skyDomeMesh = new THREE.Mesh(skyGeo, skyMat);
-    scene.add(skyDomeMesh);
-  }
-
-  // --- Terrain Generator ---
-  function getTerrainHeight(x, z) {
-    // Runway area is flattened strictly
-    const distToRwyX = Math.abs(x);
-    const distToRwyZ = Math.abs(z);
-    if (distToRwyX < 260 && distToRwyZ < 60) {
-      return 0.0;
-    }
-    // Lake area depression
-    const distToLake = Math.hypot(x - NAV.lake.x, z - NAV.lake.z);
-    if (distToLake < 450) {
-      return Math.max(0, -2.5 + Math.sin(x * 0.01) * 0.5);
-    }
-    // Mountains in North-West
-    const distToMtn = Math.hypot(x + 2200, z + 1800);
-    const mountainH = Math.max(0, 180 - distToMtn * 0.08) * Math.sin(x * 0.003) * Math.cos(z * 0.003);
-    
-    // Rolling hills
-    const hills = Math.sin(x * 0.0015) * 18 + Math.cos(z * 0.0018) * 16 + Math.sin((x + z) * 0.004) * 8;
-    return Math.max(0, hills + mountainH);
-  }
-
-  function createTerrain() {
-    const terrainSize = 10000;
-    const segments = 120;
-    const geo = new THREE.PlaneGeometry(terrainSize, terrainSize, segments, segments);
-    geo.rotateX(-Math.PI / 2);
-
-    const pos = geo.attributes.position;
-    for (let i = 0; i < pos.count; i++) {
-      const vx = pos.getX(i);
-      const vz = pos.getZ(i);
-      const vy = getTerrainHeight(vx, vz);
-      pos.setY(i, vy);
-    }
-    geo.computeVertexNormals();
-
-    // Procedural terrain texture canvas
-    const canvas = document.createElement('canvas');
-    canvas.width = 1024;
-    canvas.height = 1024;
-    const ctx = canvas.getContext('2d');
-
-    // Base emerald green valley
-    ctx.fillStyle = '#2d5a27';
-    ctx.fillRect(0, 0, 1024, 1024);
-
-    // Farm field patchwork
-    for (let i = 0; i < 90; i++) {
-      const fx = Math.random() * 950;
-      const fz = Math.random() * 950;
-      const fw = 40 + Math.random() * 110;
-      const fh = 40 + Math.random() * 110;
-      const hue = 75 + Math.random() * 45;
-      const lum = 22 + Math.random() * 20;
-      ctx.fillStyle = `hsl(${hue}, 48%, ${lum}%)`;
-      ctx.fillRect(fx, fz, fw, fh);
-      ctx.strokeStyle = '#1b3b18';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(fx, fz, fw, fh);
-    }
-
-    // Dirt paths and rivers
-    ctx.strokeStyle = '#6d5a3f';
-    ctx.lineWidth = 6;
-    ctx.beginPath();
-    ctx.moveTo(100, 512);
-    ctx.bezierCurveTo(350, 480, 680, 560, 950, 520);
-    ctx.stroke();
-
-    const terrainTexture = new THREE.CanvasTexture(canvas);
-    terrainTexture.wrapS = THREE.RepeatWrapping;
-    terrainTexture.wrapT = THREE.RepeatWrapping;
-    terrainTexture.repeat.set(16, 16);
-
-    const mat = new THREE.MeshStandardMaterial({
-      map: terrainTexture,
-      roughness: 0.9,
-      metalness: 0.05
-    });
-
-    terrainMesh = new THREE.Mesh(geo, mat);
-    terrainMesh.receiveShadow = true;
-    scene.add(terrainMesh);
-  }
-
-  // --- Airbase: Runway, PAPI, Tower, Hangar ---
-  function createAirbase() {
-    const rwyGroup = new THREE.Group();
-
-    // 1. Asphalt Runway: 420m long x 24m wide
-    const rwyGeo = new THREE.PlaneGeometry(420, 24);
-    rwyGeo.rotateX(-Math.PI / 2);
-
-    const rwyCanvas = document.createElement('canvas');
-    rwyCanvas.width = 1024;
-    rwyCanvas.height = 128;
-    const ctx = rwyCanvas.getContext('2d');
-
-    // Dark aged asphalt
-    ctx.fillStyle = '#22262c';
-    ctx.fillRect(0, 0, 1024, 128);
-
-    // White threshold stripes
-    ctx.fillStyle = '#ffffff';
-    for (let i = 0; i < 8; i++) {
-      ctx.fillRect(20, 16 + i * 12, 50, 6);
-      ctx.fillRect(1024 - 70, 16 + i * 12, 50, 6);
-    }
-
-    // Runway numbers "09" and "27"
-    ctx.font = 'bold 38px monospace';
-    ctx.fillStyle = '#ffffff';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.save();
-    ctx.translate(110, 64);
-    ctx.rotate(Math.PI / 2);
-    ctx.fillText('09', 0, 0);
-    ctx.restore();
-
-    ctx.save();
-    ctx.translate(1024 - 110, 64);
-    ctx.rotate(-Math.PI / 2);
-    ctx.fillText('27', 0, 0);
-    ctx.restore();
-
-    // Centerline dashes
-    for (let x = 160; x < 1024 - 160; x += 60) {
-      ctx.fillRect(x, 61, 35, 6);
-    }
-
-    // Side border solid lines
-    ctx.fillRect(0, 8, 1024, 4);
-    ctx.fillRect(0, 116, 1024, 4);
-
-    const rwyTexture = new THREE.CanvasTexture(rwyCanvas);
-    const rwyMat = new THREE.MeshStandardMaterial({
-      map: rwyTexture,
-      roughness: 0.75,
-      metalness: 0.1
-    });
-
-    const rwyMesh = new THREE.Mesh(rwyGeo, rwyMat);
-    rwyMesh.position.set(0, 0.05, 0);
-    rwyMesh.receiveShadow = true;
-    rwyGroup.add(rwyMesh);
-
-    // 2. Runway Edge Lights
-    const lightGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.35, 8);
-    const lightMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-    for (let x = -200; x <= 200; x += 30) {
-      // Left side
-      const l1 = new THREE.Mesh(lightGeo, lightMat);
-      l1.position.set(x, 0.2, -13);
-      rwyGroup.add(l1);
-      // Right side
-      const l2 = new THREE.Mesh(lightGeo, lightMat);
-      l2.position.set(x, 0.2, 13);
-      rwyGroup.add(l2);
-    }
-
-    // 3. Precision Approach Path Indicator (PAPI) Lights (4 Units)
-    papiLights = [];
-    const papiBaseX = -130;
-    const papiZ = -18;
-    for (let i = 0; i < 4; i++) {
-      const box = new THREE.Mesh(
-        new THREE.BoxGeometry(0.8, 0.5, 0.8),
-        new THREE.MeshStandardMaterial({ color: 0x334155 })
-      );
-      box.position.set(papiBaseX + i * 4.5, 0.3, papiZ);
-
-      const bulb = new THREE.PointLight(0xffffff, 1.8, 40);
-      bulb.position.set(papiBaseX + i * 4.5, 0.6, papiZ);
-      rwyGroup.add(box);
-      rwyGroup.add(bulb);
-      papiLights.push(bulb);
-    }
-
-    // 4. Aerospace Club Main Hangar
-    const hangarGeo = new THREE.BoxGeometry(45, 14, 30);
-    const hangarMat = new THREE.MeshStandardMaterial({
-      color: 0x1e293b,
-      metalness: 0.6,
-      roughness: 0.4
-    });
-    const hangarMesh = new THREE.Mesh(hangarGeo, hangarMat);
-    hangarMesh.position.set(-80, 7, 45);
-    hangarMesh.castShadow = true;
-    hangarMesh.receiveShadow = true;
-    rwyGroup.add(hangarMesh);
-
-    // Hangar curved roof
-    const roofGeo = new THREE.CylinderGeometry(24, 24, 45, 16, 1, false, 0, Math.PI);
-    roofGeo.rotateZ(Math.PI / 2);
-    const roofMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.5 });
-    const roofMesh = new THREE.Mesh(roofGeo, roofMat);
-    roofMesh.position.set(-80, 14, 45);
-    roofMesh.castShadow = true;
-    rwyGroup.add(roofMesh);
-
-    // 5. Airbase Control Tower
-    const towerBaseGeo = new THREE.CylinderGeometry(4, 5, 26, 12);
-    const towerMat = new THREE.MeshStandardMaterial({ color: 0x475569 });
-    const tower = new THREE.Mesh(towerBaseGeo, towerMat);
-    tower.position.set(40, 13, 50);
-    tower.castShadow = true;
-    rwyGroup.add(tower);
-
-    // Glass cab
-    const cabGeo = new THREE.CylinderGeometry(6, 4.5, 5, 12);
-    const cabMat = new THREE.MeshStandardMaterial({
-      color: 0x00e5ff,
-      transparent: true,
-      opacity: 0.7,
-      roughness: 0.1
-    });
-    const cab = new THREE.Mesh(cabGeo, cabMat);
-    cab.position.set(40, 27, 50);
-    rwyGroup.add(cab);
-
-    // 6. Windsock
-    const poleGeo = new THREE.CylinderGeometry(0.1, 0.1, 6, 8);
-    const poleMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8 });
-    const pole = new THREE.Mesh(poleGeo, poleMat);
-    pole.position.set(-15, 3, -22);
-    rwyGroup.add(pole);
-
-    const sockGeo = new THREE.ConeGeometry(0.6, 2.5, 12);
-    sockGeo.rotateZ(Math.PI / 2);
-    const sockMat = new THREE.MeshStandardMaterial({ color: 0xff5500 });
-    windsockMesh = new THREE.Mesh(sockGeo, sockMat);
-    windsockMesh.position.set(-15, 5.8, -22);
-    rwyGroup.add(windsockMesh);
-
-    scene.add(rwyGroup);
-  }
-
-  // Update PAPI glideslope lights (4 units)
-  function updatePAPILights() {
-    if (!papiLights || papiLights.length < 4) return;
-    
-    // Distance from threshold
-    const distToThreshold = Math.hypot(flight.pos.x - (-130), flight.pos.z);
-    const altAGL = flight.altitudeAGL;
-    
-    // Glideslope angle in degrees
-    const currentAngleDeg = (Math.atan2(altAGL, distToThreshold) * 180) / Math.PI;
-
-    // Threshold angles:
-    // > 3.5°: 4 White
-    // 3.2° - 3.5°: 3 White, 1 Red
-    // 2.8° - 3.2°: 2 White, 2 Red (Ideal)
-    // 2.5° - 2.8°: 1 White, 3 Red
-    // < 2.5°: 4 Red
-    let whiteCount = 2;
-    if (currentAngleDeg > 3.5) whiteCount = 4;
-    else if (currentAngleDeg > 3.2) whiteCount = 3;
-    else if (currentAngleDeg > 2.8) whiteCount = 2;
-    else if (currentAngleDeg > 2.4) whiteCount = 1;
-    else whiteCount = 0;
-
-    for (let i = 0; i < 4; i++) {
-      if (i < whiteCount) {
-        papiLights[i].color.setHex(0xffffff); // White
+  function updateSoundButtonUI() {
+    const icon = document.getElementById('sim-sound-icon');
+    const txt = document.getElementById('sim-sound-txt');
+    const btn = document.getElementById('btn-sim-sound');
+    if (icon && txt) {
+      if (SIM.audioEnabled) {
+        icon.className = 'fa-solid fa-volume-high';
+        txt.textContent = 'Звук ВКЛ';
+        if (btn) btn.classList.add('active');
       } else {
-        papiLights[i].color.setHex(0xff0022); // Red
+        icon.className = 'fa-solid fa-volume-xmark';
+        txt.textContent = 'Звук ВЫКЛ';
+        if (btn) btn.classList.remove('active');
       }
-    }
-  }
-
-  // --- Zone 1: Agro Orchards with InstancedMesh Trees ---
-  const agroSectors = [
-    { x: 1050, z: 250, treated: 0, rings: [] },
-    { x: 1250, z: 250, treated: 0, rings: [] },
-    { x: 1050, z: 450, treated: 0, rings: [] },
-    { x: 1250, z: 450, treated: 0, rings: [] },
-    { x: 1050, z: 650, treated: 0, rings: [] },
-    { x: 1250, z: 650, treated: 0, rings: [] }
-  ];
-
-  function createAgroOrchards() {
-    const treeCount = 450;
-    const trunkGeo = new THREE.CylinderGeometry(0.25, 0.4, 2.5, 6);
-    const crownGeo = new THREE.SphereGeometry(2.2, 8, 6);
-    crownGeo.translate(0, 3.2, 0);
-
-    // Merge trunk and crown
-    const singleTreeGeo = new THREE.BufferGeometry();
-    // For performance, we instantiate the crown geometry directly
-    const treeMat = new THREE.MeshStandardMaterial({
-      roughness: 0.8,
-      metalness: 0.1
-    });
-
-    treeInstancedMesh = new THREE.InstancedMesh(crownGeo, treeMat, treeCount);
-    treeInstancedMesh.castShadow = true;
-    treeInstancedMesh.receiveShadow = true;
-
-    healthyTreeColor = new THREE.Color(0x10b981); // Emerald
-    const stressedBaseColor = new THREE.Color(0xd4af37); // Golden yellow (pest damage)
-
-    let idx = 0;
-    const dummy = new THREE.Object3D();
-
-    agroSectors.forEach((sec, sIdx) => {
-      // 75 trees per sector in neat rows
-      for (let r = 0; r < 5; r++) {
-        for (let c = 0; c < 15; c++) {
-          if (idx >= treeCount) break;
-          const tx = sec.x + (c - 7) * 12 + (Math.random() - 0.5) * 1.5;
-          const tz = sec.z + (r - 2) * 16 + (Math.random() - 0.5) * 1.5;
-          const ty = getTerrainHeight(tx, tz);
-
-          dummy.position.set(tx, ty, tz);
-          const scale = 0.85 + Math.random() * 0.3;
-          dummy.scale.set(scale, scale, scale);
-          dummy.rotation.y = Math.random() * Math.PI * 2;
-          dummy.updateMatrix();
-
-          treeInstancedMesh.setMatrixAt(idx, dummy.matrix);
-          treeInstancedMesh.setColorAt(idx, stressedBaseColor);
-          stressedTreeColors.push({ current: stressedBaseColor.clone(), sector: sIdx });
-          idx++;
-        }
-      }
-
-      // Waypoint Rings hovering over orchard rows (6-10m AGL)
-      const ringGeo = new THREE.TorusGeometry(5.0, 0.25, 8, 24);
-      const ringMat = new THREE.MeshBasicMaterial({
-        color: 0x00ff9d,
-        transparent: true,
-        opacity: 0.6
-      });
-      const ringMesh = new THREE.Mesh(ringGeo, ringMat);
-      const rY = getTerrainHeight(sec.x, sec.z) + 8.5;
-      ringMesh.position.set(sec.x, rY, sec.z);
-      ringMesh.rotation.y = Math.PI / 2;
-      scene.add(ringMesh);
-      sec.rings.push(ringMesh);
-    });
-
-    treeInstancedMesh.instanceMatrix.needsUpdate = true;
-    if (treeInstancedMesh.instanceColor) treeInstancedMesh.instanceColor.needsUpdate = true;
-    scene.add(treeInstancedMesh);
-  }
-
-  // Update Agro spraying effect over trees
-  function updateAgroSpraying(dt) {
-    if (!flight.sprayActive || flight.massFluid <= 0) return;
-
-    // Fluid consumption during spray: 12 L/s
-    flight.massFluid = Math.max(0, flight.massFluid - 12.0 * dt);
-
-    const planeX = flight.pos.x;
-    const planeZ = flight.pos.z;
-    const planeAGL = flight.altitudeAGL;
-
-    // Check proximity to sectors (must be below 18m AGL)
-    if (planeAGL < 22.0) {
-      agroSectors.forEach((sec, sIdx) => {
-        const dist = Math.hypot(planeX - sec.x, planeZ - sec.z);
-        if (dist < 90) {
-          // Increase sector treated percentage
-          sec.treated = Math.min(100, sec.treated + 24.0 * dt);
-
-          // Update tree colors smoothly from yellow to vibrant green
-          for (let i = 0; i < stressedTreeColors.length; i++) {
-            if (stressedTreeColors[i].sector === sIdx) {
-              const c = stressedTreeColors[i].current;
-              c.lerp(healthyTreeColor, 0.08);
-              treeInstancedMesh.setColorAt(i, c);
-            }
-          }
-          if (treeInstancedMesh.instanceColor) {
-            treeInstancedMesh.instanceColor.needsUpdate = true;
-          }
-        }
-      });
-    }
-
-    // Calculate overall agro progress
-    let totalTreated = 0;
-    agroSectors.forEach(s => (totalTreated += s.treated));
-    const avgTreated = totalTreated / agroSectors.length;
-
-    if (SIM.scenario === 'agro') {
-      flight.missionScore = Math.round(avgTreated);
-      updateMissionBanner(
-        'МИССИЯ 2: АГРО ОПРЫСКИВАНИЕ САДОВ NDVI',
-        `Сектора сада накрыты распылением: ${Math.round(avgTreated)}%. Остаток раствора: ${Math.round(flight.massFluid)} L`,
-        `${Math.round(avgTreated)}%`
-      );
-      if (avgTreated >= 95 && !flight.missionCompleted) {
-        flight.missionCompleted = true;
-        playFanfareSound();
-        triggerDebriefing('S', 'Миссия Агро Успешно Завершена!');
-      }
-    }
-  }
-
-  // --- Zone 2: Forest Fire Emergency Zone (4 Clusters) ---
-  const wildfireClusters = [
-    { x: -1650, z: -1400, intensity: 100, light: null, mesh: null },
-    { x: -1800, z: -1550, intensity: 100, light: null, mesh: null },
-    { x: -1950, z: -1350, intensity: 100, light: null, mesh: null },
-    { x: -1750, z: -1700, intensity: 100, light: null, mesh: null }
-  ];
-
-  function createWildfireZone() {
-    wildfireClusters.forEach((wf, i) => {
-      const y = getTerrainHeight(wf.x, wf.z);
-
-      // Fire flame core (pulsing cone)
-      const fireGeo = new THREE.ConeGeometry(12, 28, 8);
-      const fireMat = new THREE.MeshBasicMaterial({
-        color: 0xff4500,
-        transparent: true,
-        opacity: 0.85
-      });
-      const fireMesh = new THREE.Mesh(fireGeo, fireMat);
-      fireMesh.position.set(wf.x, y + 14, wf.z);
-      scene.add(fireMesh);
-      wf.mesh = fireMesh;
-
-      // Dynamic flickering orange point light
-      const fireLight = new THREE.PointLight(0xff5500, 4.0, 140);
-      fireLight.position.set(wf.x, y + 16, wf.z);
-      scene.add(fireLight);
-      wf.light = fireLight;
-
-      // 200m smoke column (stacked billboards)
-      const smokeGeo = new THREE.CylinderGeometry(18, 6, 180, 8, 4, true);
-      const smokeMat = new THREE.MeshBasicMaterial({
-        color: 0x1f242d,
-        transparent: true,
-        opacity: 0.65,
-        side: THREE.DoubleSide
-      });
-      const smokeCol = new THREE.Mesh(smokeGeo, smokeMat);
-      smokeCol.position.set(wf.x, y + 90, wf.z);
-      scene.add(smokeCol);
-      smokeSystems.push(smokeCol);
-    });
-  }
-
-  // Update wildfire animations and water bomb hit detection
-  function updateWildfires(dt) {
-    const time = clock.getElapsedTime();
-
-    wildfireClusters.forEach((wf, i) => {
-      if (wf.intensity > 0) {
-        // Flicker fire light and scale
-        const flicker = 0.85 + Math.sin(time * 12 + i * 2) * 0.2;
-        if (wf.light) wf.light.intensity = (wf.intensity / 100) * 4.5 * flicker;
-        if (wf.mesh) {
-          wf.mesh.scale.set(flicker, 1.0 + Math.sin(time * 8) * 0.15, flicker);
-          wf.mesh.visible = true;
-        }
-      } else {
-        if (wf.light) wf.light.intensity = 0;
-        if (wf.mesh) wf.mesh.visible = false;
-      }
-    });
-
-    // Check water bomb salvo hit
-    if (waterDropSystem && waterDropSystem.active) {
-      const dropPos = waterDropSystem.mesh.position;
-      wildfireClusters.forEach(wf => {
-        if (wf.intensity > 0) {
-          const d = Math.hypot(dropPos.x - wf.x, dropPos.z - wf.z);
-          if (d < 45 && dropPos.y < getTerrainHeight(wf.x, wf.z) + 35) {
-            wf.intensity = Math.max(0, wf.intensity - 80);
-            createSteamCloud(wf.x, getTerrainHeight(wf.x, wf.z) + 10, wf.z);
-            playSalvoSound();
-          }
-        }
-      });
-    }
-
-    // Update Fire mission progress
-    if (SIM.scenario === 'fire') {
-      let totalIntensity = 0;
-      wildfireClusters.forEach(w => (totalIntensity += w.intensity));
-      const fireExtinguishedPct = Math.round(100 - (totalIntensity / (wildfireClusters.length * 100)) * 100);
-      flight.missionScore = fireExtinguishedPct;
-
-      updateMissionBanner(
-        'МИССИЯ 3: МЧС — ТУШЕНИЕ ЛЕСНОГО ПОЖАРА & ЗАБОР ВОДЫ',
-        `Очагов потушено: ${fireExtinguishedPct}%. Наберите воду на озере (0.5–2.5м AGL) и сбросьте Space/СБРОС над огнём!`,
-        `${fireExtinguishedPct}%`
-      );
-
-      if (fireExtinguishedPct >= 100 && !flight.missionCompleted) {
-        flight.missionCompleted = true;
-        playFanfareSound();
-        triggerDebriefing('S', 'Все Лесные Пожары Ликвидированы!');
-      }
-    }
-  }
-
-  // Steam cloud when water hits fire
-  let steamClouds = [];
-  function createSteamCloud(x, y, z) {
-    const steamGeo = new THREE.SphereGeometry(15, 8, 8);
-    const steamMat = new THREE.MeshBasicMaterial({
-      color: 0xffffff,
-      transparent: true,
-      opacity: 0.8
-    });
-    const steamMesh = new THREE.Mesh(steamGeo, steamMat);
-    steamMesh.position.set(x, y, z);
-    scene.add(steamMesh);
-    steamClouds.push({ mesh: steamMesh, life: 1.0 });
-  }
-
-  // --- Zone 3: Hydro-Scooping Lake ---
-  function createHydroLake() {
-    const lakeGeo = new THREE.PlaneGeometry(900, 600, 32, 32);
-    lakeGeo.rotateX(-Math.PI / 2);
-
-    const lakeMat = new THREE.MeshStandardMaterial({
-      color: 0x0284c7, // Vibrant cyan-blue
-      roughness: 0.1,
-      metalness: 0.8,
-      transparent: true,
-      opacity: 0.88
-    });
-
-    lakeMesh = new THREE.Mesh(lakeGeo, lakeMat);
-    lakeMesh.position.set(NAV.lake.x, 0.4, NAV.lake.z);
-    scene.add(lakeMesh);
-  }
-
-  // Hydro-Scooping Detection on the lake surface
-  function updateHydroScooping(dt) {
-    const planeX = flight.pos.x;
-    const planeZ = flight.pos.z;
-    const planeAGL = flight.altitudeAGL;
-    const speedKmh = flight.airspeedIAS;
-
-    // Check if over lake boundaries
-    const dx = Math.abs(planeX - NAV.lake.x);
-    const dz = Math.abs(planeZ - NAV.lake.z);
-
-    if (dx < 420 && dz < 260) {
-      // Altitude between 0.4m and 2.6m, speed 38-80 km/h
-      if (planeAGL >= 0.4 && planeAGL <= 2.8 && speedKmh >= 35 && speedKmh <= 90) {
-        if (flight.massFluid < AERO.massFluidMax) {
-          // Refill rate: +150 L/sec
-          flight.massFluid = Math.min(AERO.massFluidMax, flight.massFluid + 160.0 * dt);
-          createWaterSprayRoosterTail();
-
-          updateMissionBanner(
-            '💧 ГИДРО-ЗАБОР ВОДЫ НА ОЗЕРЕ (HYDRO-SCOOPING ACTIVE)',
-            `Идёт забор воды на глиссировании! Бак: ${Math.round(flight.massFluid)} / 600 L (+160 L/s)`,
-            `${Math.round((flight.massFluid / 600) * 100)}%`
-          );
-        }
-      }
-    }
-  }
-
-  function createWaterSprayRoosterTail() {
-    // Visual rooster tail water spray behind belly
-    if (!sprayParticleSystem) return;
-    sprayParticleSystem.mesh.visible = true;
-  }
-
-  // Helper: NACA 64-215 cambered airfoil curve
-  function createNacaAirfoilShape(chord = 1.35, t = 0.14) {
-    const shape = new THREE.Shape();
-    const segments = 32;
-    const upperPts = [];
-    const lowerPts = [];
-
-    for (let i = 0; i <= segments; i++) {
-      const xNorm = i / segments;
-      const yt = 5 * t * (
-        0.2969 * Math.sqrt(Math.max(xNorm, 0.00001)) -
-        0.1260 * xNorm -
-        0.3516 * Math.pow(xNorm, 2) +
-        0.2843 * Math.pow(xNorm, 3) -
-        0.1015 * Math.pow(xNorm, 4)
-      );
-      const m = 0.025;
-      const p = 0.40;
-      let yc = 0;
-      if (xNorm < p) {
-        yc = (m / (p * p)) * (2 * p * xNorm - xNorm * xNorm);
-      } else {
-        yc = (m / Math.pow(1 - p, 2)) * ((1 - 2 * p) + 2 * p * xNorm - xNorm * xNorm);
-      }
-
-      const zPos = (0.35 - xNorm) * chord;
-      const yUpper = (yc + yt) * chord;
-      const yLower = (yc - yt) * chord;
-
-      upperPts.push(new THREE.Vector2(zPos, yUpper));
-      lowerPts.push(new THREE.Vector2(zPos, yLower));
-    }
-
-    shape.moveTo(upperPts[segments].x, upperPts[segments].y);
-    for (let i = segments - 1; i >= 0; i--) {
-      shape.lineTo(upperPts[i].x, upperPts[i].y);
-    }
-    for (let i = 1; i <= segments; i++) {
-      shape.lineTo(lowerPts[i].x, lowerPts[i].y);
-    }
-    shape.closePath();
-    return shape;
-  }
-
-  // --- 3D Aircraft Model Construction (CATIA V5 Class-A Lofted Model) ---
-  function createAircraftModel() {
-    aircraftGroup = new THREE.Group();
-
-    // 1. Materials
-    const pearlCompositeMat = new THREE.MeshStandardMaterial({
-      color: 0xf4f7fa, // Pearl white/silver titanium composite (Class-A)
-      roughness: 0.22,
-      metalness: 0.38
-    });
-
-    const carbonDarkMat = new THREE.MeshStandardMaterial({
-      color: 0x141a24,
-      roughness: 0.28,
-      metalness: 0.75
-    });
-
-    const cyanGlowMat = new THREE.MeshStandardMaterial({
-      color: 0x00e5ff,
-      emissive: 0x00e5ff,
-      emissiveIntensity: 0.65,
-      roughness: 0.2,
-      metalness: 0.4
-    });
-
-    const emeraldGlowMat = new THREE.MeshStandardMaterial({
-      color: 0x00ff9d,
-      emissive: 0x00ff9d,
-      emissiveIntensity: 0.65,
-      roughness: 0.2,
-      metalness: 0.4
-    });
-
-    const glassCockpitMat = new THREE.MeshPhysicalMaterial({
-      color: 0x001d36,
-      metalness: 0.3,
-      roughness: 0.08,
-      transmission: 0.75,
-      transparent: true,
-      opacity: 0.8
-    });
-
-    const translucentDorsalMat = new THREE.MeshPhysicalMaterial({
-      color: 0x0e2438,
-      metalness: 0.2,
-      roughness: 0.12,
-      transmission: 0.68,
-      transparent: true,
-      opacity: 0.58,
-      ior: 1.45
-    });
-
-    const metalMat = new THREE.MeshStandardMaterial({
-      color: 0xd8e2ec,
-      roughness: 0.22,
-      metalness: 0.92
-    });
-
-    const tankMat = new THREE.MeshStandardMaterial({
-      color: 0x00b4d8,
-      roughness: 0.18,
-      metalness: 0.88,
-      emissive: 0x003344
-    });
-
-    const fcMat = new THREE.MeshStandardMaterial({
-      color: 0x1c2b42,
-      roughness: 0.25,
-      metalness: 0.82
-    });
-
-    const tireMat = new THREE.MeshStandardMaterial({
-      color: 0x111620,
-      roughness: 0.9
-    });
-
-    // ========================================================================
-    // 2. FUSELAGE (Smooth CATIA V5 Class-A Lofted Lathe)
-    // ========================================================================
-    const fuselageGroup = new THREE.Group();
-    aircraftGroup.add(fuselageGroup);
-
-    const lathePoints = [];
-    const fuselageSpline = [
-      { z: 4.40, r: 0.00 },
-      { z: 4.35, r: 0.16 },
-      { z: 4.20, r: 0.34 },
-      { z: 3.90, r: 0.54 },
-      { z: 3.40, r: 0.70 },
-      { z: 2.60, r: 0.79 },
-      { z: 1.20, r: 0.82 },
-      { z: -0.50, r: 0.82 },
-      { z: -1.80, r: 0.76 },
-      { z: -2.80, r: 0.64 },
-      { z: -3.60, r: 0.42 },
-      { z: -4.10, r: 0.18 },
-      { z: -4.25, r: 0.02 }
-    ];
-    fuselageSpline.forEach(pt => lathePoints.push(new THREE.Vector2(pt.r, pt.z)));
-    const fuselageGeo = new THREE.LatheGeometry(lathePoints, 36);
-    fuselageGeo.rotateX(Math.PI / 2);
-    fuselageGeo.computeVertexNormals();
-
-    const fuselage = new THREE.Mesh(fuselageGeo, pearlCompositeMat);
-    fuselage.castShadow = true;
-    fuselage.receiveShadow = true;
-    fuselageGroup.add(fuselage);
-
-    // Polarized Cockpit Canopy Glass
-    const canopyGeo = new THREE.SphereGeometry(0.72, 28, 16, 0, Math.PI * 2, 0, Math.PI / 2);
-    canopyGeo.scale(0.88, 0.62, 2.0);
-    const canopy = new THREE.Mesh(canopyGeo, glassCockpitMat);
-    canopy.position.set(0, 0.54, 2.4);
-    fuselageGroup.add(canopy);
-
-    // Translucent Dorsal Shell showing internal H2 tanks & PEMFC
-    const dorsalGeo = new THREE.CylinderGeometry(0.81, 0.79, 3.2, 28, 1, false, Math.PI * 0.15, Math.PI * 0.70);
-    dorsalGeo.rotateX(Math.PI / 2);
-    const dorsalCover = new THREE.Mesh(dorsalGeo, translucentDorsalMat);
-    dorsalCover.position.set(0, 0.08, -0.1);
-    fuselageGroup.add(dorsalCover);
-
-    // Glowing Type-IV Cryogenic LH2 Tank inside
-    const tankCyl = new THREE.Mesh(new THREE.CylinderGeometry(0.44, 0.44, 1.8, 20), tankMat);
-    tankCyl.rotateX(Math.PI / 2);
-    tankCyl.position.set(0, 0.38, -0.7);
-    fuselageGroup.add(tankCyl);
-    [-0.9, 0.9].forEach(zOff => {
-      const capMesh = new THREE.Mesh(new THREE.SphereGeometry(0.44, 20, 14), tankMat);
-      capMesh.position.set(0, 0.38, -0.7 + zOff);
-      fuselageGroup.add(capMesh);
-    });
-    [-0.4, 0.0, 0.4].forEach(zBand => {
-      const band = new THREE.Mesh(new THREE.TorusGeometry(0.445, 0.02, 10, 24), cyanGlowMat);
-      band.position.set(0, 0.38, -0.7 + zBand);
-      fuselageGroup.add(band);
-    });
-
-    // Ballard PEM Fuel Cell Stack inside
-    const fcStack = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.52, 1.15), fcMat);
-    fcStack.position.set(0, 0.42, 0.85);
-    fuselageGroup.add(fcStack);
-    const fcCore = new THREE.Mesh(new THREE.BoxGeometry(0.79, 0.12, 1.16), emeraldGlowMat);
-    fcCore.position.set(0, 0.42, 0.85);
-    fuselageGroup.add(fcCore);
-
-    // Neon Speed Stripes along flanks
-    [-0.82, 0.82].forEach(xSign => {
-      const stripeMesh = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.06, 6.2), cyanGlowMat);
-      stripeMesh.position.set(xSign, 0.05, 0.3);
-      fuselageGroup.add(stripeMesh);
-    });
-
-    // Ventral Firefighting Water Bomb Bay Doors on Belly
-    const bayFrame = new THREE.Mesh(new THREE.BoxGeometry(0.64, 0.08, 1.8), carbonDarkMat);
-    bayFrame.position.set(0, -0.62, 0.2);
-    fuselageGroup.add(bayFrame);
-
-    const doorLGeo = new THREE.BoxGeometry(0.28, 0.04, 1.76);
-    doorLGeo.translate(0.14, 0, 0);
-    waterBayDoorL = new THREE.Mesh(doorLGeo, pearlCompositeMat);
-    waterBayDoorL.position.set(-0.28, -0.64, 0.2);
-    fuselageGroup.add(waterBayDoorL);
-
-    const doorRGeo = new THREE.BoxGeometry(0.28, 0.04, 1.76);
-    doorRGeo.translate(-0.14, 0, 0);
-    waterBayDoorR = new THREE.Mesh(doorRGeo, pearlCompositeMat);
-    waterBayDoorR.position.set(0.28, -0.64, 0.2);
-    fuselageGroup.add(waterBayDoorR);
-
-    // Sensor Gimbal Turret under nose chin
-    const gimbalTurret = new THREE.Mesh(new THREE.SphereGeometry(0.24, 18, 18), carbonDarkMat);
-    gimbalTurret.position.set(0, -0.52, 3.1);
-    const flirLens = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.06, 12), cyanGlowMat);
-    flirLens.rotateX(Math.PI / 2);
-    flirLens.position.set(0.06, 0, 0.22);
-    gimbalTurret.add(flirLens);
-    const ndviLens = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.06, 12), emeraldGlowMat);
-    ndviLens.rotateX(Math.PI / 2);
-    ndviLens.position.set(-0.06, 0, 0.22);
-    gimbalTurret.add(ndviLens);
-    fuselageGroup.add(gimbalTurret);
-
-    // ========================================================================
-    // 3. MAIN WING (NACA 64-215 Cambered Airfoil Lofting)
-    // ========================================================================
-    const wingGroup = new THREE.Group();
-    aircraftGroup.add(wingGroup);
-
-    const semiSpan = 6.0;
-    const wingShape = createNacaAirfoilShape(1.35, 0.14);
-
-    // Left Wing Panel
-    const leftWingGeo = new THREE.ExtrudeGeometry(wingShape, { depth: semiSpan, bevelEnabled: true, bevelThickness: 0.03, bevelSize: 0.02, bevelSegments: 2 });
-    leftWingGeo.rotateY(-Math.PI / 2);
-    leftWingGeo.computeVertexNormals();
-    const leftWing = new THREE.Mesh(leftWingGeo, pearlCompositeMat);
-    leftWing.position.set(0, 0.85, 0.5);
-    leftWing.castShadow = true;
-    wingGroup.add(leftWing);
-
-    // Right Wing Panel (Mirrored)
-    const rightWingGeo = new THREE.ExtrudeGeometry(wingShape, { depth: semiSpan, bevelEnabled: true, bevelThickness: 0.03, bevelSize: 0.02, bevelSegments: 2 });
-    rightWingGeo.rotateY(-Math.PI / 2);
-    rightWingGeo.scale(-1, 1, 1);
-    rightWingGeo.computeVertexNormals();
-    const rightWing = new THREE.Mesh(rightWingGeo, pearlCompositeMat);
-    rightWing.position.set(0, 0.85, 0.5);
-    rightWing.castShadow = true;
-    wingGroup.add(rightWing);
-
-    // Leading Edge Protective Boots (Dark CFRP)
-    [-3.0, 3.0].forEach(xCenter => {
-      const boot = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 5.8, 12), carbonDarkMat);
-      boot.rotateZ(Math.PI / 2);
-      boot.position.set(xCenter, 0.85, 0.96);
-      wingGroup.add(boot);
-    });
-
-    // Canted Winglets at Wingtips
-    [-1, 1].forEach(sign => {
-      const wingletGroup = new THREE.Group();
-      wingletGroup.position.set(sign * 6.05, 0.85, 0.5);
-
-      const wingletShape = new THREE.Shape();
-      wingletShape.moveTo(0.35, 0);
-      wingletShape.lineTo(-0.55, 0);
-      wingletShape.lineTo(-0.85, 0.85);
-      wingletShape.lineTo(-0.25, 0.85);
-      wingletShape.closePath();
-
-      const wingletGeo = new THREE.ExtrudeGeometry(wingletShape, { depth: 0.06, bevelEnabled: true, bevelThickness: 0.02, bevelSize: 0.015, bevelSegments: 2 });
-      wingletGeo.rotateY(sign > 0 ? -Math.PI / 2 : Math.PI / 2);
-      wingletGeo.computeVertexNormals();
-
-      const wingletMesh = new THREE.Mesh(wingletGeo, pearlCompositeMat);
-      wingletMesh.rotation.z = sign * 0.26; // cant outwards 15 deg
-      wingletGroup.add(wingletMesh);
-
-      // Glowing Cyan Winglet Edge Tip
-      const tipMesh = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.88, 0.04), cyanGlowMat);
-      tipMesh.position.set(sign * 0.12, 0.45, -0.55);
-      tipMesh.rotation.x = -0.35;
-      wingletGroup.add(tipMesh);
-
-      // Navigation position lights (Left = Red, Right = Green)
-      const navLightMat = new THREE.MeshBasicMaterial({ color: sign < 0 ? 0xff2222 : 0x00ff66 });
-      const navLight = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 12), navLightMat);
-      navLight.position.set(sign * 0.22, 0.88, -0.55);
-      wingletGroup.add(navLight);
-
-      wingGroup.add(wingletGroup);
-    });
-
-    // Underwing Spray Boom with 6 precision nozzles
-    const sprayManifold = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.024, 10.2, 12), metalMat);
-    sprayManifold.rotateZ(Math.PI / 2);
-    sprayManifold.position.set(0, 0.35, 0.28);
-    wingGroup.add(sprayManifold);
-
-    [-4.8, -2.9, -1.1, 1.1, 2.9, 4.8].forEach(posX => {
-      const nozzleUnit = new THREE.Group();
-      nozzleUnit.position.set(posX, 0.35, 0.28);
-      const pylon = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.32, 0.08), pearlCompositeMat);
-      pylon.position.set(0, 0.16, 0);
-      nozzleUnit.add(pylon);
-      const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.04, 0.08, 12), emeraldGlowMat);
-      cup.position.set(0, -0.06, 0);
-      nozzleUnit.add(cup);
-      wingGroup.add(nozzleUnit);
-    });
-
-    // ========================================================================
-    // 4. ANIMATED STOL FLAPS & AILERONS (Movable 3D Groups)
-    // ========================================================================
-    flapMeshes = [];
-    // Left Flap (hinge pivot at trailing edge)
-    flapLeftGroup = new THREE.Group();
-    flapLeftGroup.position.set(-2.5, 0.82, -0.18);
-    const flapGeoL = new THREE.BoxGeometry(2.6, 0.06, 0.32);
-    flapGeoL.translate(0, 0, -0.16); // Pivot along leading edge
-    const flapLMesh = new THREE.Mesh(flapGeoL, carbonDarkMat);
-    flapLeftGroup.add(flapLMesh);
-    aircraftGroup.add(flapLeftGroup);
-    flapMeshes.push(flapLeftGroup);
-
-    // Right Flap
-    flapRightGroup = new THREE.Group();
-    flapRightGroup.position.set(2.5, 0.82, -0.18);
-    const flapGeoR = new THREE.BoxGeometry(2.6, 0.06, 0.32);
-    flapGeoR.translate(0, 0, -0.16);
-    const flapRMesh = new THREE.Mesh(flapGeoR, carbonDarkMat);
-    flapRightGroup.add(flapRMesh);
-    aircraftGroup.add(flapRightGroup);
-    flapMeshes.push(flapRightGroup);
-
-    // Left Aileron (outer wing trailing edge)
-    aileronLeftGroup = new THREE.Group();
-    aileronLeftGroup.position.set(-4.8, 0.82, -0.18);
-    const ailGeoL = new THREE.BoxGeometry(1.9, 0.06, 0.28);
-    ailGeoL.translate(0, 0, -0.14);
-    const ailLMesh = new THREE.Mesh(ailGeoL, carbonDarkMat);
-    aileronLeftGroup.add(ailLMesh);
-    aircraftGroup.add(aileronLeftGroup);
-
-    // Right Aileron
-    aileronRightGroup = new THREE.Group();
-    aileronRightGroup.position.set(4.8, 0.82, -0.18);
-    const ailGeoR = new THREE.BoxGeometry(1.9, 0.06, 0.28);
-    ailGeoR.translate(0, 0, -0.14);
-    const ailRMesh = new THREE.Mesh(ailGeoR, carbonDarkMat);
-    aileronRightGroup.add(ailRMesh);
-    aircraftGroup.add(aileronRightGroup);
-
-    // ========================================================================
-    // 5. TWIN-BOOM TAIL ASSEMBLY & MOVABLE ELEVATOR & RUDDERS
-    // ========================================================================
-    const tailGroup = new THREE.Group();
-    aircraftGroup.add(tailGroup);
-
-    [-2.2, 2.2].forEach(xPos => {
-      // Aerodynamic oval boom
-      const boomGeo = new THREE.CylinderGeometry(0.18, 0.12, 5.3, 16);
-      boomGeo.rotateX(Math.PI / 2);
-      boomGeo.scale(0.85, 1.15, 1.0);
-      const boom = new THREE.Mesh(boomGeo, pearlCompositeMat);
-      boom.position.set(xPos, 0.75, -2.15);
-      boom.castShadow = true;
-      tailGroup.add(boom);
-
-      // Vertical Fin
-      const finGroup = new THREE.Group();
-      finGroup.position.set(xPos, 1.45, -4.8);
-      const finMesh = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.35, 0.9), pearlCompositeMat);
-      finMesh.rotation.z = (xPos > 0 ? -1 : 1) * 0.1; // Cant outward 6 deg
-      finGroup.add(finMesh);
-
-      // Cyan fin cap
-      const cap = new THREE.Mesh(new THREE.BoxGeometry(0.084, 0.08, 0.85), cyanGlowMat);
-      cap.position.set(0, 0.68, 0);
-      cap.rotation.z = (xPos > 0 ? -1 : 1) * 0.1;
-      finGroup.add(cap);
-      tailGroup.add(finGroup);
-    });
-
-    // Twin Rudders (Movable)
-    rudderLeftGroup = new THREE.Group();
-    rudderLeftGroup.position.set(-2.2, 1.45, -5.2);
-    const rudLMesh = new THREE.Mesh(new THREE.BoxGeometry(0.075, 1.25, 0.28), carbonDarkMat);
-    rudLMesh.position.set(0, 0, -0.14);
-    rudderLeftGroup.add(rudLMesh);
-    aircraftGroup.add(rudderLeftGroup);
-
-    rudderRightGroup = new THREE.Group();
-    rudderRightGroup.position.set(2.2, 1.45, -5.2);
-    const rudRMesh = new THREE.Mesh(new THREE.BoxGeometry(0.075, 1.25, 0.28), carbonDarkMat);
-    rudRMesh.position.set(0, 0, -0.14);
-    rudderRightGroup.add(rudRMesh);
-    aircraftGroup.add(rudderRightGroup);
-
-    // High Horizontal Stabilizer linking twin fins
-    const hStab = new THREE.Mesh(new THREE.BoxGeometry(4.48, 0.09, 0.85), pearlCompositeMat);
-    hStab.position.set(0, 1.95, -4.8);
-    hStab.castShadow = true;
-    tailGroup.add(hStab);
-
-    // Movable Elevator (Hinged at trailing edge of horizontal stabilizer)
-    elevatorGroup = new THREE.Group();
-    elevatorGroup.position.set(0, 1.95, -5.22);
-    const elevGeo = new THREE.BoxGeometry(4.44, 0.08, 0.32);
-    elevGeo.translate(0, 0, -0.16); // Pivot at leading edge
-    const elevMesh = new THREE.Mesh(elevGeo, carbonDarkMat);
-    elevatorGroup.add(elevMesh);
-    aircraftGroup.add(elevatorGroup);
-
-    // Rear white strobe light
-    const strobe = new THREE.Mesh(new THREE.SphereGeometry(0.05, 10, 10), new THREE.MeshBasicMaterial({ color: 0xffffff }));
-    strobe.position.set(0, 2.02, -5.3);
-    tailGroup.add(strobe);
-
-    // ========================================================================
-    // 6. 4x DEP MOTORS & 3-BLADE SCIMITAR PROPELLERS
-    // ========================================================================
-    propMeshes = [];
-    const motorPositions = [-4.2, -2.2, 2.2, 4.2];
-    motorPositions.forEach((xPos, idx) => {
-      // Nacelle
-      const nacelleGeo = new THREE.CylinderGeometry(0.24, 0.21, 1.4, 18);
-      nacelleGeo.rotateX(Math.PI / 2);
-      const nacelle = new THREE.Mesh(nacelleGeo, pearlCompositeMat);
-      nacelle.position.set(xPos, 0.72, 1.05);
-      nacelle.castShadow = true;
-      aircraftGroup.add(nacelle);
-
-      // Cowl Ring & Stripe
-      const cowlRing = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.03, 10, 20), metalMat);
-      cowlRing.position.set(xPos, 0.72, 1.75);
-      aircraftGroup.add(cowlRing);
-
-      const stripeMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.242, 0.242, 0.08, 16), idx % 2 === 0 ? cyanGlowMat : emeraldGlowMat);
-      stripeMesh.rotateX(Math.PI / 2);
-      stripeMesh.position.set(xPos, 0.72, 1.35);
-      aircraftGroup.add(stripeMesh);
-
-      // Propeller Assembly
-      const propGroup = new THREE.Group();
-      propGroup.position.set(xPos, 0.72, 1.78);
-      aircraftGroup.add(propGroup);
-
-      // Spinner
-      const spinnerGeo = new THREE.ConeGeometry(0.14, 0.38, 16);
-      spinnerGeo.rotateX(Math.PI / 2);
-      const spinner = new THREE.Mesh(spinnerGeo, metalMat);
-      propGroup.add(spinner);
-
-      // 3 Scimitar Propeller Blades with Yellow Safety Tips
-      for (let b = 0; b < 3; b++) {
-        const bladeGroup = new THREE.Group();
-        bladeGroup.rotation.z = (b * Math.PI * 2) / 3;
-
-        const blade = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.78, 0.024), carbonDarkMat);
-        blade.position.y = 0.42;
-        bladeGroup.add(blade);
-
-        const yellowTip = new THREE.Mesh(new THREE.BoxGeometry(0.092, 0.12, 0.026), new THREE.MeshStandardMaterial({ color: 0xffd600, roughness: 0.3 }));
-        yellowTip.position.y = 0.76;
-        bladeGroup.add(yellowTip);
-
-        propGroup.add(bladeGroup);
-      }
-
-      // Propeller Blur Disc
-      const blurDisk = new THREE.Mesh(new THREE.CircleGeometry(0.85, 20), new THREE.MeshBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.18, side: THREE.DoubleSide }));
-      blurDisk.position.z = -0.04;
-      propGroup.add(blurDisk);
-
-      propMeshes.push(propGroup);
-    });
-
-    // ========================================================================
-    // 7. RETRACTABLE ROUGH-TERRAIN STOL LANDING GEAR (3D Movable Groups)
-    // ========================================================================
-    // Nose Gear (Pivots around x-axis at y = -0.45, z = 2.8)
-    noseGearGroup = new THREE.Group();
-    noseGearGroup.position.set(0, -0.45, 2.8);
-    const noseStrut = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.95, 12), metalMat);
-    noseStrut.position.set(0, -0.48, 0);
-    noseGearGroup.add(noseStrut);
-
-    const noseWheel = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.16, 16), tireMat);
-    noseWheel.rotateZ(Math.PI / 2);
-    noseWheel.position.set(0, -0.95, 0);
-    noseGearGroup.add(noseWheel);
-    aircraftGroup.add(noseGearGroup);
-
-    // Left Main Gear (Pivots around z-axis under boom at x = -1.6, y = -0.45, z = 0.3)
-    mainGearLeftGroup = new THREE.Group();
-    mainGearLeftGroup.position.set(-1.6, -0.45, 0.3);
-    const mainStrutL = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 1.05, 12), metalMat);
-    mainStrutL.position.set(0, -0.52, 0);
-    mainGearLeftGroup.add(mainStrutL);
-
-    const mainWheelL = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.22, 16), tireMat);
-    mainWheelL.rotateZ(Math.PI / 2);
-    mainWheelL.position.set(0, -1.02, 0);
-    mainGearLeftGroup.add(mainWheelL);
-    aircraftGroup.add(mainGearLeftGroup);
-
-    // Right Main Gear (Pivots around z-axis at x = +1.6, y = -0.45, z = 0.3)
-    mainGearRightGroup = new THREE.Group();
-    mainGearRightGroup.position.set(1.6, -0.45, 0.3);
-    const mainStrutR = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 1.05, 12), metalMat);
-    mainStrutR.position.set(0, -0.52, 0);
-    mainGearRightGroup.add(mainStrutR);
-
-    const mainWheelR = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.22, 16), tireMat);
-    mainWheelR.rotateZ(Math.PI / 2);
-    mainWheelR.position.set(0, -1.02, 0);
-    mainGearRightGroup.add(mainWheelR);
-    aircraftGroup.add(mainGearRightGroup);
-
-    // Landing Headlights
-    [-1.2, 1.2].forEach(lx => {
-      const spot = new THREE.SpotLight(0xffffff, 2.5, 120, Math.PI / 6, 0.4);
-      spot.position.set(lx, 0.2, 1.5);
-      spot.target.position.set(lx, -1.0, 50);
-      aircraftGroup.add(spot);
-      aircraftGroup.add(spot.target);
-      landingLights.push(spot);
-    });
-
-    // ========================================================================
-    // 8. 3D AERODYNAMIC FORCE VECTORS & WING STREAMLINES
-    // ========================================================================
-    createAeroVectors();
-
-    // Position aircraft in scene
-    aircraftGroup.position.copy(flight.pos);
-    scene.add(aircraftGroup);
-  }
-
-  // --- 3D Aerodynamics Vectors Creation (Lift, Drag, Thrust, Streamlines) ---
-  function createAeroVectors() {
-    aeroVectorsGroup = new THREE.Group();
-    aeroVectorsGroup.visible = false;
-
-    // 1. Lift Vector (Green, pointing up from aerodynamic center)
-    const liftMat = new THREE.MeshBasicMaterial({ color: 0x00ff9d });
-    const liftShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.2, 8), liftMat);
-    liftShaft.position.y = 1.1;
-    const liftCone = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.45, 8), liftMat);
-    liftCone.position.y = 2.3;
-    liftArrow = new THREE.Group();
-    liftArrow.add(liftShaft);
-    liftArrow.add(liftCone);
-    liftArrow.position.set(0, 0.9, 0.4);
-    aeroVectorsGroup.add(liftArrow);
-
-    // 2. Drag Vector (Red, pointing backwards)
-    const dragMat = new THREE.MeshBasicMaterial({ color: 0xff3355 });
-    const dragShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.8, 8), dragMat);
-    dragShaft.position.z = -0.9;
-    dragShaft.rotateX(Math.PI / 2);
-    const dragCone = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.45, 8), dragMat);
-    dragCone.position.z = -1.9;
-    dragCone.rotateX(-Math.PI / 2);
-    dragArrow = new THREE.Group();
-    dragArrow.add(dragShaft);
-    dragArrow.add(dragCone);
-    dragArrow.position.set(0, 0.9, 0.4);
-    aeroVectorsGroup.add(dragArrow);
-
-    // 3. Thrust Vector (Cyan, pointing forwards)
-    const thrustMat = new THREE.MeshBasicMaterial({ color: 0x00e5ff });
-    const thrustShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.8, 8), thrustMat);
-    thrustShaft.position.z = 0.9;
-    thrustShaft.rotateX(Math.PI / 2);
-    const thrustCone = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.45, 8), thrustMat);
-    thrustCone.position.z = 1.9;
-    thrustCone.rotateX(Math.PI / 2);
-    thrustArrow = new THREE.Group();
-    thrustArrow.add(thrustShaft);
-    thrustArrow.add(thrustCone);
-    thrustArrow.position.set(0, 0.72, 1.8);
-    aeroVectorsGroup.add(thrustArrow);
-
-    // 4. Wing Airflow Streamlines
-    streamlinesGroup = new THREE.Group();
-    const streamMat = new THREE.LineBasicMaterial({
-      color: 0x00e5ff,
-      transparent: true,
-      opacity: 0.65
-    });
-    const xOffsets = [-4.5, -3.0, -1.5, 1.5, 3.0, 4.5];
-    streamlinesGroup.streamMeshes = [];
-    xOffsets.forEach(x => {
-      const geom = new THREE.BufferGeometry();
-      const pts = [
-        new THREE.Vector3(x, 0.9, 3.0),
-        new THREE.Vector3(x, 1.05, 1.2),
-        new THREE.Vector3(x, 1.15, 0.4),
-        new THREE.Vector3(x, 0.95, -0.3),
-        new THREE.Vector3(x, 0.75, -1.8)
-      ];
-      geom.setFromPoints(pts);
-      const line = new THREE.Line(geom, streamMat);
-      streamlinesGroup.add(line);
-      streamlinesGroup.streamMeshes.push({ line, x });
-    });
-    aeroVectorsGroup.add(streamlinesGroup);
-
-    aircraftGroup.add(aeroVectorsGroup);
-  }
-
-  // --- Particle Systems: Spray Mist & Water Salvo Drop ---
-  function createParticleSystems() {
-    // 1. Agro chemical mist under wings
-    const pCount = 180;
-    const sprayGeo = new THREE.BufferGeometry();
-    const sprayPositions = new Float32Array(pCount * 3);
-    for (let i = 0; i < pCount * 3; i += 3) {
-      sprayPositions[i] = (Math.random() - 0.5) * 8.0;
-      sprayPositions[i + 1] = -0.5 - Math.random() * 2.5;
-      sprayPositions[i + 2] = -1.0 - Math.random() * 6.0;
-    }
-    sprayGeo.setAttribute('position', new THREE.BufferAttribute(sprayPositions, 3));
-
-    const sprayMat = new THREE.PointsMaterial({
-      color: 0x00ff9d,
-      size: 0.8,
-      transparent: true,
-      opacity: 0.7
-    });
-
-    const sprayMesh = new THREE.Points(sprayGeo, sprayMat);
-    sprayMesh.visible = false;
-    aircraftGroup.add(sprayMesh);
-    sprayParticleSystem = { mesh: sprayMesh, geo: sprayGeo };
-
-    // 2. Water Salvo Bomb Drop (Falling water cluster)
-    const salvoGeo = new THREE.SphereGeometry(2.5, 8, 8);
-    const salvoMat = new THREE.MeshBasicMaterial({
-      color: 0x90caf9,
-      transparent: true,
-      opacity: 0.8
-    });
-    const salvoMesh = new THREE.Mesh(salvoGeo, salvoMat);
-    salvoMesh.visible = false;
-    scene.add(salvoMesh);
-
-    waterDropSystem = {
-      mesh: salvoMesh,
-      active: false,
-      pos: new THREE.Vector3(),
-      vel: new THREE.Vector3()
-    };
-  }
-
-  // Trigger Water Salvo Dump
-  function triggerWaterSalvo() {
-    if (flight.massFluid <= 0) return;
-    
-    // Dump 500 liters of water
-    const dumpAmount = Math.min(flight.massFluid, 500);
-    flight.massFluid -= dumpAmount;
-    playSalvoSound();
-
-    if (waterDropSystem) {
-      waterDropSystem.active = true;
-      waterDropSystem.mesh.visible = true;
-      waterDropSystem.mesh.position.copy(flight.pos);
-      waterDropSystem.vel.copy(flight.vel).multiplyScalar(0.7);
-      waterDropSystem.vel.y -= 8.0; // downward impulse
-    }
-
-    updateMissionBanner(
-      '💧 СБРОС ВОДЯНОЙ БОМБЫ (WATER SALVO DROP)',
-      `Сброшено ${Math.round(dumpAmount)} L воды над очагом! Масса самолёта уменьшилась на 500 кг!`,
-      `${Math.round(flight.missionScore)}%`
-    );
-  }
-
-  // ----------------------------------------------------------------------------
-  // 6. 6-DOF AERODYNAMIC FLIGHT ENGINE
-  // ----------------------------------------------------------------------------
-  function updatePhysics(dt) {
-    // 1. Controls Mapping from Keyboard and Touch
-    let targetElevator = 0.0;
-    let targetAileron = 0.0;
-    let targetRudder = 0.0;
-
-    // Штурвал на себя (ArrowDown / S) = задирает нос вверх (+Pitch / набор высоты)
-    if (input.down) targetElevator += 1.0;
-    // Штурвал от себя (ArrowUp / W) = опускает нос вниз (-Pitch / спуск)
-    if (input.up) targetElevator -= 1.0;
-
-    // Крен (ArrowLeft / A = крен влево, ArrowRight / D = крен вправо)
-    if (input.left) targetAileron -= 1.0;
-    if (input.right) targetAileron += 1.0;
-
-    // Рыскание рулями направления (Q = влево, E = вправо)
-    if (input.q) targetRudder -= 1.0;
-    if (input.e) targetRudder += 1.0;
-
-    // Merge Touch inputs
-    if (Math.abs(input.touchPitch) > 0.01) targetElevator = input.touchPitch;
-    if (Math.abs(input.touchRoll) > 0.01) targetAileron = input.touchRoll;
-    if (Math.abs(input.touchRudder) > 0.01) targetRudder = input.touchRudder;
-
-    // Autopilot override when active
-    if (SIM.autopilotActive) {
-      runAutopilotGuidance(dt);
-    } else {
-      flight.elevator = THREE.MathUtils.lerp(flight.elevator, targetElevator, 14 * dt);
-      flight.aileron = THREE.MathUtils.lerp(flight.aileron, targetAileron, 14 * dt);
-      flight.rudder = THREE.MathUtils.lerp(flight.rudder, targetRudder, 12 * dt);
-
-      if (input.touchThrottle > 0) flight.throttle = input.touchThrottle;
-    }
-
-    // 2. Landing Gear 3D Animation & Drag
-    const gearTarget = flight.gearDown ? 1.0 : 0.0;
-    flight.gearAnim = THREE.MathUtils.lerp(flight.gearAnim, gearTarget, 2.0 * dt);
-    if (noseGearGroup) noseGearGroup.rotation.x = -(1.0 - flight.gearAnim) * (Math.PI * 0.48);
-    if (mainGearLeftGroup) mainGearLeftGroup.rotation.z = (1.0 - flight.gearAnim) * (Math.PI * 0.45);
-    if (mainGearRightGroup) mainGearRightGroup.rotation.z = -(1.0 - flight.gearAnim) * (Math.PI * 0.45);
-
-    // Parasite drag: 0.026 with gear UP, 0.042 with gear DOWN
-    const currentGearDrag = flight.gearAnim * AERO.CD_gear;
-
-    // 3. STOL Blown Flaps 3D Animation & Aerodynamics
-    if (flight.flapsStage === 1) {
-      flight.flapsTargetDeg = 15;
-    } else if (flight.flapsStage === 2) {
-      flight.flapsTargetDeg = 35;
-    } else {
-      flight.flapsTargetDeg = 0;
-    }
-    flight.flapsAngleDeg = THREE.MathUtils.lerp(flight.flapsAngleDeg, flight.flapsTargetDeg, 14 * dt);
-    const flapRotRad = THREE.MathUtils.degToRad(flight.flapsAngleDeg);
-    if (flapLeftGroup) flapLeftGroup.rotation.x = -flapRotRad;
-    if (flapRightGroup) flapRightGroup.rotation.x = -flapRotRad;
-
-    // Flap increments: 15° -> CL +0.55 (CL = 1.35), 35° -> CL +1.15 (CL = 1.95, Blown Wing)
-    let deltaCLFlaps = 0;
-    let deltaCDFlaps = 0;
-    if (flight.flapsStage === 1) {
-      deltaCLFlaps = AERO.CL_flaps15;
-      deltaCDFlaps = AERO.CD_flaps15;
-    } else if (flight.flapsStage === 2) {
-      deltaCLFlaps = AERO.CL_flaps35;
-      deltaCDFlaps = AERO.CD_flaps35;
-    }
-
-    // 4. Control Surfaces 3D Deflections (Ailerons, Elevator, Rudders)
-    if (aileronLeftGroup && aileronRightGroup) {
-      const ailRad = flight.aileron * THREE.MathUtils.degToRad(18);
-      aileronLeftGroup.rotation.x = -ailRad;
-      aileronRightGroup.rotation.x = ailRad;
-    }
-    if (elevatorGroup) {
-      const elevRad = flight.elevator * THREE.MathUtils.degToRad(20);
-      elevatorGroup.rotation.x = -elevRad;
-    }
-    if (rudderLeftGroup && rudderRightGroup) {
-      const rudRad = flight.rudder * THREE.MathUtils.degToRad(22);
-      rudderLeftGroup.rotation.y = -rudRad;
-      rudderRightGroup.rotation.y = -rudRad;
-    }
-
-    // 5. Water Bay Doors Animation
-    if (waterBayDoorL && waterBayDoorR) {
-      const doorTarget = (waterDropSystem && waterDropSystem.active) ? 1.0 : 0.0;
-      waterBayDoorL.rotation.z = THREE.MathUtils.lerp(waterBayDoorL.rotation.z, doorTarget * 1.2, 4.0 * dt);
-      waterBayDoorR.rotation.z = THREE.MathUtils.lerp(waterBayDoorR.rotation.z, -doorTarget * 1.2, 4.0 * dt);
-    }
-
-    // 6. Propulsion System (Ballard FC + 4x DEP Motors)
-    const targetRPM = flight.throttle * 3800; // 0 to 3800 RPM
-    flight.motorRPM = THREE.MathUtils.lerp(flight.motorRPM, targetRPM, 6 * dt);
-    
-    // Electric power calculation
-    if (flight.throttle <= 0.75) {
-      flight.electricKW = (flight.throttle / 0.75) * AERO.fuelCellPowerMax;
-      flight.massH2 = Math.max(0, flight.massH2 - (flight.throttle * AERO.h2BurnRateMax * dt) / 3600);
-    } else {
-      const boostFraction = (flight.throttle - 0.75) / 0.25;
-      flight.electricKW = AERO.fuelCellPowerMax + boostFraction * AERO.lipoBoostPowerMax;
-      flight.massH2 = Math.max(0, flight.massH2 - (AERO.h2BurnRateMax * dt) / 3600);
-      flight.lipoCharge = Math.max(0, flight.lipoCharge - boostFraction * 0.4 * dt);
-    }
-
-    // Spin Propeller Meshes
-    const spinRad = (flight.motorRPM * Math.PI * 2 * dt) / 60;
-    propMeshes.forEach(p => p.rotateZ(spinRad));
-
-    // Dynamic mass with fluid depletion
-    const currentMass = AERO.massEmpty + flight.massH2 + flight.massFluid;
-
-    // Thrust calculation
-    const thrust = flight.throttle * AERO.maxThrustTotal;
-
-    // Forward, Up, and Right unit vectors in aircraft frame
-    const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(flight.quat);
-    const up = new THREE.Vector3(0, 1, 0).applyQuaternion(flight.quat);
-    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(flight.quat);
-
-    // Relative Wind & Airspeed Calculations
-    const trueAirVelocity = new THREE.Vector3().subVectors(flight.vel, weatherState.windVec);
-    flight.airspeedTAS = trueAirVelocity.length();
-    flight.airspeedIAS = flight.airspeedTAS * 3.6; // km/h
-
-    // Blown-Wing STOL Propulsion Wash
-    const propWashVel = flight.throttle * AERO.maxPropWash;
-    const effectiveV = Math.sqrt(
-      flight.airspeedTAS * flight.airspeedTAS +
-      AERO.kBlown * propWashVel * propWashVel
-    );
-
-    // Angle of Attack (AoA α)
-    let rawAoA = 0;
-    if (flight.airspeedTAS > 1.0) {
-      const projVel = trueAirVelocity.clone().normalize();
-      rawAoA = -Math.asin(Math.max(-1, Math.min(1, projVel.dot(up))));
-    }
-    flight.aoa = THREE.MathUtils.radToDeg(rawAoA);
-
-    // Lift Coefficient
-    let CL = AERO.CL0 + AERO.CL_alpha * rawAoA + deltaCLFlaps;
-
-    // Stall Check: beyond 17° or speed below stall limit (32 km/h at 35° flaps, 48 km/h at 15°, 68 km/h clean)
-    const stallSpeed = 68.0 - (deltaCLFlaps / 1.15) * 36.0;
-    if (rawAoA > AERO.alphaCrit || (flight.airspeedIAS < stallSpeed && !flight.onGround && flight.altitudeAGL > 2.0)) {
-      flight.stalling = true;
-      CL = Math.max(0.35, CL * 0.45);
-      flight.buffeting = (Math.random() - 0.5) * 0.08;
-      flight.angVel.x -= 1.8 * dt; // Aerodynamic nose pitch-down restoring moment
-    } else {
-      flight.stalling = false;
-      flight.buffeting = 0.0;
-    }
-
-    // Ground Effect Model
-    const hOverB = Math.max(0.05, flight.altitudeAGL / AERO.wingspan);
-    let sigmaGround = 1.0;
-    if (hOverB < 0.5) {
-      sigmaGround = (16.0 * hOverB * hOverB) / (1.0 + 16.0 * hOverB * hOverB);
-      CL *= 1.0 + (0.5 - hOverB) * 0.25;
-    }
-
-    // Drag Coefficient
-    const inducedDrag = (CL * CL) / (Math.PI * AERO.aspectRatio * AERO.oswaldEff) * sigmaGround;
-    const CD = AERO.CD0 + deltaCDFlaps + currentGearDrag + inducedDrag;
-
-    // Forces in World Coordinates
-    const dynamicPressure = 0.5 * AERO.rho0 * effectiveV * effectiveV;
-    const liftMagnitude = dynamicPressure * AERO.wingArea * CL;
-    const dragMagnitude = dynamicPressure * AERO.wingArea * CD;
-
-    const liftForce = up.clone().multiplyScalar(liftMagnitude);
-    const dragForce = trueAirVelocity.clone().normalize().multiplyScalar(-dragMagnitude);
-    const thrustForce = forward.clone().multiplyScalar(thrust);
-    const gravityForce = new THREE.Vector3(0, -currentMass * AERO.gravity, 0);
-
-    const totalForce = new THREE.Vector3()
-      .add(liftForce)
-      .add(dragForce)
-      .add(thrustForce)
-      .add(gravityForce);
-
-    // G-Load calculation
-    flight.gLoad = liftMagnitude / (currentMass * AERO.gravity);
-    if (flight.gLoad > flight.maxGLoad) flight.maxGLoad = flight.gLoad;
-    if (flight.gLoad < flight.minGLoad) flight.minGLoad = flight.gLoad;
-
-    // 7. Angular Moments & Rotational Dynamics
-    const aeroPressureRatio = Math.max(0.65, Math.min(1.8, flight.airspeedTAS / 22.0));
-
-    // Pitch: pulling stick (+elevator) lifts nose (-rot.x in Three.js Euler)
-    const pitchMoment = -flight.elevator * AERO.pitchAuthority * aeroPressureRatio;
-    const rollMoment = flight.aileron * AERO.rollAuthority * aeroPressureRatio;
-    const yawMoment = flight.rudder * AERO.yawAuthority * aeroPressureRatio;
-
-    flight.angVel.x += (pitchMoment - flight.angVel.x * AERO.pitchDamping) * dt;
-    flight.angVel.y += (yawMoment - flight.angVel.y * AERO.yawDamping) * dt;
-    flight.angVel.z += (rollMoment - flight.angVel.z * AERO.rollDamping) * dt;
-
-    // Numerical Integration: Rotation
-    const deltaRot = new THREE.Quaternion().setFromEuler(
-      new THREE.Euler(
-        flight.angVel.x * dt + flight.buffeting,
-        flight.angVel.y * dt,
-        flight.angVel.z * dt,
-        'YXZ'
-      )
-    );
-    flight.quat.multiply(deltaRot);
-    flight.rot.setFromQuaternion(flight.quat, 'YXZ');
-
-    // Clamp roll to ±45° and smoothly return to level when bank keys are released
-    if (!input.left && !input.right && Math.abs(input.touchRoll) < 0.05) {
-      flight.rot.z = THREE.MathUtils.lerp(flight.rot.z, 0, 2.4 * dt);
-    }
-    flight.rot.z = THREE.MathUtils.clamp(flight.rot.z, -0.785, 0.785); // ±45°
-
-    // Coordinated Turn: banking directly turns heading smoothly
-    if (!flight.onGround) {
-      flight.rot.y -= flight.rot.z * 0.85 * dt;
-      flight.quat.setFromEuler(flight.rot);
-
-      // Pitch & Speed coupling: Climbing bleeds speed, diving accelerates!
-      const climbAngle = -flight.rot.x; // positive when nose up
-      const gravityAlongPath = -AERO.gravity * Math.sin(climbAngle);
-      const targetSpeed = Math.max(6.0, 18.0 + flight.throttle * 26.0 + (flight.gearAnim < 0.5 ? 4.0 : 0.0));
-      
-      let curFwdSpeed = flight.vel.dot(forward);
-      curFwdSpeed = THREE.MathUtils.lerp(curFwdSpeed, targetSpeed, 1.8 * dt) + gravityAlongPath * dt;
-      flight.vel.copy(forward.clone().multiplyScalar(curFwdSpeed));
-      
-      // Vertical lift balance
-      flight.vel.y += ((liftMagnitude - currentMass * AERO.gravity) / currentMass) * dt * 0.35;
-    }
-
-    flight.pitchDeg = THREE.MathUtils.radToDeg(-flight.rot.x);
-    flight.rollDeg = THREE.MathUtils.radToDeg(flight.rot.z);
-    flight.headingDeg = (THREE.MathUtils.radToDeg(-flight.rot.y) + 360) % 360;
-
-    // Numerical Integration: Velocity & Position
-    const acceleration = totalForce.divideScalar(currentMass);
-    flight.vel.addScaledVector(acceleration, dt * 0.25);
-    flight.pos.addScaledVector(flight.vel, dt);
-
-    // 8. 3D Aerodynamics Vectors Visualizer Update
-    if (aeroVectorsGroup && flight.showAeroVectors) {
-      aeroVectorsGroup.visible = true;
-      const lScale = Math.max(0.1, (liftMagnitude / 18000) * 1.5);
-      liftArrow.scale.set(1, lScale, 1);
-      const dScale = Math.max(0.1, (dragMagnitude / 4000) * 1.5);
-      dragArrow.scale.set(1, 1, dScale);
-      const tScale = Math.max(0.1, (thrust / 8400) * 1.5);
-      thrustArrow.scale.set(1, 1, tScale);
-
-      const downwash = THREE.MathUtils.degToRad(flight.flapsAngleDeg * 0.45 + Math.max(0, flight.aoa) * 0.55);
-      if (streamlinesGroup && streamlinesGroup.streamMeshes) {
-        streamlinesGroup.streamMeshes.forEach(sm => {
-          const x = sm.x;
-          const pts = [
-            new THREE.Vector3(x, 0.9, 3.0),
-            new THREE.Vector3(x, 1.05, 1.2),
-            new THREE.Vector3(x, 1.15, 0.4),
-            new THREE.Vector3(x, 0.95 - Math.sin(downwash) * 0.35, -0.3),
-            new THREE.Vector3(x, 0.75 - Math.sin(downwash) * 1.15, -1.8)
-          ];
-          sm.line.geometry.setFromPoints(pts);
-        });
-      }
-    } else if (aeroVectorsGroup) {
-      aeroVectorsGroup.visible = false;
-    }
-
-    // 9. Ground Collision & Landing Gear Physics
-    const terrainY = getTerrainHeight(flight.pos.x, flight.pos.z);
-    const gearHeight = 1.25;
-
-    if (flight.pos.y <= terrainY + gearHeight) {
-      // Touchdown / Roll on Ground
-      if (!flight.onGround && flight.vel.y < -1.5) {
-        playTouchdownSound();
-      }
-      flight.pos.y = terrainY + gearHeight;
-      flight.onGround = true;
-
-      // Ground reaction
-      if (flight.vel.y < 0) flight.vel.y = 0;
-
-      // Rolling friction & wheel brakes
-      let friction = 0.04;
-      if (flight.brakes || input.g) friction = 0.38;
-      flight.vel.x *= Math.max(0, 1.0 - friction * dt * 25);
-      flight.vel.z *= Math.max(0, 1.0 - friction * dt * 25);
-
-      // On-ground nosewheel steering
-      if (flight.airspeedTAS > 1.0) {
-        flight.rot.y -= flight.rudder * 0.8 * dt;
-        flight.quat.setFromEuler(flight.rot);
-      }
-
-      // Allow pitch rotation on ground for STOL takeoff
-      flight.rot.x = Math.max(-0.35, Math.min(0.22, flight.rot.x));
-      flight.rot.z *= 0.85; // Wings level on ground
-      flight.quat.setFromEuler(flight.rot);
-
-      // Track takeoff roll distance
-      if (flight.throttle > 0.5 && flight.airspeedIAS > 15) {
-        flight.takeoffDist += flight.vel.length() * dt;
-      }
-    } else {
-      flight.onGround = false;
-    }
-
-    flight.altitudeAGL = Math.max(0, flight.pos.y - terrainY);
-    flight.altitudeMSL = 120.0 + flight.pos.y;
-    flight.vsi = flight.vel.y;
-
-    // Update Aircraft 3D Transform
-    aircraftGroup.position.copy(flight.pos);
-    aircraftGroup.quaternion.copy(flight.quat);
-
-    // Update Spray Particles
-    if (sprayParticleSystem) {
-      sprayParticleSystem.mesh.visible = flight.sprayActive && flight.massFluid > 0;
-    }
-
-    // Update Water Salvo physics
-    if (waterDropSystem && waterDropSystem.active) {
-      waterDropSystem.vel.y -= AERO.gravity * dt;
-      waterDropSystem.mesh.position.addScaledVector(waterDropSystem.vel, dt);
-      if (waterDropSystem.mesh.position.y <= getTerrainHeight(waterDropSystem.mesh.position.x, waterDropSystem.mesh.position.z)) {
-        waterDropSystem.active = false;
-        waterDropSystem.mesh.visible = false;
-      }
-    }
-
-    // Increment Flight Time & Kerosene Saved (48 L/h typical turboprop equivalent)
-    flight.flightTime += dt;
-    flight.keroseneSaved += (48.0 / 3600.0) * dt;
-  }
-
-  // ----------------------------------------------------------------------------
-  // 7. AUTONOMOUS MISSION AUTOPILOT (PROFESSOR DEMO FLIGHT)
-  // ----------------------------------------------------------------------------
-  let apPhase = 0;
-  let apPhaseTimer = 0.0;
-
-  function runAutopilotGuidance(dt) {
-    apPhaseTimer += dt;
-
-    switch (apPhase) {
-      case 0:
-        // STOL Takeoff Phase
-        flight.throttle = 1.0;
-        flight.flapsStage = 1; // 15° Flaps
-        flight.rudder = 0.0;
-        if (flight.airspeedIAS >= 42.0) {
-          flight.elevator = 0.55; // Rotate
-        }
-        if (flight.altitudeAGL > 35.0) {
-          apPhase = 1;
-          apPhaseTimer = 0.0;
-          flight.flapsStage = 0; // Retract flaps
-          updateMissionBanner(
-            '🤖 ИИ АВТОПИЛОТ: ВЗЛЁТ УСПЕШЕН (STOL TAKEOFF)',
-            'Набор высоты 150м. Курс на Сектора Сада NDVI для точечного опрыскивания.',
-            'ВЗЛЁТ 100%'
-          );
-        }
-        break;
-
-      case 1:
-        // Transit to Agro Orchards
-        guideTowardsPoint(NAV.agro.x, 80.0, NAV.agro.z, dt);
-        if (Math.hypot(flight.pos.x - NAV.agro.x, flight.pos.z - NAV.agro.z) < 220) {
-          apPhase = 2;
-          apPhaseTimer = 0.0;
-          flight.sprayActive = true;
-          flight.throttle = 0.55; // Slow STOL cruise
-          flight.flapsStage = 1;
-        }
-        break;
-
-      case 2:
-        // Precision Orchard Spray Sweep (8m AGL)
-        guideTowardsPoint(NAV.agro.x + 150, 10.0, NAV.agro.z + 180, dt);
-        if (apPhaseTimer > 10.0 || flight.missionScore >= 90) {
-          flight.sprayActive = false;
-          flight.flapsStage = 0;
-          apPhase = 3;
-          apPhaseTimer = 0.0;
-          updateMissionBanner(
-            '🤖 ИИ АВТОПИЛОТ: САД ОБРАБОТАН',
-            'Курс на Озеро для набора воды на бреющем полёте (Hydro-Scooping).',
-            'АГРО 100%'
-          );
-        }
-        break;
-
-      case 3:
-        // Transit to Lake & Skim
-        guideTowardsPoint(NAV.lake.x + 180, 1.6, NAV.lake.z, dt);
-        flight.throttle = 0.48;
-        if (apPhaseTimer > 8.0 && flight.massFluid >= 500) {
-          apPhase = 4;
-          apPhaseTimer = 0.0;
-          updateMissionBanner(
-            '🤖 ИИ АВТОПИЛОТ: ВОДА НАБРАНА (600 L)',
-            'Курс на склон холма: прицельный сброс водяной бомбы на лесные пожары!',
-            'МЧС 50%'
-          );
-        }
-        break;
-
-      case 4:
-        // Climb & Bomb Wildfires
-        guideTowardsPoint(NAV.fire.x, 70.0, NAV.fire.z, dt);
-        flight.throttle = 0.85;
-        if (Math.hypot(flight.pos.x - NAV.fire.x, flight.pos.z - NAV.fire.z) < 110) {
-          triggerWaterSalvo();
-          apPhase = 5;
-          apPhaseTimer = 0.0;
-          updateMissionBanner(
-            '🤖 ИИ АВТОПИЛОТ: ПОЖАР ПОТУШЕН!',
-            'Все очаги ликвидированы! Возврат на аэродром, заход на посадку по глиссаде PAPI.',
-            'МЧС 100%'
-          );
-        }
-        break;
-
-      case 5:
-        // Return to Airbase & Land
-        guideTowardsPoint(180, 25.0, 0, dt);
-        flight.throttle = 0.35;
-        flight.flapsStage = 2; // 35° Landing flaps
-        if (flight.pos.x > 80 && Math.abs(flight.pos.z) < 20) {
-          // Final flare
-          flight.elevator = 0.25;
-          flight.throttle = 0.0;
-          flight.brakes = true;
-          if (flight.onGround && flight.airspeedIAS < 10) {
-            apPhase = 6;
-            playFanfareSound();
-            triggerDebriefing('S', 'Идеальный Автономный Демо-Полёт для Профессора!');
-          }
-        }
-        break;
-    }
-  }
-
-  function guideTowardsPoint(tx, ty, tz, dt) {
-    const dx = tx - flight.pos.x;
-    const dy = ty - flight.pos.y;
-    const dz = tz - flight.pos.z;
-
-    const targetHeading = (Math.atan2(dx, dz) * 180 / Math.PI + 360) % 360;
-    let headingError = targetHeading - flight.headingDeg;
-    if (headingError > 180) headingError -= 360;
-    if (headingError < -180) headingError += 360;
-
-    // Rudder and Aileron banking to steer
-    flight.aileron = THREE.MathUtils.clamp(headingError * 0.035, -0.65, 0.65);
-    flight.rudder = THREE.MathUtils.clamp(headingError * 0.015, -0.3, 0.3);
-
-    // Pitch for altitude control
-    const altError = dy;
-    flight.elevator = THREE.MathUtils.clamp(altError * 0.045, -0.4, 0.65);
-  }
-
-  // ----------------------------------------------------------------------------
-  // 8. GARMIN G1000 HUD & INSTRUMENT CANVAS RENDERER
-  // ----------------------------------------------------------------------------
-  let horizonCanvas, horizonCtx;
-
-  function initHUDInstruments() {
-    horizonCanvas = document.getElementById('sim-horizon-canvas');
-    if (horizonCanvas) {
-      horizonCanvas.width = 460;
-      horizonCanvas.height = 460;
-      horizonCtx = horizonCanvas.getContext('2d');
-    }
-    buildCompassRibbon();
-  }
-
-  function buildCompassRibbon() {
-    const ribbon = document.getElementById('sim-compass-ribbon');
-    if (!ribbon) return;
-    ribbon.innerHTML = '';
-    // Build 0° to 360° ticks
-    for (let deg = 0; deg <= 720; deg += 5) {
-      const actualDeg = deg % 360;
-      const isMajor = actualDeg % 30 === 0;
-      const tick = document.createElement('div');
-      tick.className = `compass-tick ${isMajor ? 'major' : ''}`;
-      if (isMajor) {
-        if (actualDeg === 0) tick.innerText = 'N';
-        else if (actualDeg === 90) tick.innerText = 'E';
-        else if (actualDeg === 180) tick.innerText = 'S';
-        else if (actualDeg === 270) tick.innerText = 'W';
-        else tick.innerText = actualDeg;
-      }
-      ribbon.appendChild(tick);
-    }
-  }
-
-  // Draw Artificial Horizon PFD (Pitch ladder, Roll arc)
-  function drawArtificialHorizon() {
-    if (!horizonCtx || !horizonCanvas) return;
-    const ctx = horizonCtx;
-    const w = horizonCanvas.width;
-    const h = horizonCanvas.height;
-    const cx = w / 2;
-    const cy = h / 2;
-
-    ctx.clearRect(0, 0, w, h);
-
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.rotate(THREE.MathUtils.degToRad(-flight.rollDeg));
-
-    // Pitch ladder translation (4.5 pixels per degree)
-    const pitchOffset = flight.pitchDeg * 4.8;
-    ctx.translate(0, pitchOffset);
-
-    // Sky and Ground Halves
-    ctx.fillStyle = '#0284c7'; // Glass cockpit Sky Blue
-    ctx.fillRect(-w, -h * 2, w * 2, h * 2);
-    ctx.fillStyle = '#78350f'; // Ground Brown
-    ctx.fillRect(-w, 0, w * 2, h * 2);
-
-    // White Horizon Line
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(-w, 0);
-    ctx.lineTo(w, 0);
-    ctx.stroke();
-
-    // Pitch Graduation Lines (-30° to +30°)
-    ctx.lineWidth = 2;
-    ctx.font = 'bold 12px monospace';
-    ctx.fillStyle = '#ffffff';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-
-    for (let p = -30; p <= 30; p += 5) {
-      if (p === 0) continue;
-      const y = -p * 4.8;
-      const lineW = p % 10 === 0 ? 55 : 28;
-
-      ctx.beginPath();
-      ctx.moveTo(-lineW, y);
-      ctx.lineTo(lineW, y);
-      ctx.stroke();
-
-      if (p % 10 === 0) {
-        ctx.fillText(`${Math.abs(p)}`, -lineW - 16, y);
-        ctx.fillText(`${Math.abs(p)}`, lineW + 16, y);
-      }
-    }
-
-    ctx.restore();
-
-    // Center Fixed Aircraft Symbol
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.strokeStyle = '#ffea00'; // Garmin Yellow
-    ctx.lineWidth = 4;
-    // Left wing
-    ctx.beginPath();
-    ctx.moveTo(-60, 0);
-    ctx.lineTo(-20, 0);
-    ctx.lineTo(-20, 8);
-    ctx.stroke();
-    // Right wing
-    ctx.beginPath();
-    ctx.moveTo(20, 0);
-    ctx.lineTo(60, 0);
-    ctx.lineTo(20, 8);
-    ctx.stroke();
-    // Center pip
-    ctx.fillStyle = '#ffea00';
-    ctx.fillRect(-3, -3, 6, 6);
-    ctx.restore();
-  }
-
-  // Update HUD DOM Elements (Airspeed, Altitude, EICAS, Bugs, Minimap)
-  function updateHUDInstruments() {
-    // 1. Digital values
-    const speedVal = document.getElementById('sim-speed-val');
-    if (speedVal) speedVal.innerText = Math.round(flight.airspeedIAS);
-
-    const tasVal = document.getElementById('sim-tas-val');
-    if (tasVal) tasVal.innerText = Math.round(flight.airspeedTAS * 3.6);
-
-    const machVal = document.getElementById('sim-mach-val');
-    if (machVal) machVal.innerText = (flight.airspeedTAS / 340.0).toFixed(2);
-
-    const altVal = document.getElementById('sim-alt-val');
-    if (altVal) altVal.innerText = Math.round(flight.altitudeMSL);
-
-    const radAltVal = document.getElementById('sim-rad-alt-val');
-    if (radAltVal) radAltVal.innerText = flight.altitudeAGL.toFixed(1);
-
-    const vsiVal = document.getElementById('sim-vsi-digital');
-    if (vsiVal) vsiVal.innerText = (flight.vsi >= 0 ? '+' : '') + flight.vsi.toFixed(1);
-
-    const vsiPointer = document.getElementById('sim-vsi-pointer');
-    if (vsiPointer) {
-      const vsiClamped = Math.max(-10, Math.min(10, flight.vsi));
-      vsiPointer.style.top = `${50 - vsiClamped * 4.2}%`;
-    }
-
-    // 2. Compass Heading Ribbon
-    const hdgVal = document.getElementById('sim-hdg-val');
-    if (hdgVal) hdgVal.innerText = `HDG ${Math.round(flight.headingDeg).toString().padStart(3, '0')}°`;
-
-    const ribbon = document.getElementById('sim-compass-ribbon');
-    if (ribbon) {
-      // 30px per 5 degrees = 6px per degree
-      const offsetPx = -flight.headingDeg * 6;
-      ribbon.style.transform = `translateX(${offsetPx}px)`;
-    }
-
-    // 3. Navigation Target Bugs (Bearing & Distance)
-    updateNavBugs();
-
-    // 4. Flight Path Vector (FPV) marker
-    const fpv = document.getElementById('sim-fpv-marker');
-    if (fpv) {
-      const fpvX = -flight.sideslip * 8;
-      const fpvY = -flight.aoa * 6;
-      fpv.style.transform = `translate(calc(-50% + ${fpvX}px), calc(-50% + ${fpvY}px))`;
-    }
-
-    // 5. Slip ball
-    const slipBall = document.getElementById('sim-slip-ball');
-    if (slipBall) {
-      const ballOffset = Math.max(-24, Math.min(24, flight.angVel.y * 35));
-      slipBall.style.transform = `translateX(${ballOffset}px)`;
-    }
-
-    // 6. EICAS Engine & Systems
-    const throttleFill = document.getElementById('sim-throttle-fill');
-    const throttleVal = document.getElementById('sim-throttle-val');
-    if (throttleFill) throttleFill.style.height = `${Math.round(flight.throttle * 100)}%`;
-    if (throttleVal) throttleVal.innerText = `${Math.round(flight.throttle * 100)}%`;
-
-    const mPct = Math.round((flight.motorRPM / 3800) * 100);
-    ['m1', 'm2', 'm3', 'm4'].forEach(id => {
-      const el = document.getElementById(`sim-${id}-fill`);
-      if (el) el.style.height = `${mPct}%`;
-    });
-
-    const rpmVal = document.getElementById('sim-rpm-val');
-    if (rpmVal) rpmVal.innerText = Math.round(flight.motorRPM);
-
-    const pwrVal = document.getElementById('sim-power-val');
-    if (pwrVal) pwrVal.innerText = flight.electricKW.toFixed(1);
-
-    // Fluids
-    const h2Fill = document.getElementById('sim-h2-fill');
-    const h2Val = document.getElementById('sim-h2-val');
-    if (h2Fill) h2Fill.style.width = `${Math.round((flight.massH2 / AERO.massH2Max) * 100)}%`;
-    if (h2Val) h2Val.innerText = `${flight.massH2.toFixed(1)} kg (${Math.round((flight.massH2 / AERO.massH2Max) * 100)}%)`;
-
-    const lipoFill = document.getElementById('sim-lipo-fill');
-    const lipoVal = document.getElementById('sim-lipo-val');
-    if (lipoFill) lipoFill.style.width = `${Math.round(flight.lipoCharge)}%`;
-    if (lipoVal) lipoVal.innerText = `12S 48V (${Math.round(flight.lipoCharge)}%)`;
-
-    const fluidFill = document.getElementById('sim-fluid-fill');
-    const fluidVal = document.getElementById('sim-fluid-val');
-    if (fluidFill) fluidFill.style.width = `${Math.round((flight.massFluid / AERO.massFluidMax) * 100)}%`;
-    if (fluidVal) fluidVal.innerText = `${Math.round(flight.massFluid)} L (${Math.round((flight.massFluid / AERO.massFluidMax) * 100)}%)`;
-
-    // Annunciators & Controls Feedback
-    const annunFlaps = document.getElementById('annun-flaps');
-    if (annunFlaps) {
-      annunFlaps.innerText = `FLAPS: ${Math.round(flight.flapsAngleDeg)}°`;
-      annunFlaps.className = `annun-pill ${flight.flapsAngleDeg > 0 ? 'active' : ''}`;
-    }
-
-    const annunGear = document.getElementById('annun-gear');
-    if (annunGear) {
-      annunGear.innerText = `GEAR: ${flight.gearDown ? 'DOWN' : 'UP'}`;
-      annunGear.className = `annun-pill ${flight.gearDown ? 'active' : ''}`;
-    }
-
-    const annunSpray = document.getElementById('annun-spray');
-    if (annunSpray) {
-      annunSpray.innerText = `SPRAY: ${flight.sprayActive ? 'ULV ON' : 'OFF'}`;
-      annunSpray.className = `annun-pill ${flight.sprayActive ? 'active' : ''}`;
-    }
-
-    const annunAP = document.getElementById('annun-ap');
-    if (annunAP) {
-      annunAP.innerText = `AP: ${SIM.autopilotActive ? 'ACTIVE' : 'READY'}`;
-      annunAP.className = `annun-pill ${SIM.autopilotActive ? 'active' : ''}`;
-    }
-
-    const annunAeroVec = document.getElementById('annun-aero-vec');
-    if (annunAeroVec) {
-      annunAeroVec.className = `annun-pill ${flight.showAeroVectors ? 'active' : ''}`;
-    }
-
-    // Bottom Action Bar Buttons live text
-    const btnActGear = document.getElementById('btn-action-gear');
-    if (btnActGear) {
-      btnActGear.innerText = `🛞 Шасси (${flight.gearDown ? 'ВЫП' : 'УБР'})`;
-      btnActGear.classList.toggle('active', flight.gearDown);
-    }
-    const btnActFlaps = document.getElementById('btn-action-flaps');
-    if (btnActFlaps) {
-      btnActFlaps.innerText = `🪽 Закрылки (${Math.round(flight.flapsAngleDeg)}°)`;
-      btnActFlaps.classList.toggle('active', flight.flapsAngleDeg > 0);
-    }
-
-    // Stall Warning Banner
-    const stallBanner = document.getElementById('sim-stall-warning');
-    if (stallBanner) {
-      stallBanner.style.display = flight.stalling && !flight.onGround ? 'flex' : 'none';
-    }
-
-    // Draw Tactical Radar Minimap
-    drawTacticalMinimap();
-
-    // Update Professor mode metrics if open
-    if (SIM.professorMode) updateProfessorOverlay();
-  }
-
-  // Update target bugs on compass tape
-  function updateNavBugs() {
-    const targets = [
-      { id: 'sim-bug-rwy', label: 'RWY', pos: NAV.rwy },
-      { id: 'sim-bug-agro', label: 'AGRO', pos: NAV.agro },
-      { id: 'sim-bug-fire', label: 'FIRE', pos: NAV.fire },
-      { id: 'sim-bug-lake', label: 'LAKE', pos: NAV.lake }
-    ];
-
-    targets.forEach(t => {
-      const el = document.getElementById(t.id);
-      if (!el) return;
-      const dx = t.pos.x - flight.pos.x;
-      const dz = t.pos.z - flight.pos.z;
-      const distKm = (Math.hypot(dx, dz) / 1000).toFixed(1);
-      const bearing = (Math.round((Math.atan2(dx, dz) * 180) / Math.PI + 360) % 360)
-        .toString()
-        .padStart(3, '0');
-      el.innerText = `${t.label}: ${bearing}° (${distKm} км)`;
-    });
-  }
-
-  // Draw Tactical Minimap (Top-Down 10x10 km Radar)
-  let minimapCanvas, minimapCtx;
-  function drawTacticalMinimap() {
-    if (!minimapCanvas) {
-      minimapCanvas = document.getElementById('sim-minimap-canvas');
-      if (minimapCanvas) minimapCtx = minimapCanvas.getContext('2d');
-    }
-    if (!minimapCtx || !minimapCanvas) return;
-    const ctx = minimapCtx;
-    const w = minimapCanvas.width;
-    const h = minimapCanvas.height;
-    const cx = w / 2;
-    const cy = h / 2;
-    const scale = 0.038; // pixels per meter
-
-    ctx.clearRect(0, 0, w, h);
-
-    // Radar Background & Grid rings
-    ctx.fillStyle = '#060d1a';
-    ctx.fillRect(0, 0, w, h);
-
-    ctx.strokeStyle = 'rgba(0, 229, 255, 0.18)';
-    ctx.lineWidth = 1;
-    [30, 60, 90].forEach(r => {
-      ctx.beginPath();
-      ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      ctx.stroke();
-    });
-
-    ctx.save();
-    ctx.translate(cx, cy);
-
-    // Helper: World to radar coordinates
-    const toRadarX = (wx) => (wx - flight.pos.x) * scale;
-    const toRadarY = (wz) => (wz - flight.pos.z) * scale;
-
-    // 1. Runway 09/27
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(toRadarX(-210), toRadarY(-12), 420 * scale, 24 * scale);
-
-    // 2. Lake polygon
-    ctx.fillStyle = 'rgba(37, 99, 235, 0.55)';
-    ctx.beginPath();
-    ctx.ellipse(toRadarX(NAV.lake.x), toRadarY(NAV.lake.z), 380 * scale, 240 * scale, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 3. Agro Orchards (6 sectors)
-    agroSectors.forEach(s => {
-      ctx.fillStyle = s.treated > 80 ? 'rgba(0, 255, 157, 0.65)' : 'rgba(212, 175, 55, 0.65)';
-      ctx.fillRect(toRadarX(s.x - 30), toRadarY(s.z - 30), 60 * scale, 60 * scale);
-    });
-
-    // 4. Wildfire Hotspots
-    wildfireClusters.forEach(wf => {
-      if (wf.intensity > 0) {
-        ctx.fillStyle = '#ff4500';
-        ctx.beginPath();
-        ctx.arc(toRadarX(wf.x), toRadarY(wf.z), 6, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    });
-
-    // 5. Center Aircraft Triangle
-    ctx.rotate(THREE.MathUtils.degToRad(-flight.headingDeg + 90));
-    ctx.fillStyle = '#ffea00'; // Yellow Plane Icon
-    ctx.beginPath();
-    ctx.moveTo(8, 0);
-    ctx.lineTo(-6, -5);
-    ctx.lineTo(-3, 0);
-    ctx.lineTo(-6, 5);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.restore();
-  }
-
-  // Update Professor Live Formulas Overlay
-  function updateProfessorOverlay() {
-    const veff = document.getElementById('prof-veff');
-    if (veff) veff.innerText = `${(flight.airspeedTAS + flight.throttle * 14.0).toFixed(1)} м/с`;
-
-    const aoa = document.getElementById('prof-aoa');
-    if (aoa) aoa.innerText = `${flight.aoa.toFixed(1)}°`;
-
-    const cl = document.getElementById('prof-cl');
-    if (cl) cl.innerText = `${(AERO.CL0 + AERO.CL_alpha * THREE.MathUtils.degToRad(flight.aoa)).toFixed(2)}`;
-
-    const lift = document.getElementById('prof-lift');
-    if (lift) lift.innerText = `${Math.round(flight.gLoad * (AERO.massEmpty + flight.massH2 + flight.massFluid) * AERO.gravity)} Н`;
-
-    const sigma = document.getElementById('prof-sigma');
-    if (sigma) {
-      const hOverB = flight.altitudeAGL / AERO.wingspan;
-      sigma.innerText = hOverB < 0.5 ? `${((16 * hOverB * hOverB) / (1 + 16 * hOverB * hOverB)).toFixed(2)} (Ground Effect)` : '1.00 (Free Air)';
-    }
-
-    const mass = document.getElementById('prof-mass');
-    if (mass) mass.innerText = `${(AERO.massEmpty + flight.massH2 + flight.massFluid).toFixed(1)} кг`;
-
-    const fMass = document.getElementById('prof-fluid-mass');
-    if (fMass) fMass.innerText = `${flight.massFluid.toFixed(1)} кг / L`;
-
-    const gload = document.getElementById('prof-gload');
-    if (gload) gload.innerText = `${flight.gLoad.toFixed(2)} G`;
-
-    const pfc = document.getElementById('prof-pfc');
-    if (pfc) pfc.innerText = `${Math.min(60, flight.electricKW).toFixed(1)} kW`;
-
-    const pbuf = document.getElementById('prof-pbuf');
-    if (pbuf) pbuf.innerText = `${Math.max(0, flight.electricKW - 60).toFixed(1)} kW`;
-
-    const h2flow = document.getElementById('prof-h2flow');
-    if (h2flow) h2flow.innerText = `${(flight.throttle * AERO.h2BurnRateMax).toFixed(2)} кг/ч`;
-  }
-
-  // Update Mission Live Banner
-  function updateMissionBanner(title, desc, scoreText) {
-    const tEl = document.getElementById('sim-mission-title');
-    const dEl = document.getElementById('sim-mission-desc');
-    const sEl = document.getElementById('sim-mission-score');
-    if (tEl) tEl.innerText = title;
-    if (dEl) dEl.innerText = desc;
-    if (sEl) sEl.innerText = scoreText;
-  }
-
-  // ----------------------------------------------------------------------------
-  // 9. 5 CAMERA MODES & RENDER LOOP
-  // ----------------------------------------------------------------------------
-  const chaseOrbit = { yaw: 0, pitch: 0, isDragging: false, lastX: 0, lastY: 0 };
-
-  function updateCamera() {
-    if (!camera || !aircraftGroup) return;
-
-    const planePos = aircraftGroup.position;
-    const planeQuat = aircraftGroup.quaternion;
-
-    switch (SIM.cameraMode) {
-      case 'chase':
-        // Smooth 3rd-person Chase Cam behind aircraft with mouse orbit support
-        const baseOffset = new THREE.Vector3(0, 2.6, -9.2);
-        baseOffset.applyAxisAngle(new THREE.Vector3(1, 0, 0), chaseOrbit.pitch);
-        baseOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), chaseOrbit.yaw);
-        const offset = baseOffset.applyQuaternion(planeQuat);
-        const targetPos = planePos.clone().add(offset);
-        camera.position.lerp(targetPos, 0.14);
-        cameraLookTarget.lerp(planePos.clone().add(new THREE.Vector3(0, 0.8, 3.5).applyQuaternion(planeQuat)), 0.18);
-        camera.lookAt(cameraLookTarget);
-        break;
-
-      case 'cockpit':
-        // 1st Person Cockpit / Nose FPV
-        const noseOffset = new THREE.Vector3(0, 0.65, 2.2).applyQuaternion(planeQuat);
-        camera.position.copy(planePos).add(noseOffset);
-        const lookAhead = new THREE.Vector3(0, 0.5, 45).applyQuaternion(planeQuat);
-        camera.lookAt(planePos.clone().add(lookAhead));
-        break;
-
-      case 'flir':
-        // Belly Gimbal Looking Downward at Ground Targets
-        const gimbalPos = new THREE.Vector3(0, -0.65, 1.8).applyQuaternion(planeQuat);
-        camera.position.copy(planePos).add(gimbalPos);
-        const targetDown = new THREE.Vector3(0, -18, 35).applyQuaternion(planeQuat);
-        camera.lookAt(planePos.clone().add(targetDown));
-        break;
-
-      case 'wing':
-        // Wingtip Action Cam looking along wing
-        const wingOffset = new THREE.Vector3(AERO.wingspan / 2 - 0.2, 0.9, 0.2).applyQuaternion(planeQuat);
-        camera.position.copy(planePos).add(wingOffset);
-        camera.lookAt(planePos);
-        break;
-
-      case 'drone':
-        // Orbiting Free Drone Cam
-        freeCameraAngle.yaw += 0.003;
-        const dx = Math.sin(freeCameraAngle.yaw) * freeCameraAngle.dist;
-        const dz = Math.cos(freeCameraAngle.yaw) * freeCameraAngle.dist;
-        camera.position.set(planePos.x + dx, planePos.y + 4.5, planePos.z + dz);
-        camera.lookAt(planePos);
-        break;
-    }
-  }
-
-  function cycleCameraMode() {
-    const modes = ['chase', 'cockpit', 'flir', 'wing', 'drone'];
-    let idx = modes.indexOf(SIM.cameraMode);
-    idx = (idx + 1) % modes.length;
-    SIM.cameraMode = modes[idx];
-
-    const lbl = document.getElementById('sim-cam-label');
-    const flirOverlay = document.getElementById('sim-flir-overlay');
-
-    if (lbl) {
-      const names = {
-        chase: 'Chase Cam',
-        cockpit: 'Cockpit FPV',
-        flir: 'FLIR / NDVI',
-        wing: 'Wing Action',
-        drone: 'Drone View'
-      };
-      lbl.innerText = names[SIM.cameraMode];
-    }
-
-    if (flirOverlay) {
-      flirOverlay.style.display = SIM.cameraMode === 'flir' ? 'block' : 'none';
     }
   }
 
   // ----------------------------------------------------------------------------
-  // 10. WEATHER & TIME PRESETS
+  // 14. TELEPORT & SCENARIO RESET
   // ----------------------------------------------------------------------------
-  function setWeatherPreset(preset) {
-    SIM.weather = preset;
-    const sun = scene.getObjectByName('sunLight');
-    const hemi = scene.getObjectByName('hemiLight');
+  function teleportToLocation(locKey, targetAlt = 700) {
+    const loc = LOCATIONS[locKey] || LOCATIONS.charvak;
+    SIM.locationId = loc.id;
+    currentOriginLat = loc.lat;
+    currentOriginLon = loc.lon;
 
-    switch (preset) {
-      case 'day':
-        scene.background.setHex(0x8bc34a);
-        scene.fog.color.setHex(0x90caf9);
-        scene.fog.density = 0.00018;
-        if (sun) {
-          sun.color.setHex(0xfff8e7);
-          sun.intensity = 1.3;
-          sun.position.set(1200, 2400, 1800);
-        }
-        if (hemi) hemi.intensity = 0.55;
-        landingLights.forEach(l => (l.intensity = 0.0));
-        weatherState.turbulence = 0.0;
-        break;
+    // Reset local coordinates
+    flight.pos.set(0, targetAlt, 0);
+    flight.vel.set(0, 0, 50); // 180 km/h forward
+    flight.rot.set(0, 0, 0);
+    flight.throttle = 0.75;
+    flight.gearTarget = 0.0;
+    flight.flapsStage = 0;
+    flight.spoilersActive = false;
+    flight.waterDropping = false;
+    flight.agroSpraying = false;
 
-      case 'sunset':
-        scene.background.setHex(0xf97316);
-        scene.fog.color.setHex(0xfb923c);
-        scene.fog.density = 0.00025;
-        if (sun) {
-          sun.color.setHex(0xff7733);
-          sun.intensity = 1.6;
-          sun.position.set(2800, 350, 800);
-        }
-        if (hemi) hemi.intensity = 0.4;
-        landingLights.forEach(l => (l.intensity = 0.5));
-        weatherState.turbulence = 0.01;
-        break;
+    // Clear and reload satellite tiles
+    clearAllTiles();
+    updateSatelliteTiles();
 
-      case 'night':
-        scene.background.setHex(0x050a14);
-        scene.fog.color.setHex(0x0a1124);
-        scene.fog.density = 0.00032;
-        if (sun) {
-          sun.color.setHex(0x1e3a8a);
-          sun.intensity = 0.25;
-          sun.position.set(500, 1200, 500);
-        }
-        if (hemi) hemi.intensity = 0.15;
-        landingLights.forEach(l => (l.intensity = 3.5)); // Full headlights
-        weatherState.turbulence = 0.005;
-        break;
-
-      case 'storm':
-        scene.background.setHex(0x334155);
-        scene.fog.color.setHex(0x475569);
-        scene.fog.density = 0.00045;
-        if (sun) {
-          sun.color.setHex(0x94a3b8);
-          sun.intensity = 0.6;
-        }
-        if (hemi) hemi.intensity = 0.3;
-        landingLights.forEach(l => (l.intensity = 2.0));
-        // Crosswind 14 m/s from 340°
-        weatherState.windVec.set(-13.0, 0, 4.5);
-        weatherState.windSpeed = 13.8;
-        weatherState.windDirDeg = 340;
-        weatherState.turbulence = 0.05;
-        break;
-    }
-
-    const windReadout = document.getElementById('sim-wind-readout');
-    if (windReadout) {
-      windReadout.innerText = `WIND: ${weatherState.windDirDeg}° / ${weatherState.windSpeed.toFixed(1)} m/s`;
-    }
+    showToast(`ЛОКАЦИЯ: ${loc.name.toUpperCase()} (ВЫСОТА ${targetAlt} М)`);
   }
 
-  // ----------------------------------------------------------------------------
-  // 11. SCENARIOS SETUP (5 QUICK-STARTS)
-  // ----------------------------------------------------------------------------
-  function setScenario(scen) {
-    SIM.scenario = scen;
+  function startFromRunway() {
+    flight.pos.set(0, 1.25, -340); // Beginning of runway threshold
     flight.vel.set(0, 0, 0);
-    flight.angVel.set(0, 0, 0);
-    flight.stalling = false;
-    flight.missionCompleted = false;
+    flight.rot.set(0, 0, 0);
+    flight.throttle = 0.0;
+    flight.gearTarget = 1.0; // Gear down
+    flight.gearPos = 1.0;
+    flight.flapsStage = 1;  // Flaps 15° for STOL takeoff
+    flight.spoilersActive = false;
 
-    // Reset Scenario buttons active class
-    document.querySelectorAll('.sim-scenario-btn').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.scenario === scen);
-    });
+    showToast('СТАРТ С ВПП: ДАЙТЕ ГАЗ SHIFT / Q ДО 100%!');
+  }
 
-    switch (scen) {
-      case 'stol':
-        // Start immediately in the air at 80m altitude, 85 km/h, 75% throttle (user request!)
-        flight.pos.set(0, 80, -200);
-        flight.rot.set(0, 0, 0);
-        flight.quat.setFromEuler(flight.rot);
-        flight.throttle = 0.75;
-        flight.vel.set(0, 0, 23.6); // 85 km/h
-        flight.flapsStage = 0;
-        flight.gearDown = false;
-        flight.onGround = false;
-        flight.massFluid = 600.0;
-        SIM.autopilotActive = false;
-        updateMissionBanner(
-          '🎮 ПОЛЁТ: AEROTERRA H2 В ВОЗДУХЕ (85 КМ/Ч)',
-          'Штурвал на себя (↓ / S) — набор высоты, от себя (↑ / W) — спуск, стрелки ← → (A / D) — крен и вираж, Space — сброс/спрей!',
-          '100%'
-        );
-        break;
+  function setTimeOfDay(timeKey) {
+    SIM.timeOfDay = timeKey;
+    if (!scene || !ambientLight || !sunLight) return;
 
-      case 'rwy-start':
-        // Start on runway 09 for takeoff practice
-        flight.pos.set(-150, 1.25, 0);
-        flight.rot.set(0, -Math.PI / 2, 0);
-        flight.quat.setFromEuler(flight.rot);
-        flight.throttle = 0.0;
-        flight.flapsStage = 1;
-        flight.gearDown = true;
-        flight.onGround = true;
-        flight.massFluid = 600.0;
-        SIM.autopilotActive = false;
-        updateMissionBanner(
-          '🛫 СТАРТ С ВПП: КОРОТКИЙ ВЗЛЁТ STOL',
-          'Дайте полный газ (W / 100%), разгонитесь до 42 км/ч и потяните штурвал на себя (Стрелка вниз / S)!',
-          '0%'
-        );
-        break;
+    if (timeKey === 'sunset') {
+      scene.background = new THREE.Color(0xf97316); // Golden orange
+      scene.fog.color = new THREE.Color(0xfb923c);
+      ambientLight.color = new THREE.Color(0xffedd5);
+      ambientLight.intensity = 0.55;
+      sunLight.color = new THREE.Color(0xfdba74);
+      sunLight.intensity = 1.1;
+      sunLight.position.set(1200, 250, -800);
+    } else if (timeKey === 'night') {
+      scene.background = new THREE.Color(0x030712); // Night darkness
+      scene.fog.color = new THREE.Color(0x0f172a);
+      ambientLight.color = new THREE.Color(0x38bdf8);
+      ambientLight.intensity = 0.35;
+      sunLight.color = new THREE.Color(0x1e3a5f);
+      sunLight.intensity = 0.4;
+    } else {
+      // Day default
+      scene.background = new THREE.Color(0x9ec5fe); // Sky blue
+      scene.fog.color = new THREE.Color(0xcbd5e1);
+      ambientLight.color = new THREE.Color(0xffffff);
+      ambientLight.intensity = 0.65;
+      sunLight.color = new THREE.Color(0xfff8e7);
+      sunLight.intensity = 1.35;
+      sunLight.position.set(800, 1500, 1000);
+    }
+  }
 
-      case 'agro':
-        // Spawn heading towards orchards
-        flight.pos.set(800, 45, 350);
-        flight.vel.set(38, 0, 5);
-        flight.rot.set(0, -Math.PI / 2, 0);
-        flight.quat.setFromEuler(flight.rot);
-        flight.throttle = 0.55;
-        flight.flapsStage = 1;
-        flight.massFluid = 600.0;
-        SIM.autopilotActive = false;
-        updateMissionBanner(
-          'МИССИЯ 2: АГРО ОПРЫСКИВАНИЕ САДОВ NDVI',
-          'Снизьтесь до 6–10м над кронами, включите SPRAY (Пробел) и обработайте сухие жёлтые сектора сада!',
-          '0%'
-        );
-        break;
-
-      case 'fire':
-        // Spawn near lake for water scoop & fire patrol
-        flight.pos.set(-300, 30, 1200);
-        flight.vel.set(-32, 0, 15);
-        flight.rot.set(0, Math.PI * 0.8, 0);
-        flight.quat.setFromEuler(flight.rot);
-        flight.throttle = 0.5;
-        flight.flapsStage = 0;
-        flight.massFluid = 0.0; // Start empty to practice scooping!
-        SIM.autopilotActive = false;
-        updateMissionBanner(
-          'МИССИЯ 3: МЧС — ЗАБОР ВОДЫ НА ОЗЕРЕ & ТУШЕНИЕ',
-          'Снизьтесь над озером до 1–2м AGL для забора 600 L воды, затем летите к склонам холмов и потушите пожары!',
-          '0%'
-        );
-        break;
-
-      case 'crosswind':
-        // Final approach into runway 09 with storm crosswind
-        setWeatherPreset('storm');
-        flight.pos.set(-380, 75, 18);
-        flight.vel.set(42, -1.8, 0);
-        flight.rot.set(-0.04, -Math.PI / 2, 0);
-        flight.quat.setFromEuler(flight.rot);
-        flight.throttle = 0.38;
-        flight.flapsStage = 2; // 35°
-        flight.massFluid = 0.0;
-        SIM.autopilotActive = false;
-        updateMissionBanner(
-          'МИССИЯ 4: ПОСАДКА ПРИ БОКОВОМ ВЕТРЕ 14 М/С',
-          'Выровняйте самолёт по оси ВПП скольжением (Rudder A/D) и совершите посадку на 2 белых/2 красных огня PAPI!',
-          'ПОСАДКА'
-        );
-        break;
-
-      case 'auto-demo':
-        // Reset to runway and activate autonomous flight
-        flight.pos.set(-180, 1.25, 0);
-        flight.rot.set(0, -Math.PI / 2, 0);
-        flight.quat.setFromEuler(flight.rot);
-        flight.throttle = 0.0;
-        flight.flapsStage = 1;
-        flight.massFluid = 600.0;
-        SIM.autopilotActive = true;
-        apPhase = 0;
-        apPhaseTimer = 0.0;
-        updateMissionBanner(
-          '🤖 АВТОПИЛОТ: ДЕМОНСТРАЦИОННЫЙ ПОЛЁТ ДЛЯ ПРОФЕССОРА',
-          'ИИ выполняет взлёт STOL за 35м, опрыскивание сада, забор воды на озере и тушение пожаров!',
-          'АВТО 0%'
-        );
-        break;
+  function showToast(msg) {
+    const toast = document.getElementById('sim-toast-banner');
+    const toastTxt = document.getElementById('sim-toast-text');
+    if (toast && toastTxt) {
+      toastTxt.textContent = msg;
+      toast.style.display = 'flex';
+      clearTimeout(toast._timer);
+      toast._timer = setTimeout(() => {
+        toast.style.display = 'none';
+      }, 3500);
     }
   }
 
   // ----------------------------------------------------------------------------
-  // 12. DEBRIEFING CERTIFICATE MODAL
-  // ----------------------------------------------------------------------------
-  function triggerDebriefing(rank, title) {
-    const modal = document.getElementById('sim-debriefing-modal');
-    if (!modal) return;
-
-    const rEl = document.getElementById('debrief-rank');
-    if (rEl) rEl.innerText = `RANK: ${rank} (EXCELLENT)`;
-
-    const tEl = document.getElementById('debrief-title');
-    if (tEl) tEl.innerText = title || 'СЕРТИФИКАТ ЛЁТНЫХ ИСПЫТАНИЙ';
-
-    const accEl = document.getElementById('debrief-accuracy');
-    if (accEl) accEl.innerText = `${Math.min(99.4, 88 + flight.missionScore * 0.11).toFixed(1)}%`;
-
-    const distEl = document.getElementById('debrief-dist');
-    if (distEl) distEl.innerText = `${Math.max(28.4, flight.takeoffDist || 34.2).toFixed(1)} м`;
-
-    const gEl = document.getElementById('debrief-gpeak');
-    if (gEl) gEl.innerText = `+${flight.maxGLoad.toFixed(2)} G / ${flight.minGLoad.toFixed(2)} G`;
-
-    const fuelEl = document.getElementById('debrief-fuel-saved');
-    if (fuelEl) fuelEl.innerText = `${Math.max(12.5, flight.keroseneSaved).toFixed(1)} л`;
-
-    const timeEl = document.getElementById('debrief-time');
-    if (timeEl) {
-      const mins = Math.floor(flight.flightTime / 60);
-      const secs = Math.floor(flight.flightTime % 60);
-      timeEl.innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')} мин`;
-    }
-
-    modal.style.display = 'flex';
-  }
-
-  // ----------------------------------------------------------------------------
-  // 13. USER CONTROLS EVENT HANDLERS (KEYBOARD, MOUSE ORBIT & TOUCH)
+  // 15. UI BINDINGS & KEYBOARD INPUT
   // ----------------------------------------------------------------------------
   function initControls() {
-    const flightControlKeys = [
-      'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
-      'Space', 'KeyW', 'KeyS', 'KeyA', 'KeyD', 'KeyQ', 'KeyE',
-      'KeyF', 'KeyG', 'KeyC', 'KeyR', 'KeyP', 'KeyH', 'KeyI', 'KeyK',
-      'ShiftLeft', 'ShiftRight', 'ControlLeft', 'ControlRight'
-    ];
+    // 1. Top Select Dropdowns
+    const selPlane = document.getElementById('sim-select-plane');
+    if (selPlane) {
+      selPlane.addEventListener('change', (e) => {
+        SIM.planeModel = e.target.value;
+        const cfg = PLANE_CONFIGS[SIM.planeModel];
+        if (planeGroup) planeGroup.scale.setScalar(cfg.scale);
+        showToast(`САМОЛЁТ: ${cfg.name}`);
+      });
+    }
 
-    // Keyboard keydown
-    window.addEventListener('keydown', e => {
-      initAudioEngine(); // Start audio on first user gesture
+    const selLoc = document.getElementById('sim-select-location');
+    if (selLoc) {
+      selLoc.addEventListener('change', (e) => {
+        teleportToLocation(e.target.value, 700);
+      });
+    }
 
-      if (flightControlKeys.includes(e.code)) {
-        e.preventDefault();
-      }
+    const selMap = document.getElementById('sim-select-map');
+    if (selMap) {
+      selMap.addEventListener('change', (e) => {
+        SIM.mapProvider = e.target.value;
+        clearAllTiles();
+        updateSatelliteTiles();
+        showToast(`КАРТА: ${e.target.options[e.target.selectedIndex].text}`);
+      });
+    }
 
-      switch (e.code) {
-        // Pitch: W / S or ArrowUp / ArrowDown
-        case 'KeyW':
-        case 'ArrowUp':
-          input.up = true; // Nose down / dive
-          break;
-        case 'KeyS':
-        case 'ArrowDown':
-          input.down = true; // Nose up / climb
-          break;
+    const selTime = document.getElementById('sim-select-time');
+    if (selTime) {
+      selTime.addEventListener('change', (e) => {
+        setTimeOfDay(e.target.value);
+      });
+    }
 
-        // Roll: A / D or ArrowLeft / ArrowRight
-        case 'KeyA':
-        case 'ArrowLeft':
-          input.left = true;
-          break;
-        case 'KeyD':
-        case 'ArrowRight':
-          input.right = true;
-          break;
+    // 2. Top Action Buttons
+    const btnSound = document.getElementById('btn-sim-sound');
+    if (btnSound) btnSound.addEventListener('click', toggleSound);
 
-        // Rudder: Q / E
-        case 'KeyQ':
-          input.q = true;
-          break;
-        case 'KeyE':
-          input.e = true;
-          break;
+    const btnReset700 = document.getElementById('btn-sim-reset-700');
+    if (btnReset700) btnReset700.addEventListener('click', () => teleportToLocation(SIM.locationId, 700));
 
-        // Throttle: Shift / Ctrl or I / K
-        case 'ShiftLeft':
-        case 'ShiftRight':
-        case 'KeyI':
-          flight.throttle = Math.min(1.0, flight.throttle + 0.05);
-          break;
-        case 'ControlLeft':
-        case 'ControlRight':
-        case 'KeyK':
-          flight.throttle = Math.max(0.0, flight.throttle - 0.05);
-          break;
+    const btnStartRwy = document.getElementById('btn-sim-start-rwy');
+    if (btnStartRwy) btnStartRwy.addEventListener('click', startFromRunway);
 
-        // Water Salvo / Spray (Space)
-        case 'Space':
-          triggerWaterSalvo();
-          flight.sprayActive = !flight.sprayActive;
-          break;
+    const btnHelp = document.getElementById('btn-sim-help');
+    const modalHelp = document.getElementById('sim-help-modal');
+    const btnCloseHelp = document.getElementById('btn-close-help');
+    if (btnHelp && modalHelp) {
+      btnHelp.addEventListener('click', () => { modalHelp.style.display = 'flex'; });
+    }
+    if (btnCloseHelp && modalHelp) {
+      btnCloseHelp.addEventListener('click', () => { modalHelp.style.display = 'none'; });
+    }
 
-        // Flaps (F: 0° -> 15° -> 35° -> 0°)
-        case 'KeyF':
-          flight.flapsStage = (flight.flapsStage + 1) % 3;
-          break;
+    // 3. Telemetry Panel Controls
+    const btnBoost = document.getElementById('btn-h2-boost');
+    if (btnBoost) {
+      btnBoost.addEventListener('click', () => {
+        initAudioEngine();
+        SIM.boostActive = true;
+        SIM.boostTimer = 10.0;
+        showToast('⚡ БУСТ H2-LI-PO АКТИВИРОВАН (+40% ТЯГА НА 10 СЕК)!');
+      });
+    }
 
-        // Landing Gear (G: UP / DOWN)
-        case 'KeyG':
-          flight.gearDown = !flight.gearDown;
-          flight.brakes = flight.gearDown && flight.onGround;
-          break;
+    const thrSlider = document.getElementById('sim-slider-throttle');
+    if (thrSlider) {
+      thrSlider.addEventListener('input', (e) => {
+        initAudioEngine();
+        flight.throttle = parseFloat(e.target.value) / 100;
+      });
+    }
 
-        // Camera mode (C)
-        case 'KeyC':
-          cycleCameraMode();
-          break;
+    const btnThrInc = document.getElementById('btn-thr-inc');
+    if (btnThrInc) {
+      btnThrInc.addEventListener('click', () => {
+        initAudioEngine();
+        flight.throttle = Math.min(1.0, flight.throttle + 0.05);
+      });
+    }
 
-        // HUD toggle (H)
-        case 'KeyH':
-          toggleHUD();
-          break;
+    const btnThrDec = document.getElementById('btn-thr-dec');
+    if (btnThrDec) {
+      btnThrDec.addEventListener('click', () => {
+        initAudioEngine();
+        flight.throttle = Math.max(0.0, flight.throttle - 0.05);
+      });
+    }
 
-        // Pause (P)
-        case 'KeyP':
-          SIM.paused = !SIM.paused;
-          break;
+    const sensSlider = document.getElementById('sim-slider-sens');
+    const sensVal = document.getElementById('sim-sens-val');
+    if (sensSlider) {
+      sensSlider.addEventListener('input', (e) => {
+        SIM.sensitivity = parseFloat(e.target.value);
+        if (sensVal) sensVal.textContent = `${SIM.sensitivity.toFixed(1)}x`;
+      });
+    }
 
-        // Reset scenario (R)
-        case 'KeyR':
-          setScenario(SIM.scenario);
-          break;
-      }
-    });
-
-    // Keyboard keyup
-    window.addEventListener('keyup', e => {
-      switch (e.code) {
-        case 'KeyW':
-        case 'ArrowUp':
-          input.up = false;
-          break;
-        case 'KeyS':
-        case 'ArrowDown':
-          input.down = false;
-          break;
-        case 'KeyA':
-        case 'ArrowLeft':
-          input.left = false;
-          break;
-        case 'KeyD':
-        case 'ArrowRight':
-          input.right = false;
-          break;
-        case 'KeyQ':
-          input.q = false;
-          break;
-        case 'KeyE':
-          input.e = false;
-          break;
+    // 4. Center Controls: Cameras
+    ['chase', 'cockpit', 'satellite', 'orbit'].forEach((mode) => {
+      const btn = document.getElementById(`btn-cam-${mode === 'cockpit' ? 'fpv' : (mode === 'satellite' ? 'sat' : mode)}`);
+      if (btn) {
+        btn.addEventListener('click', () => {
+          SIM.cameraMode = mode;
+          document.querySelectorAll('[data-cam]').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          showToast(`РЕЖИМ КАМЕРЫ: ${mode.toUpperCase()}`);
+        });
       }
     });
 
-    // --- Mouse Drag 360° Orbit View around Aircraft ---
-    const simCanvas = document.getElementById('simulator-canvas');
-    if (simCanvas) {
-      simCanvas.addEventListener('pointerdown', e => {
-        chaseOrbit.isDragging = true;
-        chaseOrbit.lastX = e.clientX;
-        chaseOrbit.lastY = e.clientY;
-      });
-      window.addEventListener('pointermove', e => {
-        if (!chaseOrbit.isDragging) return;
-        const dx = e.clientX - chaseOrbit.lastX;
-        const dy = e.clientY - chaseOrbit.lastY;
-        chaseOrbit.lastX = e.clientX;
-        chaseOrbit.lastY = e.clientY;
-        chaseOrbit.yaw += dx * 0.007;
-        chaseOrbit.pitch = Math.max(-0.6, Math.min(0.8, chaseOrbit.pitch + dy * 0.006));
-      });
-      window.addEventListener('pointerup', () => {
-        chaseOrbit.isDragging = false;
+    // 5. Center Controls: Mechanization & Specials
+    const btnGear = document.getElementById('btn-act-gear');
+    const lblGear = document.getElementById('lbl-gear');
+    if (btnGear) {
+      btnGear.addEventListener('click', () => {
+        flight.gearTarget = flight.gearTarget > 0.5 ? 0.0 : 1.0;
+        const isDown = flight.gearTarget > 0.5;
+        if (lblGear) lblGear.textContent = isDown ? '🟢 Шасси (G)' : '⚪ Шасси УБРАНО (G)';
+        btnGear.classList.toggle('active', isDown);
+        showToast(isDown ? 'ШАССИ ВЫПУЩЕНО' : 'ШАССИ УБРАНО');
       });
     }
 
-    // --- Mobile Touch Controls Setup ---
-    initTouchControls();
-
-    // Top control bar button handlers
-    setupUIButtons();
-  }
-
-  function initTouchControls() {
-    // 1. Throttle Slider
-    const track = document.getElementById('touch-throttle-track');
-    const handle = document.getElementById('touch-throttle-handle');
-    const pctLabel = document.getElementById('touch-throttle-pct');
-
-    if (track && handle) {
-      let isDragging = false;
-      const updateThrottlePos = (clientY) => {
-        const rect = track.getBoundingClientRect();
-        const height = rect.height - 44; // Handle height
-        const offset = Math.max(0, Math.min(height, rect.bottom - clientY - 22));
-        const pct = offset / height;
-        handle.style.bottom = `${offset}px`;
-        flight.throttle = pct;
-        if (pctLabel) pctLabel.innerText = `${Math.round(pct * 100)}%`;
-      };
-
-      track.addEventListener('pointerdown', e => {
-        initAudioEngine();
-        isDragging = true;
-        track.setPointerCapture(e.pointerId);
-        updateThrottlePos(e.clientY);
-      });
-      track.addEventListener('pointermove', e => {
-        if (isDragging) updateThrottlePos(e.clientY);
-      });
-      const endDrag = (e) => {
-        isDragging = false;
-        try { track.releasePointerCapture(e.pointerId); } catch (err) {}
-      };
-      track.addEventListener('pointerup', endDrag);
-      track.addEventListener('pointercancel', endDrag);
-    }
-
-    // 2. Rudder Buttons
-    const rudLeft = document.getElementById('touch-rudder-left');
-    const rudRight = document.getElementById('touch-rudder-right');
-    if (rudLeft) {
-      rudLeft.addEventListener('pointerdown', () => { input.touchRudder = -1.0; });
-      rudLeft.addEventListener('pointerup', () => { input.touchRudder = 0.0; });
-      rudLeft.addEventListener('pointerleave', () => { input.touchRudder = 0.0; });
-    }
-    if (rudRight) {
-      rudRight.addEventListener('pointerdown', () => { input.touchRudder = 1.0; });
-      rudRight.addEventListener('pointerup', () => { input.touchRudder = 0.0; });
-      rudRight.addEventListener('pointerleave', () => { input.touchRudder = 0.0; });
-    }
-
-    // 3. Virtual 3D Joystick (Pitch & Roll)
-    const joyZone = document.getElementById('virtual-joystick-zone');
-    const joyKnob = document.getElementById('virtual-joystick-knob');
-
-    if (joyZone && joyKnob) {
-      let joyDragging = false;
-      const radius = 45; // Max displacement
-
-      const updateJoystick = (clientX, clientY) => {
-        const rect = joyZone.getBoundingClientRect();
-        const centerX = rect.left + rect.width / 2;
-        const centerY = rect.top + rect.height / 2;
-
-        let dx = clientX - centerX;
-        let dy = clientY - centerY;
-        const dist = Math.hypot(dx, dy);
-
-        if (dist > radius) {
-          dx = (dx / dist) * radius;
-          dy = (dy / dist) * radius;
-        }
-
-        joyKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
-
-        input.touchRoll = dx / radius; // -1 to +1
-        input.touchPitch = -dy / radius; // Drag down = pull up (pitch up)
-      };
-
-      joyZone.addEventListener('pointerdown', e => {
-        initAudioEngine();
-        joyDragging = true;
-        joyZone.setPointerCapture(e.pointerId);
-        updateJoystick(e.clientX, e.clientY);
-      });
-      joyZone.addEventListener('pointermove', e => {
-        if (joyDragging) updateJoystick(e.clientX, e.clientY);
-      });
-      const endJoy = (e) => {
-        joyDragging = false;
-        joyKnob.style.transform = 'translate(-50%, -50%)';
-        input.touchRoll = 0.0;
-        input.touchPitch = 0.0;
-        try { joyZone.releasePointerCapture(e.pointerId); } catch (err) {}
-      };
-      joyZone.addEventListener('pointerup', endJoy);
-      joyZone.addEventListener('pointercancel', endJoy);
-    }
-
-    // 4. Touch Action Buttons
-    const btnSpray = document.getElementById('btn-touch-spray');
-    if (btnSpray) {
-      btnSpray.addEventListener('click', () => {
-        initAudioEngine();
-        flight.sprayActive = !flight.sprayActive;
-      });
-    }
-
-    const btnSalvo = document.getElementById('btn-touch-salvo');
-    if (btnSalvo) {
-      btnSalvo.addEventListener('click', () => {
-        initAudioEngine();
-        triggerWaterSalvo();
-      });
-    }
-
-    const btnFlaps = document.getElementById('btn-touch-flaps');
+    const btnFlaps = document.getElementById('btn-act-flaps');
+    const lblFlaps = document.getElementById('lbl-flaps');
     if (btnFlaps) {
       btnFlaps.addEventListener('click', () => {
         flight.flapsStage = (flight.flapsStage + 1) % 3;
+        const deg = [0, 15, 35][flight.flapsStage];
+        if (lblFlaps) lblFlaps.textContent = `📐 Закрылки ${deg}° (F)`;
+        btnFlaps.classList.toggle('active', flight.flapsStage > 0);
+        showToast(`ЗАКРЫЛКИ: ${deg}°`);
       });
     }
 
-    const btnAP = document.getElementById('btn-touch-ap');
-    if (btnAP) {
-      btnAP.addEventListener('click', () => {
-        SIM.autopilotActive = !SIM.autopilotActive;
-        if (SIM.autopilotActive) setScenario('auto-demo');
+    const btnSpoilers = document.getElementById('btn-act-spoilers');
+    const lblSpoilers = document.getElementById('lbl-spoilers');
+    if (btnSpoilers) {
+      btnSpoilers.addEventListener('click', () => {
+        flight.spoilersActive = !flight.spoilersActive;
+        if (lblSpoilers) lblSpoilers.textContent = flight.spoilersActive ? '🛑 Спойлеры ВКЛ (B)' : '🛑 Спойлеры (B)';
+        btnSpoilers.classList.toggle('active', flight.spoilersActive);
+        showToast(flight.spoilersActive ? 'СПОЙЛЕРЫ (ВОЗДУШНЫЙ ТОРМОЗ) ВЫПУЩЕНЫ' : 'СПОЙЛЕРЫ УБРАНЫ');
       });
     }
 
-    const btnCam = document.getElementById('btn-touch-cam');
-    if (btnCam) {
-      btnCam.addEventListener('click', () => {
-        cycleCameraMode();
-      });
-    }
-  }
-
-  function setupUIButtons() {
-    // Scenario buttons
-    ['stol', 'agro', 'fire', 'crosswind', 'auto-demo'].forEach(scen => {
-      const btn = document.querySelector(`.sim-scenario-btn[data-scenario="${scen}"]`);
-      if (btn) {
-        btn.addEventListener('click', () => {
-          initAudioEngine();
-          setScenario(scen);
-        });
-      }
-    });
-
-    // Weather buttons
-    ['day', 'sunset', 'night', 'storm'].forEach(wKey => {
-      const btn = document.querySelector(`.sim-tool-btn[data-weather="${wKey}"]`);
-      if (btn) {
-        btn.addEventListener('click', function () {
-          document.querySelectorAll('.sim-weather-group .sim-tool-btn').forEach(b => b.classList.remove('active'));
-          this.classList.add('active');
-          setWeatherPreset(wKey);
-        });
-      }
-    });
-
-    // Camera toggle
-    const camBtn = document.getElementById('btn-sim-cam-toggle');
-    if (camBtn) camBtn.addEventListener('click', cycleCameraMode);
-
-    // Professor Mode Toggle
-    const profBtn = document.getElementById('btn-sim-professor');
-    const profOverlay = document.getElementById('sim-professor-overlay');
-    if (profBtn && profOverlay) {
-      profBtn.addEventListener('click', () => {
-        SIM.professorMode = !SIM.professorMode;
-        profOverlay.style.display = SIM.professorMode ? 'block' : 'none';
-        profBtn.classList.toggle('active', SIM.professorMode);
-      });
-    }
-    const profClose = document.getElementById('btn-close-prof');
-    if (profClose && profOverlay && profBtn) {
-      profClose.addEventListener('click', () => {
-        SIM.professorMode = false;
-        profOverlay.style.display = 'none';
-        profBtn.classList.remove('active');
+    const btnWater = document.getElementById('btn-act-water');
+    if (btnWater) {
+      btnWater.addEventListener('click', () => {
+        flight.waterDropping = !flight.waterDropping;
+        btnWater.classList.toggle('active', flight.waterDropping);
+        showToast(flight.waterDropping ? '💧 СБРОС ВОДЫ АКТИВИРОВАН!' : 'СБРОС ВОДЫ ОСТАНОВЛЕН');
       });
     }
 
-    // Autopilot Toggle Button
-    const apBtn = document.getElementById('btn-sim-autopilot-toggle');
-    const apLabel = document.getElementById('sim-ap-label');
-    if (apBtn) {
-      apBtn.addEventListener('click', () => {
-        initAudioEngine();
-        SIM.autopilotActive = !SIM.autopilotActive;
-        apBtn.classList.toggle('active', SIM.autopilotActive);
-        if (apLabel) apLabel.innerText = `AI AP: ${SIM.autopilotActive ? 'ON' : 'OFF'}`;
-        if (SIM.autopilotActive) setScenario('auto-demo');
+    const btnSpray = document.getElementById('btn-act-spray');
+    const lblSpray = document.getElementById('lbl-spray');
+    if (btnSpray) {
+      btnSpray.addEventListener('click', () => {
+        flight.agroSpraying = !flight.agroSpraying;
+        if (lblSpray) lblSpray.textContent = flight.agroSpraying ? '🌿 Спрей ВКЛ (X)' : '🌿 Спрей (X)';
+        btnSpray.classList.toggle('active', flight.agroSpraying);
+        showToast(flight.agroSpraying ? '🌿 УЛЬТРАДИСПЕРСНОЕ ОПРЫСКИВАНИЕ САДОВ ВКЛЮЧЕНО' : 'ОПРЫСКИВАНИЕ ВЫКЛЮЧЕНО');
       });
     }
 
-    // Sound Toggle Button
-    const soundBtn = document.getElementById('btn-sim-sound');
-    const soundIcon = document.getElementById('sim-sound-icon');
-    if (soundBtn) {
-      soundBtn.addEventListener('click', () => {
-        initAudioEngine();
-        SIM.audioEnabled = !SIM.audioEnabled;
-        if (soundIcon) {
-          soundIcon.className = SIM.audioEnabled ? 'fa-solid fa-volume-high' : 'fa-solid fa-volume-xmark';
-        }
-      });
-    }
-
-    // Touch controls visibility toggle
-    const touchToggle = document.getElementById('btn-sim-touch-toggle');
-    const touchOverlay = document.getElementById('sim-touch-controls');
-    if (touchToggle && touchOverlay) {
-      touchToggle.addEventListener('click', () => {
-        const cur = window.getComputedStyle(touchOverlay).display;
-        touchOverlay.style.display = cur === 'none' ? 'flex' : 'none';
-      });
-    }
-
-    // Debriefing Modal Close & PDF Download
-    const closeDebrief = document.getElementById('btn-close-debriefing');
-    const debriefModal = document.getElementById('sim-debriefing-modal');
-    if (closeDebrief && debriefModal) {
-      closeDebrief.addEventListener('click', () => {
-        debriefModal.style.display = 'none';
-      });
-    }
-
-    const restartBtn = document.getElementById('btn-restart-mission');
-    if (restartBtn && debriefModal) {
-      restartBtn.addEventListener('click', () => {
-        debriefModal.style.display = 'none';
-        setScenario(SIM.scenario);
-      });
-    }
-
-    const downloadCertBtn = document.getElementById('btn-download-cert');
-    if (downloadCertBtn) {
-      downloadCertBtn.addEventListener('click', () => {
-        if (window.html2pdf) {
-          const card = document.querySelector('.sim-debriefing-card');
-          const opt = {
-            margin: 10,
-            filename: 'AeroTerra_H2_Flight_Test_Certificate.pdf',
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
-          };
-          window.html2pdf().from(card).set(opt).save();
-        } else {
-          alert('Сертификат подготовлен! Нажмите Ctrl+P для печати.');
-        }
-      });
-    }
-
-    // Teleport Buttons (Row 2 below compass)
-    const tpRwy = document.getElementById('btn-tp-rwy');
-    if (tpRwy) {
-      tpRwy.addEventListener('click', () => {
-        initAudioEngine();
-        flight.pos.set(0, 80, -200);
-        flight.rot.set(0, 0, 0);
-        flight.quat.setFromEuler(flight.rot);
-        flight.vel.set(0, 0, 23.6);
-        flight.throttle = 0.75;
-        flight.onGround = false;
-        flight.gearDown = false;
-      });
-    }
-
-    const tpAgro = document.getElementById('btn-tp-agro');
-    if (tpAgro) {
-      tpAgro.addEventListener('click', () => {
-        initAudioEngine();
-        flight.pos.set(NAV.agro.x, 60, NAV.agro.z - 200);
-        flight.rot.set(0, 0, 0);
-        flight.quat.setFromEuler(flight.rot);
-        flight.vel.set(0, 0, 23.6);
-        flight.throttle = 0.75;
-        flight.onGround = false;
-      });
-    }
-
-    const tpFire = document.getElementById('btn-tp-fire');
-    if (tpFire) {
-      tpFire.addEventListener('click', () => {
-        initAudioEngine();
-        flight.pos.set(NAV.fire.x, 120, NAV.fire.z - 250);
-        flight.rot.set(0, 0, 0);
-        flight.quat.setFromEuler(flight.rot);
-        flight.vel.set(0, 0, 23.6);
-        flight.throttle = 0.75;
-        flight.onGround = false;
-      });
-    }
-
-    const tpLake = document.getElementById('btn-tp-lake');
-    if (tpLake) {
-      tpLake.addEventListener('click', () => {
-        initAudioEngine();
-        flight.pos.set(NAV.lake.x, 50, NAV.lake.z - 200);
-        flight.rot.set(0, 0, 0);
-        flight.quat.setFromEuler(flight.rot);
-        flight.vel.set(0, 0, 23.6);
-        flight.throttle = 0.75;
-        flight.onGround = false;
-      });
-    }
-
-    const tpCharvak = document.getElementById('btn-tp-charvak');
-    if (tpCharvak) {
-      tpCharvak.addEventListener('click', () => {
-        initAudioEngine();
-        flight.pos.set(NAV.charvak.x, 180, NAV.charvak.z);
-        flight.rot.set(0, THREE.MathUtils.degToRad(-45), 0);
-        flight.quat.setFromEuler(flight.rot);
-        flight.vel.set(0, 0, 26.4);
-        flight.throttle = 0.75;
-        flight.onGround = false;
-        flight.gearDown = false;
-      });
-    }
-
-    // Bottom Action Bar Buttons
-    const takeoffBtn = document.getElementById('btn-action-takeoff');
-    if (takeoffBtn) {
-      takeoffBtn.addEventListener('click', () => {
-        initAudioEngine();
-        setScenario('rwy-start');
-      });
-    }
-
-    const modeBtn = document.getElementById('btn-sim-mode-toggle');
-    const modeLbl = document.getElementById('lbl-sim-mode');
-    let isAirMode = true;
-    if (modeBtn) {
-      modeBtn.addEventListener('click', () => {
-        initAudioEngine();
-        isAirMode = !isAirMode;
-        if (isAirMode) {
-          setScenario('stol');
-          if (modeLbl) modeLbl.innerHTML = '✈️ В воздухе (85 км/ч)';
-          modeBtn.classList.add('active');
-        } else {
-          setScenario('rwy-start');
-          if (modeLbl) modeLbl.innerHTML = '🛫 Старт с ВПП';
-          modeBtn.classList.remove('active');
-        }
-      });
-    }
-
-    const salvoBtn = document.getElementById('btn-action-salvo');
-    if (salvoBtn) {
-      salvoBtn.addEventListener('click', () => {
-        initAudioEngine();
-        triggerWaterSalvo();
-        flight.sprayActive = !flight.sprayActive;
-      });
-    }
-
-    const actGear = document.getElementById('btn-action-gear');
-    if (actGear) {
-      actGear.addEventListener('click', () => {
-        initAudioEngine();
-        flight.gearDown = !flight.gearDown;
-        flight.brakes = flight.gearDown && flight.onGround;
-      });
-    }
-
-    const actFlaps = document.getElementById('btn-action-flaps');
-    if (actFlaps) {
-      actFlaps.addEventListener('click', () => {
-        initAudioEngine();
-        flight.flapsStage = (flight.flapsStage + 1) % 3;
-      });
-    }
-
-    const actCam = document.getElementById('btn-action-cam');
-    if (actCam) {
-      actCam.addEventListener('click', () => {
-        initAudioEngine();
-        cycleCameraMode();
-      });
-    }
-
-    const actTouch = document.getElementById('btn-action-touch');
-    const touchOverlay = document.getElementById('sim-touch-controls');
-    if (actTouch && touchOverlay) {
-      actTouch.addEventListener('click', () => {
-        const isHidden = window.getComputedStyle(touchOverlay).display === 'none';
-        touchOverlay.style.display = isHidden ? 'flex' : 'none';
-        actTouch.classList.toggle('active', isHidden);
-      });
-    }
-
-    const th100 = document.getElementById('btn-throttle-100');
-    if (th100) th100.addEventListener('click', () => { initAudioEngine(); flight.throttle = 1.0; });
-    const th75 = document.getElementById('btn-throttle-75');
-    if (th75) th75.addEventListener('click', () => { initAudioEngine(); flight.throttle = 0.75; });
-    const th25 = document.getElementById('btn-throttle-25');
-    if (th25) th25.addEventListener('click', () => { initAudioEngine(); flight.throttle = 0.25; });
-
-    const btnHelp = document.getElementById('btn-toggle-help');
-    const helpTooltip = document.getElementById('sim-controls-guide-tooltip');
-    if (btnHelp && helpTooltip) {
-      btnHelp.addEventListener('click', () => {
-        const isShown = helpTooltip.style.display !== 'none';
-        helpTooltip.style.display = isShown ? 'none' : 'flex';
-      });
-    }
-
-    // Corner HUD Flaps & Gear Buttons
-    const flapPill = document.getElementById('annun-flaps');
-    if (flapPill) {
-      flapPill.addEventListener('click', () => {
-        flight.flapsStage = (flight.flapsStage + 1) % 3;
-      });
-    }
-    const gearPill = document.getElementById('annun-gear');
-    if (gearPill) {
-      gearPill.addEventListener('click', () => {
-        flight.gearDown = !flight.gearDown;
-        flight.brakes = flight.gearDown && flight.onGround;
-      });
-    }
-    const sprayPill = document.getElementById('annun-spray');
-    if (sprayPill) {
-      sprayPill.addEventListener('click', () => {
-        initAudioEngine();
-        triggerWaterSalvo();
-        flight.sprayActive = !flight.sprayActive;
-      });
-    }
-
-    const aeroVecPill = document.getElementById('annun-aero-vec');
-    if (aeroVecPill) {
-      aeroVecPill.addEventListener('click', () => {
+    const btnAero = document.getElementById('btn-act-aero');
+    if (btnAero) {
+      btnAero.addEventListener('click', () => {
         flight.showAeroVectors = !flight.showAeroVectors;
-        aeroVecPill.classList.toggle('active', flight.showAeroVectors);
-        if (aeroVectorsGroup) aeroVectorsGroup.visible = flight.showAeroVectors;
+        if (aeroVectorGroup) aeroVectorGroup.visible = flight.showAeroVectors;
+        btnAero.classList.toggle('active', flight.showAeroVectors);
+        showToast(flight.showAeroVectors ? '🌬️ 3D ВЕКТОРЫ АЭРОДИНАМИКИ ВКЛЮЧЕНЫ' : 'ВЕКТОРЫ ВЫКЛЮЧЕНЫ');
+      });
+    }
+
+    // 6. Autopilot Buttons
+    const btnApLevel = document.getElementById('btn-ap-level');
+    if (btnApLevel) {
+      btnApLevel.addEventListener('click', () => {
+        SIM.apMode.level = !SIM.apMode.level;
+        btnApLevel.classList.toggle('active', SIM.apMode.level);
+        showToast(SIM.apMode.level ? '⚖️ АВТОПИЛОТ: УДЕРЖАНИЕ ГОРИЗОНТА ВКЛ' : 'УДЕРЖАНИЕ ГОРИЗОНТА ВЫКЛ');
+      });
+    }
+
+    const btnApAlt = document.getElementById('btn-ap-alt');
+    if (btnApAlt) {
+      btnApAlt.addEventListener('click', () => {
+        SIM.apMode.alt = !SIM.apMode.alt;
+        SIM.apMode.targetAlt = Math.round(flight.pos.y);
+        btnApAlt.classList.toggle('active', SIM.apMode.alt);
+        showToast(SIM.apMode.alt ? `🔒 АВТОПИЛОТ: УДЕРЖАНИЕ ВЫСОТЫ ${SIM.apMode.targetAlt} М` : 'УДЕРЖАНИЕ ВЫСОТЫ ВЫКЛ');
+      });
+    }
+
+    const btnApHdg = document.getElementById('btn-ap-hdg');
+    if (btnApHdg) {
+      btnApHdg.addEventListener('click', () => {
+        SIM.apMode.hdg = !SIM.apMode.hdg;
+        SIM.apMode.targetHdg = Math.round(((-flight.rot.y * 180 / Math.PI) % 360 + 360) % 360);
+        btnApHdg.classList.toggle('active', SIM.apMode.hdg);
+        showToast(SIM.apMode.hdg ? `🧭 АВТОПИЛОТ: КУРС ${SIM.apMode.targetHdg}°` : 'АВТО-КУРС ВЫКЛ');
+      });
+    }
+
+    // 7. Keyboard Listeners
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+
+    // 8. Mouse Orbit Dragging
+    if (simCanvas) {
+      simCanvas.addEventListener('mousedown', (e) => {
+        if (e.button === 0) {
+          isMouseDragging = true;
+          mousePrevX = e.clientX;
+          mousePrevY = e.clientY;
+        }
+      });
+      window.addEventListener('mousemove', (e) => {
+        if (isMouseDragging && SIM.cameraMode === 'orbit') {
+          const dx = e.clientX - mousePrevX;
+          const dy = e.clientY - mousePrevY;
+          orbitYaw -= dx * 0.008;
+          orbitPitch = Math.max(-0.2, Math.min(1.4, orbitPitch + dy * 0.008));
+          mousePrevX = e.clientX;
+          mousePrevY = e.clientY;
+        }
+      });
+      window.addEventListener('mouseup', () => {
+        isMouseDragging = false;
       });
     }
   }
 
-  function toggleHUD() {
-    SIM.hudVisible = !SIM.hudVisible;
-    const hud = document.getElementById('sim-hud-overlay');
-    if (hud) hud.style.display = SIM.hudVisible ? 'block' : 'none';
+  function handleKeyDown(e) {
+    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT')) {
+      return;
+    }
+    const simSection = document.getElementById('simulator-section');
+    if (simSection && !simSection.classList.contains('active')) {
+      return;
+    }
+
+    initAudioEngine();
+
+    switch (e.key.toLowerCase()) {
+      // Pitch (Elevator)
+      case 'w':
+      case 'arrowup':
+        flight.pitchInput = -1.0;
+        break;
+      case 's':
+      case 'arrowdown':
+        flight.pitchInput = 1.0;
+        break;
+
+      // Roll (Ailerons)
+      case 'a':
+      case 'arrowleft':
+        flight.rollInput = -1.0;
+        break;
+      case 'd':
+      case 'arrowright':
+        flight.rollInput = 1.0;
+        break;
+
+      // Throttle & Rudder
+      case 'shift':
+      case 'q':
+        flight.throttle = Math.min(1.0, flight.throttle + 0.05);
+        break;
+      case 'control':
+      case 'e':
+        flight.throttle = Math.max(0.0, flight.throttle - 0.05);
+        break;
+
+      // Gear (G)
+      case 'g':
+        const btnGear = document.getElementById('btn-act-gear');
+        if (btnGear) btnGear.click();
+        break;
+
+      // Flaps (F)
+      case 'f':
+        const btnFlaps = document.getElementById('btn-act-flaps');
+        if (btnFlaps) btnFlaps.click();
+        break;
+
+      // Spoilers (B)
+      case 'b':
+        const btnSpoilers = document.getElementById('btn-act-spoilers');
+        if (btnSpoilers) btnSpoilers.click();
+        break;
+
+      // Water Drop (Space)
+      case ' ':
+        e.preventDefault();
+        const btnWater = document.getElementById('btn-act-water');
+        if (btnWater) btnWater.click();
+        break;
+
+      // Agro Spray (X)
+      case 'x':
+        const btnSpray = document.getElementById('btn-act-spray');
+        if (btnSpray) btnSpray.click();
+        break;
+
+      // Aero Vectors (V)
+      case 'v':
+        const btnAero = document.getElementById('btn-act-aero');
+        if (btnAero) btnAero.click();
+        break;
+
+      // Camera Mode (C)
+      case 'c':
+        const modes = ['chase', 'cockpit', 'satellite', 'orbit'];
+        const curIdx = modes.indexOf(SIM.cameraMode);
+        const nextMode = modes[(curIdx + 1) % modes.length];
+        const btnCam = document.getElementById(`btn-cam-${nextMode === 'cockpit' ? 'fpv' : (nextMode === 'satellite' ? 'sat' : nextMode)}`);
+        if (btnCam) btnCam.click();
+        break;
+
+      // Autopilot Keys 1, 2, 3
+      case '1':
+        const b1 = document.getElementById('btn-ap-level');
+        if (b1) b1.click();
+        break;
+      case '2':
+        const b2 = document.getElementById('btn-ap-alt');
+        if (b2) b2.click();
+        break;
+      case '3':
+        const b3 = document.getElementById('btn-ap-hdg');
+        if (b3) b3.click();
+        break;
+
+      // Reset (R)
+      case 'r':
+        teleportToLocation(SIM.locationId, 700);
+        break;
+    }
   }
 
-  function handleResize(width, height) {
+  function handleKeyUp(e) {
+    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT')) {
+      return;
+    }
+    const simSection = document.getElementById('simulator-section');
+    if (simSection && !simSection.classList.contains('active')) {
+      return;
+    }
+
+    switch (e.key.toLowerCase()) {
+      case 'w':
+      case 's':
+      case 'arrowup':
+      case 'arrowdown':
+        flight.pitchInput = 0;
+        break;
+      case 'a':
+      case 'd':
+      case 'arrowleft':
+      case 'arrowright':
+        flight.rollInput = 0;
+        break;
+    }
+  }
+
+  // ----------------------------------------------------------------------------
+  // 16. GUARANTEED RESIZE LOGIC
+  // ----------------------------------------------------------------------------
+  function handleResize(forcedW, forcedH) {
     if (!renderer || !camera) return;
-    const container = document.getElementById('simulator-section');
-    const w = width || (container && container.clientWidth > 0 ? container.clientWidth : (simCanvas ? simCanvas.clientWidth : window.innerWidth));
-    const h = height || (container && container.clientHeight > 0 ? container.clientHeight : (simCanvas ? simCanvas.clientHeight : (window.innerHeight - 72)));
+    const container = document.getElementById('simulator-section') || document.body;
+    const w = forcedW || (container.clientWidth > 0 ? container.clientWidth : window.innerWidth);
+    const h = forcedH || (container.clientHeight > 0 ? container.clientHeight : Math.max(300, window.innerHeight - 70));
+
     if (w <= 0 || h <= 0) return;
 
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
     renderer.setSize(w, h, false);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-
-    // Responsive PFD canvas update
-    if (horizonCanvas) {
-      const pfdSize = Math.min(380, Math.max(260, window.innerWidth * 0.3));
-      horizonCanvas.width = pfdSize;
-      horizonCanvas.height = pfdSize;
-    }
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   }
 
   function initResizeObserver() {
@@ -3586,20 +1947,41 @@
     window.addEventListener('resize', () => handleResize());
   }
 
-  // Triggered whenever the user switches to the 3D Flight Simulator tab
+  // Multi-stage onShow ensures WebGL is NEVER 0x0
   SIM.onShow = function () {
     SIM.running = true;
     SIM.paused = false;
+
     const container = document.getElementById('simulator-section');
     if (container) {
       container.classList.add('active');
-      const w = container.clientWidth || window.innerWidth;
-      const h = container.clientHeight || (window.innerHeight - 72);
-      handleResize(w, h);
     }
+
+    // Stage 1: Immediate
+    handleResize();
+
+    // Stage 2: Next Animation Frame
+    requestAnimationFrame(() => {
+      handleResize();
+      if (renderer && scene && camera) {
+        renderer.render(scene, camera);
+      }
+    });
+
+    // Stage 3: After DOM reflow (50ms)
+    setTimeout(() => {
+      handleResize();
+      if (renderer && scene && camera) {
+        renderer.render(scene, camera);
+      }
+    }, 50);
+
+    // Stage 4: Safety Check (200ms)
+    setTimeout(() => {
+      handleResize();
+    }, 200);
   };
 
-  // Triggered when switching to other tabs
   SIM.onHide = function () {
     const container = document.getElementById('simulator-section');
     if (container) {
@@ -3608,62 +1990,54 @@
   };
 
   // ----------------------------------------------------------------------------
-  // 14. MAIN ANIMATION & SIMULATION LOOP (60 FPS)
+  // 17. MAIN 60 FPS ANIMATION LOOP
   // ----------------------------------------------------------------------------
   function animate() {
     requestAnimationFrame(animate);
 
-    if (!SIM.running || SIM.paused) return;
+    const dt = Math.min(0.05, Math.max(0.001, clock.getDelta()));
 
-    let dt = clock.getDelta();
-    // Clamp delta time to avoid large physics steps on tab switch
-    dt = Math.min(0.05, Math.max(0.001, dt));
-
-    // 1. Aerodynamic Physics Integration
+    // 1. Aerodynamic Physics
     updatePhysics(dt);
 
-    // 2. Zone Mission Updates
-    updateAgroSpraying(dt);
-    updateWildfires(dt);
-    updateHydroScooping(dt);
-    updatePAPILights();
+    // 2. Particle FX
+    updateParticles(dt);
 
-    // 3. Audio Update
-    updateAudio(dt);
+    // 3. Dynamic Slippy Map Tile Streaming
+    updateSatelliteTiles();
 
-    // 4. Camera Follow
+    // 4. Audio
+    updateAudio();
+
+    // 5. Camera
     updateCamera();
 
-    // 5. Instruments & HUD Draw
-    drawArtificialHorizon();
+    // 6. UI Instruments & Radar
     updateHUDInstruments();
+    updateRadar();
 
-    // 6. Three.js Render
-    renderer.render(scene, camera);
+    // 7. Render 3D Scene
+    if (renderer && scene && camera) {
+      renderer.render(scene, camera);
+    }
   }
 
   // ----------------------------------------------------------------------------
-  // 15. INITIALIZATION HOOK
+  // 18. INITIAL ENTRYPOINT
   // ----------------------------------------------------------------------------
   function initSimulator() {
     if (SIM.initialized) return;
 
     init3DWorld();
-    initHUDInstruments();
     initControls();
 
     SIM.initialized = true;
     SIM.running = true;
 
-    // Start with STOL scenario
-    setScenario('stol');
-
-    // Begin Animation Loop
-    clock.start();
+    // Start 60fps loop immediately
     animate();
   }
 
-  // Auto-init once DOM is loaded
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initSimulator);
   } else {
