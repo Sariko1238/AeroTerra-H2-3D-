@@ -464,6 +464,10 @@
           </div>
         </div>
 
+        <button class="btn-refill-tanks" id="btn-sim-refill" title="Мгновенно заправить водородный бак (28.5 кг) и гидробак (800 л)">
+          <i class="fa-solid fa-gas-pump"></i> <span>🔄 Пополнить баки</span>
+        </button>
+
         <!-- Sensitivity Slider -->
         <div class="sim-sensitivity-row">
           <span>ЧУВСТВИТЕЛЬНОСТЬ:</span>
@@ -491,6 +495,9 @@
             </button>
             <button class="sim-act-btn" id="btn-cam-orbit" data-cam="orbit" title="Свободная орбитальная камера (вращение мышью)">
               <i class="fa-solid fa-arrows-spin"></i> <span>🎬 Орбита (Мышь)</span>
+            </button>
+            <button class="sim-act-btn btn-sim-reset-inline" id="btn-sim-reset-center" title="Мгновенный сброс в полёт (700 м, 140 км/ч, тяга 65%)">
+              <i class="fa-solid fa-rotate-right"></i> <span>🔄 Сброс в полёт (700 м)</span>
             </button>
           </div>
         </div>
@@ -531,7 +538,10 @@
               <i class="fa-solid fa-lock"></i> <span>🔒 Удержание высоты (2)</span>
             </button>
             <button class="sim-act-btn ap-btn" id="btn-ap-hdg" title="Автоматическое удержание путевого курса (Клавиша 3)">
-              <i class="fa-solid fa-compass"></i> <span>🧭 Авто-курс (3)</span>
+              <i class="fa-solid fa-compass"></i> <span>🧭 Авто-курс по точкам (3)</span>
+            </button>
+            <button class="sim-act-btn ap-btn btn-demo-glow" id="btn-ap-demo" title="Автоматический демонстрационный полёт ИИ">
+              <i class="fa-solid fa-robot"></i> <span>🤖 Полный Демо-Полёт</span>
             </button>
           </div>
         </div>
@@ -570,15 +580,20 @@
     <div class="sim-touch-controls" id="sim-touch-controls">
       <!-- Left Stick: Throttle & Rudder -->
       <div class="touch-throttle-block">
+        <div class="touch-throttle-step-row">
+          <button class="touch-thr-step-btn" id="btn-touch-thr-dec" title="Уменьшить тягу на 10%">[- 10%]</button>
+          <button class="touch-thr-step-btn" id="btn-touch-thr-inc" title="Увеличить тягу на 10%">[+ 10%]</button>
+        </div>
         <div class="touch-throttle-track" id="touch-throttle-track">
+          <div class="touch-throttle-fill" id="touch-throttle-fill" style="height: 75%;"></div>
           <div class="touch-throttle-handle" id="touch-throttle-handle" style="bottom: 75%;">
             <span id="touch-throttle-pct">75%</span>
             <span>THR</span>
           </div>
         </div>
         <div class="touch-rudder-row">
-          <button class="touch-rudder-btn" id="touch-rudder-left">◄ RUD</button>
-          <button class="touch-rudder-btn" id="touch-rudder-right">RUD ►</button>
+          <button class="touch-rudder-btn" id="touch-rudder-left">◄ RUDDER</button>
+          <button class="touch-rudder-btn" id="touch-rudder-right">RUDDER ►</button>
         </div>
       </div>
 

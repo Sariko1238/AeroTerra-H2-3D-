@@ -387,9 +387,9 @@
     wing: {
       nodeNumber: 1,
       category: 'CATIA V5 / AERODYNAMICS',
-      title: { ru: '🪽 Несущее крыло Class-A (NACA 64-215)', en: '🪽 Wing Class-A Surface (NACA 64-215)' },
+      title: { ru: '🪽 Крыло Class-A (NACA 64-215)', en: '🪽 Wing Class-A Surface (NACA 64-215)' },
       massKg: 86.4,
-      mtowPct: '19.2%',
+      mtowPct: '5.3%',
       material: { ru: 'CFRP Углепластик T800 Class-A', en: 'CFRP T800 Carbon Class-A' },
       targetPos: { x: 4.2, y: 1.1, z: 0.1 },
       camPos: { x: 7.2, y: 3.2, z: 4.2 },
@@ -397,12 +397,12 @@
         { label: { ru: 'Площадь крыла (S):', en: 'Wing Area (S):' }, val: '13.35 м²' },
         { label: { ru: 'Удлинение (AR):', en: 'Aspect Ratio (AR):' }, val: '11.5' },
         { label: { ru: 'Аэродинам. качество:', en: 'Max L/D Ratio:' }, val: 'L/D = 21.4' },
-        { label: { ru: 'Материал кессона:', en: 'Spar Material:' }, val: 'CFRP T800 Carbon' }
+        { label: { ru: 'Размах крыла (b):', en: 'Wingspan (b):' }, val: '12.4 м' }
       ],
-      formula: 'L = ½ · ρ · V² · S · CL  |  CDi = CL² / (π · AR · e)',
+      formula: 'L = 0.5 · ρ · V² · S · CL  |  CDi = CL² / (π · AR · e)',
       desc: {
-        ru: 'Высоконесущее крыло большого удлинения (AR = 11.5) с ламинарным обтеканием по профилю NACA 64-215. Поверхности Class-A спроектированы в CATIA V5 ICEM Surf по стандартам непрерывности кривизны G2/G3. Снижает индуктивное сопротивление на 24% и обеспечивает устойчивый полёт на околосваливающих скоростях при активном обдуве распределённой силовой установкой (DEP).',
-        en: 'High-lift, high aspect ratio wing (AR = 11.5) with laminar flow along the NACA 64-215 airfoil. Class-A surfaces engineered in CATIA V5 ICEM Surf complying with G2/G3 curvature continuity. Reduces induced drag by 24% and delivers steady flight at near-stall speeds through active blown-wing distributed electric propulsion (DEP).'
+        ru: 'Высоконесущее крыло большого удлинения с ламинарным каплевидным профилем NACA 64-215, спроектированное в CATIA V5 ICEM Surf по стандартам непрерывности кривизны G2/G3 (Class-A Surface). Законцовки с винглетами снижают индуктивное сопротивление на 24% и обеспечивают устойчивый полёт на сверхнизких скоростях (STOL 38 км/ч) при активном обдуве от 4 распределённых электромоторов (DEP).',
+        en: 'High-lift, high aspect ratio wing with laminar drop profile NACA 64-215, engineered in CATIA V5 ICEM Surf complying with G2/G3 curvature continuity (Class-A Surface). Winglet tips reduce induced drag by 24% and ensure stable flight at ultra-low speeds (STOL 38 km/h) with active propwash from 4 distributed electric motors (DEP).'
       },
       chartData: {
         x: ['100', '140', '180', '210', '250', '290'],
@@ -413,101 +413,101 @@
     tank: {
       nodeNumber: 2,
       category: 'HYDROGEN CRYOGENICS',
-      title: { ru: '💧 Криогенный водородный бак (LH2 350 Bar)', en: '💧 LH2 Cryo-Tank 350 Bar' },
-      massKg: 42.0,
-      mtowPct: '6.8%',
-      material: { ru: 'Type IV Toray T1000 + MLI Вакуум', en: 'Type IV Toray T1000 + MLI' },
+      title: { ru: '💧 Криогенный водородный бак (LH2 Type IV)', en: '💧 Cryogenic LH2 Cryo-Tank Type IV' },
+      massKg: 92.5,
+      mtowPct: '5.6%',
+      material: { ru: 'Карбоновый композит Toray T1000 + MLI вакуумная изоляция', en: 'Toray T1000 Carbon Composite + MLI Vacuum Insulation' },
       targetPos: { x: 0, y: 0.45, z: -0.7 },
       camPos: { x: 2.2, y: 2.2, z: 2.6 },
       specs: [
-        { label: { ru: 'Запас водорода (M_H2):', en: 'H2 Mass Storage:' }, val: '28.5 кг' },
-        { label: { ru: 'Рабочее давление:', en: 'Working Pressure:' }, val: '350 / 700 Bar' },
-        { label: { ru: 'Доля массы в MTOW:', en: 'MTOW Mass Fraction:' }, val: '6.8%' },
-        { label: { ru: 'Удельная энергоёмкость:', en: 'Specific Energy:' }, val: '33.3 кВт·ч/кг (2.8x керосин)' }
+        { label: { ru: 'Запас водорода (M_H2):', en: 'H2 Fuel Storage:' }, val: '28.5 кг H₂ (400 л)' },
+        { label: { ru: 'Рабочее давление:', en: 'Working Pressure:' }, val: '350 / 700 бар' },
+        { label: { ru: 'Удельная энергоёмкость:', en: 'Specific Energy:' }, val: '33.33 кВт·ч/кг (2.8x керосин)' },
+        { label: { ru: 'Масса бака (сухой/полный):', en: 'Tank Mass (Dry/Full):' }, val: '64.0 кг + 28.5 кг H₂' }
       ],
-      formula: 'E_total = m_H2 · 33.3 kWh/kg (120 MJ/kg)  |  q_boiloff < 0.6% / 24h',
+      formula: 'E_total = M_H2 · LHV_H2 · η_FC = 28.5 · 33.33 · 0.58 = 550.9 кВт·ч',
       desc: {
-        ru: 'Композитный облегчённый бак типа IV для хранения компримированного/жидкого водорода с многослойной вакуумной экранной изоляцией (MLI). Обеспечивает удельную энергоёмкость до 33.3 кВт·ч/кг, что в 2.8 раза превышает энергоёмкость традиционного авиакеросина Jet A-1.',
-        en: 'Type IV lightweight composite tank for compressed/liquid hydrogen storage with multilayer vacuum insulation (MLI). Delivers a specific energy density up to 33.3 kWh/kg, 2.8 times higher than conventional Jet A-1 aviation kerosene.'
+        ru: 'Многослойный криогенный композитный резервуар IV поколения с экранно-вакуумной суперизоляцией (MLI) и датчиками контроля давления. Размещён в центре тяжести фюзеляжа (CG), благодаря чему по мере выработки водорода центровка самолёта остаётся неизменной.',
+        en: 'Multi-layer cryogenic composite Type IV pressure vessel with multilayer vacuum insulation (MLI) and real-time pressure transducers. Located at the fuselage center of gravity (CG), maintaining immutable aircraft trim as hydrogen is consumed.'
       },
       chartData: {
         x: ['Li-Po', 'Kerosene', 'Green H2'],
-        y: [0.26, 11.9, 33.3],
+        y: [0.26, 11.9, 33.33],
         name: 'Specific Energy (kWh/kg)'
       }
     },
     fuelcell: {
       nodeNumber: 3,
       category: 'CLEAN PROPULSION',
-      title: { ru: '⚡ Водородная топливная ячейка и Li-Po буфер', en: '⚡ PEM Fuel Cell & Li-Po Buffer' },
-      massKg: 58.0,
-      mtowPct: '12.9%',
-      material: { ru: 'Графитовые биполярные пластины / Pt', en: 'Graphite Bipolar Plates / Pt' },
+      title: { ru: '⚡ Водородная топливная ячейка PEM + Li-Po буфер', en: '⚡ PEM Fuel Cell & Li-Po Buffer Stack' },
+      massKg: 92.0,
+      mtowPct: '5.6%',
+      material: { ru: 'Proton Exchange Membrane (PEMFC) + Высокотоковый Li-Po 800V', en: 'Proton Exchange Membrane (PEMFC) + High-C Li-Po 800V' },
       targetPos: { x: 0, y: 0.48, z: 0.85 },
       camPos: { x: 2.4, y: 2.2, z: 2.8 },
       specs: [
-        { label: { ru: 'Мощность PEM стека:', en: 'PEM Continuous Power:' }, val: '120 кВт' },
-        { label: { ru: 'КПД преобразования:', en: 'Fuel Cell Efficiency:' }, val: '58%' },
-        { label: { ru: 'Буферный Li-Po аккумулятор:', en: 'Li-Po Peak Buffer:' }, val: '18 кВт·ч' },
-        { label: { ru: 'Выбросы CO₂:', en: 'Emissions:' }, val: '0 г/пасс-км (выхлоп: дистиллированный водяной пар)' },
-        { label: { ru: 'Ресурс ячейки:', en: 'Cell Lifespan:' }, val: '10 000 лётных часов' }
+        { label: { ru: 'Непрерывная мощность:', en: 'Continuous Power:' }, val: '120 кВт (PEM Stack)' },
+        { label: { ru: 'Пиковая мощность STOL:', en: 'STOL Boost Power:' }, val: '158 кВт (PEM + Li-Po)' },
+        { label: { ru: 'КПД ячейки:', en: 'Cell Efficiency:' }, val: '58% (КПД ячейки)' },
+        { label: { ru: 'Ёмкость Li-Po буфера:', en: 'Buffer Capacity:' }, val: '18.4 кВт·ч (800V)' },
+        { label: { ru: 'Выбросы CO₂:', en: 'CO2 Emissions:' }, val: '0 г/км (выхлоп: дистиллированный пар)' }
       ],
-      formula: '2 H2 + O2 -> 2 H2O + Electricity + Heat  |  η_FC = 58%',
+      formula: 'P_prop = (P_PEMFC + P_LiPo) · η_inv · η_motor  |  CO2 = 0 г/км',
       desc: {
-        ru: 'Энергоустановка на базе протонообменных мембран (PEM Fuel Cell) мощностью 120 кВт с КПД преобразования 58%. Буферный Li-Po аккумулятор ёмкостью 18 кВт·ч сглаживает пиковые нагрузки при взлёте в режиме STOL и отказе одного из 4 моторов.',
-        en: 'Proton exchange membrane power plant (PEM Fuel Cell) rated at 120 kW with 58% conversion efficiency. An 18 kWh Li-Po buffer battery levels peak loads during STOL takeoff and provides redundancy in the event of engine failure.'
+        ru: 'Гибридная водородно-электрическая энергоустановка с нулевым углеродным следом (единственный выхлоп — чистый водяной пар H₂O). Топливная ячейка обеспечивает крейсерский полёт до 6.5 часов, а буферная Li-Po батарея мгновенно выдаёт дополнительную мощность при коротком взлёте с грунтовой полосы и манёврах над очагом пожара.',
+        en: 'Zero-emission hybrid hydrogen-electric powerplant (only exhaust is pure distilled water vapor H₂O). PEM fuel cell sustains cruise flight up to 6.5 hours, while the high-drain Li-Po buffer battery delivers instantaneous boost power for STOL short unpaved field takeoffs and agile firefighting maneuvers.'
       },
       chartData: {
-        x: ['Idle', 'Cruise', 'Climb', 'STOL Max'],
-        y: [12, 68, 120, 200],
+        x: ['Idle', 'Cruise', 'Climb', 'STOL Boost'],
+        y: [12, 68, 120, 158],
         name: 'Power Output (kW)'
       }
     },
     payload: {
       nodeNumber: 4,
       category: 'DUAL-ROLE MISSION POD',
-      title: { ru: '🔄 Модульный отсек быстрой смены полезной нагрузки (Quick-Swap Pod)', en: '🔄 Quick-Swap Modular Mission Pod' },
-      massKg: 120.0,
-      mtowPct: '26.7%',
-      material: { ru: 'Композит CFRP + замки Cam-Lock', en: 'CFRP Carbon + Cam-Lock Latches' },
+      title: { ru: '🔄 Модульный отсек быстрой смены полезной нагрузки (Quick-Swap Pod 800 L)', en: '🔄 Quick-Swap Modular Mission Pod (800 L)' },
+      massKg: 800.0,
+      mtowPct: '48.8%',
+      material: { ru: 'Кевлар-эпоксидный композит + титановые замки быстрой смены', en: 'Kevlar-Epoxy Composite + Titanium Cam-Lock Quick Latches' },
       targetPos: { x: 0, y: -0.45, z: 0.2 },
       camPos: { x: 3.2, y: -0.6, z: 3.0 },
       specs: [
-        { label: { ru: 'Конфигурация "Агро":', en: 'Agro Pod Spec:' }, val: 'Бак 600 л + 6 форсунок ULV' },
-        { label: { ru: 'Конфигурация "МЧС / Пожарный":', en: 'Fire Rescue Pod:' }, val: 'Сброс 800 л воды/ретарданта за 2.2 с' },
-        { label: { ru: 'Время смены модуля:', en: 'Swap Turnaround:' }, val: '< 10 минут (замки Cam-Lock)' },
-        { label: { ru: 'Створки сброса:', en: 'Salvo Dump Gates:' }, val: 'Гидробомболюк Salvo' }
+        { label: { ru: 'Пожарный гидробак:', en: 'Fire Rescue Pod:' }, val: '800 л (сброс за 1.8 с)' },
+        { label: { ru: 'Агро-опрыскивание:', en: 'Agro Swath Pod:' }, val: '600 л + 6 форсунок ULV' },
+        { label: { ru: 'Время смены модуля:', en: 'Pod Turnaround:' }, val: '10 минут (замки Cam-Lock)' },
+        { label: { ru: 'Водозаборник озера:', en: 'Scoop Fill Rate:' }, val: '800 л за 12 с на глиссировании' }
       ],
-      formula: 'Flow_rate = A_valve · √(2 · g · h) = 360 L/s (Dump salvo in 2.2s)',
+      formula: 'Q_spray = (V_kmh · W_swath · D_rate) / 600 (л/мин)  |  t_drop = 1.8 с',
       desc: {
-        ru: 'Универсальный подфюзеляжный узел крепления модулей. Конфигурация "Агро": бак на 600 л биопрепаратов и подкрыльевые штанги с 6 ультрамалообъёмными форсунками (ULV). Конфигурация "МЧС / Пожарный": водозаборный люк и гидробомболюк со сбросом 800 л воды/пенного ретарданта за 2.2 секунды.',
-        en: 'Universal ventral payload mounting bay. "Agro" configuration: 600L biochemical tank and underwing spray booms with 6 ultra-low volume (ULV) nozzles. "Emergency/Fire" configuration: water scoop hatch and salvo dump bay releasing 800L of water/retardant in 2.2 seconds.'
+        ru: 'Универсальная подфюзеляжная капсула двойного назначения. В конфигурации "Пожарный патруль" оснащена скоростным глиссирующим водозаборником (пополнение 800 л с поверхности озера за 12 секунд) и пневмостворками залпового сброса. В конфигурации "Агро-мониторинг" подключается к подкрыльевым штангам ультрамалообъёмного опрыскивания (ULV) с размером капли 80–120 мкм.',
+        en: 'Universal dual-purpose ventral mission pod. In "Fire Rescue" role, fitted with a high-speed planing scoop (replenishes 800L from lake surface in 12s) and pneumatic salvo dump gates (1.8s dump). In "Agro Monitoring" role, links to underwing ULV booms with 80-120 μm micron droplets.'
       },
       chartData: {
-        x: ['Tank Empty', 'Agro 600L', 'Fire 800L'],
-        y: [820, 1420, 1620],
+        x: ['Empty Pod', 'Agro 600L', 'Fire 800L'],
+        y: [820, 1420, 1638],
         name: 'Aircraft Mass (kg)'
       }
     },
     motors: {
       nodeNumber: 5,
       category: 'DISTRIBUTED ELECTRIC (DEP)',
-      title: { ru: '🌀 4x Распределенных Мотора DEP', en: '🌀 4x Distributed Electric Propellers' },
-      massKg: 34.0,
-      mtowPct: '7.5%',
-      material: { ru: 'Brushless Neodymium + CFRP Винты', en: 'Brushless Neodymium + CFRP Props' },
+      title: { ru: '🌀 Распределённая винтомоторная группа (4x DEP Brushless Motors)', en: '🌀 4x Distributed Electric Propulsion (DEP) Motors' },
+      massKg: 48.0,
+      mtowPct: '2.9%',
+      material: { ru: '5-лопастные саблевидные карбоновые винты изменяемого шага', en: '5-Blade Scimitar Carbon Variable-Pitch Propellers' },
       targetPos: { x: 2.2, y: 0.75, z: 1.2 },
       camPos: { x: 4.2, y: 1.8, z: 2.8 },
       specs: [
-        { label: { ru: 'Конфигурация:', en: 'Configuration:' }, val: '4x Brushless Outrunner' },
-        { label: { ru: 'Тяга суммарная:', en: 'Total Static Thrust:' }, val: '5800 Н (590 кгс)' },
-        { label: { ru: 'Уровень шума:', en: 'Acoustic Signature:' }, val: '-15 дБ от поршневого ДВС' },
-        { label: { ru: 'Обдув крыла:', en: 'Blown Wing STOL:' }, val: '+38% к CL_max при разбеге' }
+        { label: { ru: 'Взлётная тяга:', en: 'Total Takeoff Thrust:' }, val: '4850 Н (4x мотора DEP)' },
+        { label: { ru: 'КПД электромоторов:', en: 'Motor Efficiency:' }, val: '95.4%' },
+        { label: { ru: 'Снижение шума:', en: 'Acoustic Signature:' }, val: '-16 дБ относительно ДВС' },
+        { label: { ru: 'Эффект обдува крыла:', en: 'Blown Wing STOL:' }, val: '+38% к CL на разбеге (85–110 м)' }
       ],
-      formula: 'T = 4 · [ 0.5 · ρ · A · (V_exit² - V_inf²) ]  |  CL_blown = CL0 + ΔCL_DEP',
+      formula: 'T_total = 4 · CT · ρ · n² · D_prop⁴  |  ΔCL,blown = +0.65',
       desc: {
-        ru: 'Четыре бесщеточных электродвигателя в обтекаемых мотогондолах с трехлопастными саблевидными винтами из углепластика. Скоростной поток от винтов обдувает верхнюю поверхность профиля крыла NACA, обеспечивая взлет STOL.',
-        en: 'Four brushless electric motors in streamlined nacelles spinning scimitar carbon variable-pitch propellers. Slipstream washes over the NACA airfoil suction surface, boosting CL_max by 38% for unmatched short field takeoff (STOL).'
+        ru: 'Четыре синхронизированных бесколлекторных электродвигателя на передней кромке крыла создают равномерный высокоскоростной обдув профиля (Blown Wing Effect). Это увеличивает подъёмную силу на малых скоростях на 38% и позволяет взлетать с неподготовленных полевых дорог длиной всего 85–110 метров.',
+        en: 'Four synchronized brushless electric motors along the wing leading edge generate uniform high-speed propwash (Blown Wing Effect). This elevates low-speed lift by 38% and empowers STOL takeoff from unprepared farm roads just 85–110 meters long.'
       },
       chartData: {
         x: ['Clean Wing', 'Blown DEP'],
@@ -518,22 +518,22 @@
     gimbal: {
       nodeNumber: 6,
       category: 'AI MULTISPECTRAL AVIONICS',
-      title: { ru: '👁️ Сенсорная Турель (Под носом)', en: '👁️ Under-Nose Sensor Turret & Gimbal' },
-      massKg: 12.5,
-      mtowPct: '2.8%',
-      material: { ru: 'Авиасплав 7075-T6 + Германиевая линза', en: 'Aviation 7075-T6 + Germanium Lens' },
+      title: { ru: '👁️ Оптико-электронная турель ИИ (NDVI Multispectral & FLIR)', en: '👁️ AI Optoelectronic Turret (NDVI Multispectral & FLIR)' },
+      massKg: 4.8,
+      mtowPct: '0.3%',
+      material: { ru: 'Тепловизор LWIR 640×512 + Мультиспектральная камера 5 каналов NDVI/NDRE + Лазерный дальномер', en: 'LWIR 640x512 Thermal + 5-Band NDVI/NDRE Multispectral + Laser Rangefinder' },
       targetPos: { x: 0, y: -0.48, z: 3.2 },
       camPos: { x: 1.8, y: -0.5, z: 4.8 },
       specs: [
-        { label: { ru: 'Агро-канал:', en: 'Agro Sensor:' }, val: 'NDVI / RedEdge 5-band 48MP' },
-        { label: { ru: 'Пожарный ИК-канал:', en: 'Thermal IR:' }, val: '640x512 Uncooled FLIR 15km' },
-        { label: { ru: 'Дальномер / LiDAR:', en: 'Laser Rangefinder:' }, val: 'Class 1 Eye-Safe 4000m' },
-        { label: { ru: 'Стабилизация:', en: 'Gimbal Axis:' }, val: '3-осевая гиростабилизация' }
+        { label: { ru: 'Обнаружение огня:', en: 'Thermal Fire Detection:' }, val: 'до 18 км сквозь густой дым' } ,
+        { label: { ru: 'Картография NDVI:', en: 'NDVI Precision:' }, val: '2.5 см/пиксель' },
+        { label: { ru: 'Спектральный анализ:', en: 'Spectral Channels:' }, val: '5 каналов (Blue, Green, Red, RedEdge, NIR)' },
+        { label: { ru: 'Стабилизация:', en: 'Stabilization:' }, val: '3-осевой гиростабилизатор' }
       ],
-      formula: 'NDVI = (NIR - RED) / (NIR + RED)  |  Thermal Fire Detection: 3-5 μm',
+      formula: 'NDVI = (NIR - Red) / (NIR + Red) ∈ [-1.0, +1.0]',
       desc: {
-        ru: 'Компактная сферическая оптическая турель, закрепленная под нижней частью носа фюзеляжа в аэродинамическом пилоне. Оснащена ИК-тепловизором FLIR и мультиспектральной камерой NDVI с искусственным интеллектом.',
-        en: 'Compact spherical optical gimbal turret mounted cleanly under the lower fuselage nose in an aerodynamic pylon fairing. Combines 5-band NDVI multispectral imaging with FLIR thermal vision.'
+        ru: 'Гиростабилизированный 3-осевой шар под носовым обтекателем. В режиме сельского хозяйства в реальном времени вычисляет вегетационный индекс NDVI, подавая команду форсункам распылять биопрепараты только над больными деревьями (экономия реагентов до 45%). В режиме МЧС находит скрытые подземные очаги тления торфа и леса и строит прицельный вектор сброса воды.',
+        en: 'Gyrostabilized 3-axis ball gimbal beneath the nose cone. In agriculture mode, computes vegetation NDVI in real-time, directing spray nozzles strictly over diseased crops (saving up to 45% chemical agent). In emergency firefighting role, locates underground smoldering peat and timber embers through thick smoke, projecting precise ballistic drop vectors.'
       },
       chartData: {
         x: ['Healthy', 'Water Stress', 'Dry / Fire'],
@@ -544,22 +544,22 @@
     avionics: {
       nodeNumber: 7,
       category: 'NAVIGATION & TELEMETRY',
-      title: { ru: '📡 Автопилот MAVLink / Starlink', en: '📡 Autonomous Avionics & Starlink' },
-      massKg: 8.5,
-      mtowPct: '1.9%',
-      material: { ru: 'Mil-Spec Алюминий + Triple STM32H7', en: 'Mil-Spec Aluminum + Triple STM32H7' },
+      title: { ru: '📡 Двухбалочное хвостовое оперение и автопилот (Twin-Boom H-Tail & MAVLink)', en: '📡 Twin-Boom H-Tail & MAVLink Autopilot' },
+      massKg: 26.5,
+      mtowPct: '1.6%',
+      material: { ru: 'Тройное резервирование ArduPilot Cube Orange+ / RTK GPS / Starlink & 915 МГц', en: 'Triple-Redundant ArduPilot Cube Orange+ / RTK GPS / Starlink & 915 MHz' },
       targetPos: { x: 0, y: 0.55, z: 2.2 },
       camPos: { x: 2.0, y: 2.2, z: 3.8 },
       specs: [
-        { label: { ru: 'Процессор полета:', en: 'Flight Controller:' }, val: 'Triple Redundant STM32H7' },
-        { label: { ru: 'Канал связи:', en: 'Datalink:' }, val: '868 MHz + 5G + Starlink Mini' },
-        { label: { ru: 'Навигация:', en: 'RTK GNSS:' }, val: 'Сантиметровая точность (2 см)' },
-        { label: { ru: 'Безопасность:', en: 'Safety Standard:' }, val: 'DO-178C / EASA Level C' }
+        { label: { ru: 'Жёсткость на кручение:', en: 'Torsional Rigidity:' }, val: '+42% (двухбалочная схема)' },
+        { label: { ru: 'Дальность телеметрии:', en: 'Telemetry Range:' }, val: '150 км (радио) / Неограниченно (Starlink)' },
+        { label: { ru: 'Навигация RTK GNSS:', en: 'RTK Precision:' }, val: '2.0 см точность позиционирования' },
+        { label: { ru: 'Оперение H-Tail:', en: 'H-Tail Stability:' }, val: 'Защита рулей в высокой траве' }
       ],
-      formula: 'Navigation: EKF3 24-State Fusion (IMU + GPS + Baro + LiDAR)',
+      formula: 'Cmα = ∂Cm/∂α < 0  (Критерий продольной статической устойчивости)',
       desc: {
-        ru: 'Вычислительный блок на базе ArduPilot с тройным резервированием датчиков IMU. Обеспечивает полностью автономное выполнение миссий: автоматический взлет, обработка полей по координатной сетке и автоматический возврат.',
-        en: 'Triple-redundant avionics running real-time EKF3 sensor fusion over ArduPilot. Guarantees centimeter RTK precision for automatic crop swath spray tracks and emergency parachute deployment.'
+        ru: 'Двухбалочная схема с высокорасположенным П-образным стабилизатором выносит рули высоты и направления в зону невозмущённого потока от винтов и защищает их от повреждений при посадке в высокой траве, а также освобождает пространство под фюзеляжем для сброса воды.',
+        en: 'Twin-boom layout with elevated inverted-U horizontal stabilizer positions elevator and rudders in clean unseparated slipstream, shields control surfaces from damage in tall wild grass landings, and frees ventral space for unimpeded water salvo dumps.'
       },
       chartData: {
         x: ['Radio RF', 'Cellular 5G', 'Satellite'],
@@ -570,22 +570,22 @@
     gear: {
       nodeNumber: 8,
       category: 'STOL ROUGH-TERRAIN GEAR',
-      title: { ru: '🛬 Шасси STOL & Амфибийные Поплавки', en: '🛬 Rough-Terrain STOL Landing Gear' },
-      massKg: 28.0,
-      mtowPct: '6.2%',
-      material: { ru: 'Титан Oleo-Pneumatic + Tundra шины', en: 'Titanium Oleo-Pneumatic + Tundra Tires' },
+      title: { ru: '🛬 Усиленное убирающееся шасси STOL (Rough-Terrain Gear)', en: '🛬 Heavy-Duty Retractable STOL Rough-Terrain Gear' },
+      massKg: 42.0,
+      mtowPct: '2.6%',
+      material: { ru: 'Рычажная титановая подвеска с азотно-масляными амортизаторами и пневматиками низкого давления', en: 'Trailing-Link Titanium Suspension with Nitrogen-Oil Oleo Struts & Low-Pressure Tires' },
       targetPos: { x: 1.5, y: -1.0, z: 0.3 },
       camPos: { x: 3.5, y: -0.6, z: 2.6 },
       specs: [
-        { label: { ru: 'Тип амортизаторов:', en: 'Shock Absorbers:' }, val: 'Азотно-масляные Oleo-Strut' },
-        { label: { ru: 'Шины:', en: 'Tundra Balloon Tires:' }, val: 'Низкого давления (0.8 Bar)' },
-        { label: { ru: 'Поверхности посадки:', en: 'Supported Runways:' }, val: 'Пашня, грунт, гравий, вода' },
-        { label: { ru: 'Скорость отрыва:', en: 'Takeoff Lift-Off Speed:' }, val: '68 км/ч (при обдуве крыла)' }
+        { label: { ru: 'Время уборки/выпуска:', en: 'Cycle Time:' }, val: '3.5 с (электрогидравлический привод)' },
+        { label: { ru: 'Снижение CD0 при уборке:', en: 'Parasite Drag Cut:' }, val: '-28% (экономия 14% H₂)' },
+        { label: { ru: 'Вертикальная скорость:', en: 'Sink Rate Limit:' }, val: 'до 4.2 м/с при посадке' },
+        { label: { ru: 'Шины Tundra Balloon:', en: 'Tires:' }, val: '0.8 бар (пашня, грунт, гравий)' }
       ],
-      formula: 'Shock_absorption: E_kinetic = 0.5 · m · V_sink² -> Efficiency 82%',
+      formula: 'E_impact = ½ · m_MTOW · V_sink² ≤ η_shock · F_max · S_stroke',
       desc: {
-        ru: 'Усиленное шасси с длинноходной амортизацией и шинами большого диаметра, разработанное для эксплуатации с неподготовленных полевых дорог и распаханной земли. Опционально комплектуется амфибийными поплавками.',
-        en: 'Heavy-duty trailing-link landing gear with nitrogen oleo struts and ultra-low pressure tundra tires capable of operating directly from plowed farm soils and unpaved grass strips.'
+        ru: 'Трёхстоечное шасси высокой проходимости позволяет эксплуатировать самолёт с грунтовых аэродромов, пашни и травяных полос. В полёте стойки полностью убираются в обтекаемые ниши фюзеляжа, снижая паразитное сопротивление и экономя до 14% водородного топлива на крейсерском маршруте.',
+        en: 'Heavy-duty tricycle rough-terrain landing gear enables operations from unpaved farm strips, plowed fields, and gravel bars. In flight, struts retract flush into streamlined fuselage wells, cutting parasite drag by 28% and saving 14% hydrogen fuel across cruise legs.'
       },
       chartData: {
         x: ['Paved Strip', 'Grass Field', 'Plowed Dirt'],

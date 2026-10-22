@@ -596,10 +596,10 @@ a:hover {
    ========================================================================== */
 .engineering-flyout {
   position: absolute;
-  top: 90px;
+  top: 86px;
   right: 1.5rem;
   width: 410px;
-  max-height: calc(100vh - 180px);
+  max-height: calc(100vh - 170px);
   background: rgba(8, 15, 34, 0.92);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
@@ -3271,14 +3271,44 @@ a:hover {
 
 .sim-hud-card {
   pointer-events: auto;
-  background: rgba(6, 12, 26, 0.88);
-  border: 1px solid rgba(0, 229, 255, 0.35);
-  border-radius: 12px;
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.75);
+  touch-action: none;
+  background: rgba(10, 22, 40, 0.78);
+  border: 1px solid rgba(0, 229, 255, 0.32);
+  border-radius: 10px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.75), 0 0 15px rgba(0, 229, 255, 0.12);
   color: #fff;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.sim-hud-card:hover {
+  border-color: rgba(0, 229, 255, 0.55);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0, 229, 255, 0.22);
+}
+
+.btn-refill-tanks {
+  width: 100%;
+  padding: 5px 8px;
+  background: rgba(0, 229, 255, 0.12);
+  border: 1px solid rgba(0, 229, 255, 0.35);
+  border-radius: 6px;
+  color: #00e5ff;
+  font-family: var(--font-tech);
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
   transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 5px;
+}
+.btn-refill-tanks:hover {
+  background: #00e5ff;
+  color: #060b16;
+  box-shadow: 0 0 14px rgba(0, 229, 255, 0.5);
+  transform: translateY(-1px);
 }
 
 .sim-card-header {
@@ -4533,39 +4563,105 @@ a:hover {
 .touch-act-btn.salvo-btn { border-color: #ff5500; color: #ff5500; }
 .touch-act-btn.ap-btn { border-color: #e0aaff; color: #e0aaff; }
 
-.touch-joystick-block {
-  width: 140px;
-  height: 160px;
+.touch-throttle-block {
+  width: 120px;
   display: flex;
   flex-direction: column;
   align-items: center;
   pointer-events: auto;
-}
-.virtual-joystick-zone {
-  width: 130px;
-  height: 130px;
-  border-radius: 50%;
-  border: 2px solid rgba(0, 229, 255, 0.5);
-  background: rgba(6, 12, 26, 0.75);
-  position: relative;
   touch-action: none;
 }
-.virtual-joystick-knob {
+.touch-throttle-step-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.touch-thr-step-btn {
+  padding: 4px 8px;
+  background: rgba(0, 229, 255, 0.15);
+  border: 1px solid rgba(0, 229, 255, 0.4);
+  color: #00e5ff;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 800;
+  cursor: pointer;
+  touch-action: none;
+  transition: all 0.15s ease;
+}
+.touch-thr-step-btn:active {
+  background: #00e5ff;
+  color: #060b16;
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.6);
+}
+.touch-throttle-track {
   width: 50px;
-  height: 50px;
+  height: 160px;
+  background: rgba(10, 22, 40, 0.85);
+  border: 2px solid #00e5ff;
+  border-radius: 25px;
+  position: relative;
+  box-shadow: 0 0 15px rgba(0, 229, 255, 0.35), inset 0 0 10px rgba(0, 0, 0, 0.8);
+  touch-action: none;
+  overflow: hidden;
+}
+.touch-throttle-fill {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, rgba(0, 255, 157, 0.45), rgba(0, 229, 255, 0.65));
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.6);
+  pointer-events: none;
+  transition: height 0.08s ease;
+}
+
+.touch-joystick-block {
+  width: 160px;
+  height: 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: auto;
+  touch-action: none;
+}
+.virtual-joystick-zone {
+  width: 150px;
+  height: 150px;
   border-radius: 50%;
-  background: radial-gradient(circle, #00e5ff, #0055ff);
+  border: 2px solid rgba(0, 229, 255, 0.7);
+  background: rgba(10, 22, 40, 0.78);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 0 22px rgba(0, 229, 255, 0.35), inset 0 0 18px rgba(0, 229, 255, 0.18);
+  position: relative;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.virtual-joystick-knob {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #00e5ff, #0066ff 70%, #002277);
+  border: 2px solid rgba(255, 255, 255, 0.85);
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  box-shadow: 0 0 15px rgba(0, 229, 255, 0.7);
+  box-shadow: 0 0 20px rgba(0, 229, 255, 0.8), inset 0 0 8px rgba(255, 255, 255, 0.7);
+  pointer-events: none;
+}
+.virtual-joystick-knob.spring-return {
+  transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 .joystick-label {
   font-family: var(--font-mono);
-  font-size: 0.58rem;
-  color: #8b9bb4;
-  margin-top: 4px;
+  font-size: 0.62rem;
+  color: #00e5ff;
+  font-weight: 700;
+  margin-top: 6px;
+  letter-spacing: 0.05em;
 }
 
 /* Professor Mode Overlay */
@@ -5077,6 +5173,8 @@ a:hover {
   .sim-bottom-hud-layout {
     flex-wrap: wrap;
     justify-content: center;
+    bottom: 6px;
+    gap: 8px;
   }
   .sim-panel-center {
     order: 3;
@@ -5085,9 +5183,32 @@ a:hover {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 960px) {
+  /* Apple HIG Touch-Friendly Navigation Bar */
+  .nav-links {
+    display: flex !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    gap: 8px !important;
+    padding: 6px 8px !important;
+    scrollbar-width: none !important;
+  }
+  .nav-links::-webkit-scrollbar {
+    display: none !important;
+  }
+  .nav-item a {
+    min-height: 44px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    padding: 0.6rem 0.95rem !important;
+    font-size: 0.85rem !important;
+    white-space: nowrap !important;
+    border-radius: 8px !important;
+  }
+
   .sim-top-control-bar {
     flex-direction: column;
+    align-items: stretch;
     gap: 6px;
     padding: 0.4rem;
   }
@@ -5095,11 +5216,69 @@ a:hover {
     flex-wrap: wrap;
     gap: 4px;
   }
-  .sim-bottom-hud-layout {
-    display: none;
+  .sim-select-wrap {
+    flex: 1 1 calc(50% - 4px);
+    min-width: 140px;
   }
+  .sim-top-actions-group {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 4px;
+  }
+
+  /* Keep Telemetry & Radar visible and compact */
+  .sim-bottom-hud-layout {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 6px;
+    left: 0.35rem;
+    right: 0.35rem;
+    bottom: 4px;
+    pointer-events: none;
+  }
+  .sim-panel-left {
+    width: calc(50% - 4px);
+    max-width: none;
+    padding: 0.5rem;
+    transform: scale(0.92);
+    transform-origin: bottom left;
+  }
+  .sim-panel-right {
+    width: calc(50% - 4px);
+    max-width: none;
+    padding: 0.5rem;
+    transform: scale(0.92);
+    transform-origin: bottom right;
+  }
+  .sim-panel-center {
+    width: 100%;
+    order: 3;
+    padding: 0.4rem 0.5rem;
+    gap: 4px;
+  }
+
   .sim-touch-controls {
     display: flex !important;
+    bottom: 5.5rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .sim-panel-left {
+    transform: scale(0.85);
+  }
+  .sim-panel-right {
+    transform: scale(0.85);
+  }
+  .virtual-joystick-zone {
+    width: 130px;
+    height: 130px;
+  }
+  .virtual-joystick-knob {
+    width: 52px;
+    height: 52px;
   }
 }
 
