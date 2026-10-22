@@ -47,16 +47,16 @@
     aspectRatio: 11.5,       // AR = b² / S
     oswaldEff: 0.85,         // e
     
-    // Aerodynamic Coefficients (NACA 64-215 Class-A)
-    CL0: 0.28,               // Zero-alpha lift
+    // Aerodynamic Coefficients (NACA 64-215 Class-A Blown Wing)
+    CL0: 0.80,               // Base clean lift
     CL_alpha: 5.73,          // Lift slope per radian (~0.10 per deg)
-    alphaCrit: 0.279,        // Critical AoA ~16 degrees
-    CD0: 0.024,              // Parasitic drag coefficient
-    CD_gear: 0.018,          // Landing gear drag increment
-    CD_flaps15: 0.015,       // Flaps 15 drag
+    alphaCrit: 0.297,        // Critical AoA ~17 degrees
+    CD0: 0.026,              // Parasitic drag coefficient (Gear UP)
+    CD_gear: 0.016,          // Landing gear drag increment (Gear DOWN total = 0.042)
+    CD_flaps15: 0.018,       // Flaps 15 drag
     CD_flaps35: 0.048,       // Flaps 35 drag
-    CL_flaps15: 0.45,        // Flaps 15 lift increment
-    CL_flaps35: 0.95,        // Flaps 35 lift increment
+    CL_flaps15: 0.55,        // Flaps 15 lift increment (CL -> 1.35)
+    CL_flaps35: 1.15,        // Flaps 35 blown lift increment (CL -> 1.95)
     
     // Propulsion & Blown-Wing STOL parameters
     kBlown: 0.55,            // Prop-wash blown-wing interaction factor
@@ -112,9 +112,12 @@
     rudder: 0.0,       // -1.0 to +1.0
     flapsStage: 0,     // 0 = 0°, 1 = 15°, 2 = 35°
     flapsAngleDeg: 0,
+    flapsTargetDeg: 0,
     gearDown: true,
+    gearAnim: 1.0,      // 0.0 = UP, 1.0 = DOWN
     brakes: false,
     sprayActive: false,
+    showAeroVectors: false,
     
     // Systems & Consumables
     massH2: 28.5,      // kg
@@ -143,7 +146,8 @@
     rwy: new THREE.Vector3(0, 0, 0),
     agro: new THREE.Vector3(1200, 20, 400),
     fire: new THREE.Vector3(-1800, 85, -1500),
-    lake: new THREE.Vector3(-500, 2, 1400)
+    lake: new THREE.Vector3(-500, 2, 1400),
+    charvak: new THREE.Vector3(-2200, 180, 2800)
   };
 
   // Wind and Weather
@@ -159,6 +163,7 @@
     w: false, s: false, a: false, d: false,
     up: false, down: false, left: false, right: false,
     space: false, f: false, g: false,
+    q: false, e: false,
     touchPitch: 0.0,
     touchRoll: 0.0,
     touchThrottle: 0.0,
@@ -170,6 +175,12 @@
   // ----------------------------------------------------------------------------
   let renderer, scene, camera, simCanvas;
   let aircraftGroup, propMeshes = [], flapMeshes = [], controlSurfaceMeshes = {};
+  let noseGearGroup, mainGearLeftGroup, mainGearRightGroup;
+  let flapLeftGroup, flapRightGroup;
+  let aileronLeftGroup, aileronRightGroup;
+  let elevatorGroup, rudderLeftGroup, rudderRightGroup;
+  let waterBayDoorL, waterBayDoorR;
+  let aeroVectorsGroup, liftArrow, dragArrow, thrustArrow, streamlinesGroup;
   let landingLights = [], papiLights = [];
   let terrainMesh, lakeMesh, windsockMesh;
   let treeInstancedMesh, stressedTreeColors = [], healthyTreeColor;
@@ -1045,183 +1056,532 @@
     sprayParticleSystem.mesh.visible = true;
   }
 
-  // --- 3D Aircraft Model Construction (CATIA V5 Class-A) ---
+  // Helper: NACA 64-215 cambered airfoil curve
+  function createNacaAirfoilShape(chord = 1.35, t = 0.14) {
+    const shape = new THREE.Shape();
+    const segments = 32;
+    const upperPts = [];
+    const lowerPts = [];
+
+    for (let i = 0; i <= segments; i++) {
+      const xNorm = i / segments;
+      const yt = 5 * t * (
+        0.2969 * Math.sqrt(Math.max(xNorm, 0.00001)) -
+        0.1260 * xNorm -
+        0.3516 * Math.pow(xNorm, 2) +
+        0.2843 * Math.pow(xNorm, 3) -
+        0.1015 * Math.pow(xNorm, 4)
+      );
+      const m = 0.025;
+      const p = 0.40;
+      let yc = 0;
+      if (xNorm < p) {
+        yc = (m / (p * p)) * (2 * p * xNorm - xNorm * xNorm);
+      } else {
+        yc = (m / Math.pow(1 - p, 2)) * ((1 - 2 * p) + 2 * p * xNorm - xNorm * xNorm);
+      }
+
+      const zPos = (0.35 - xNorm) * chord;
+      const yUpper = (yc + yt) * chord;
+      const yLower = (yc - yt) * chord;
+
+      upperPts.push(new THREE.Vector2(zPos, yUpper));
+      lowerPts.push(new THREE.Vector2(zPos, yLower));
+    }
+
+    shape.moveTo(upperPts[segments].x, upperPts[segments].y);
+    for (let i = segments - 1; i >= 0; i--) {
+      shape.lineTo(upperPts[i].x, upperPts[i].y);
+    }
+    for (let i = 1; i <= segments; i++) {
+      shape.lineTo(lowerPts[i].x, lowerPts[i].y);
+    }
+    shape.closePath();
+    return shape;
+  }
+
+  // --- 3D Aircraft Model Construction (CATIA V5 Class-A Lofted Model) ---
   function createAircraftModel() {
     aircraftGroup = new THREE.Group();
 
-    const carbonMat = new THREE.MeshStandardMaterial({
-      color: 0x0a101d,
-      roughness: 0.35,
-      metalness: 0.8
+    // 1. Materials
+    const pearlCompositeMat = new THREE.MeshStandardMaterial({
+      color: 0xf4f7fa, // Pearl white/silver titanium composite (Class-A)
+      roughness: 0.22,
+      metalness: 0.38
     });
 
-    const whiteLiveryMat = new THREE.MeshStandardMaterial({
-      color: 0xf0f6fc,
-      roughness: 0.25,
-      metalness: 0.2
+    const carbonDarkMat = new THREE.MeshStandardMaterial({
+      color: 0x141a24,
+      roughness: 0.28,
+      metalness: 0.75
     });
 
-    const cyanAccentMat = new THREE.MeshStandardMaterial({
+    const cyanGlowMat = new THREE.MeshStandardMaterial({
       color: 0x00e5ff,
+      emissive: 0x00e5ff,
+      emissiveIntensity: 0.65,
       roughness: 0.2,
-      metalness: 0.5,
-      emissive: 0x006688,
-      emissiveIntensity: 0.4
+      metalness: 0.4
     });
 
-    const glassMat = new THREE.MeshStandardMaterial({
-      color: 0x002244,
-      roughness: 0.1,
-      metalness: 0.9,
+    const emeraldGlowMat = new THREE.MeshStandardMaterial({
+      color: 0x00ff9d,
+      emissive: 0x00ff9d,
+      emissiveIntensity: 0.65,
+      roughness: 0.2,
+      metalness: 0.4
+    });
+
+    const glassCockpitMat = new THREE.MeshPhysicalMaterial({
+      color: 0x001d36,
+      metalness: 0.3,
+      roughness: 0.08,
+      transmission: 0.75,
       transparent: true,
-      opacity: 0.75
+      opacity: 0.8
     });
 
-    // 1. Aerodynamic Main Fuselage (Smooth Catia Lathe/Cylinder)
-    const fuseGeo = new THREE.CylinderGeometry(0.75, 0.55, 6.2, 18);
-    fuseGeo.rotateX(Math.PI / 2);
-    const fuselage = new THREE.Mesh(fuseGeo, whiteLiveryMat);
+    const translucentDorsalMat = new THREE.MeshPhysicalMaterial({
+      color: 0x0e2438,
+      metalness: 0.2,
+      roughness: 0.12,
+      transmission: 0.68,
+      transparent: true,
+      opacity: 0.58,
+      ior: 1.45
+    });
+
+    const metalMat = new THREE.MeshStandardMaterial({
+      color: 0xd8e2ec,
+      roughness: 0.22,
+      metalness: 0.92
+    });
+
+    const tankMat = new THREE.MeshStandardMaterial({
+      color: 0x00b4d8,
+      roughness: 0.18,
+      metalness: 0.88,
+      emissive: 0x003344
+    });
+
+    const fcMat = new THREE.MeshStandardMaterial({
+      color: 0x1c2b42,
+      roughness: 0.25,
+      metalness: 0.82
+    });
+
+    const tireMat = new THREE.MeshStandardMaterial({
+      color: 0x111620,
+      roughness: 0.9
+    });
+
+    // ========================================================================
+    // 2. FUSELAGE (Smooth CATIA V5 Class-A Lofted Lathe)
+    // ========================================================================
+    const fuselageGroup = new THREE.Group();
+    aircraftGroup.add(fuselageGroup);
+
+    const lathePoints = [];
+    const fuselageSpline = [
+      { z: 4.40, r: 0.00 },
+      { z: 4.35, r: 0.16 },
+      { z: 4.20, r: 0.34 },
+      { z: 3.90, r: 0.54 },
+      { z: 3.40, r: 0.70 },
+      { z: 2.60, r: 0.79 },
+      { z: 1.20, r: 0.82 },
+      { z: -0.50, r: 0.82 },
+      { z: -1.80, r: 0.76 },
+      { z: -2.80, r: 0.64 },
+      { z: -3.60, r: 0.42 },
+      { z: -4.10, r: 0.18 },
+      { z: -4.25, r: 0.02 }
+    ];
+    fuselageSpline.forEach(pt => lathePoints.push(new THREE.Vector2(pt.r, pt.z)));
+    const fuselageGeo = new THREE.LatheGeometry(lathePoints, 36);
+    fuselageGeo.rotateX(Math.PI / 2);
+    fuselageGeo.computeVertexNormals();
+
+    const fuselage = new THREE.Mesh(fuselageGeo, pearlCompositeMat);
     fuselage.castShadow = true;
     fuselage.receiveShadow = true;
-    aircraftGroup.add(fuselage);
+    fuselageGroup.add(fuselage);
 
-    // Smooth Nose Radome
-    const noseGeo = new THREE.SphereGeometry(0.75, 18, 12);
-    noseGeo.scale(1, 0.9, 1.6);
-    const nose = new THREE.Mesh(noseGeo, whiteLiveryMat);
-    nose.position.set(0, 0, 3.1);
-    nose.castShadow = true;
-    aircraftGroup.add(nose);
+    // Polarized Cockpit Canopy Glass
+    const canopyGeo = new THREE.SphereGeometry(0.72, 28, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+    canopyGeo.scale(0.88, 0.62, 2.0);
+    const canopy = new THREE.Mesh(canopyGeo, glassCockpitMat);
+    canopy.position.set(0, 0.54, 2.4);
+    fuselageGroup.add(canopy);
 
-    // Cockpit Tinted Canopy
-    const canopyGeo = new THREE.SphereGeometry(0.55, 16, 12);
-    canopyGeo.scale(0.85, 0.7, 1.8);
-    const canopy = new THREE.Mesh(canopyGeo, glassMat);
-    canopy.position.set(0, 0.45, 1.2);
-    aircraftGroup.add(canopy);
+    // Translucent Dorsal Shell showing internal H2 tanks & PEMFC
+    const dorsalGeo = new THREE.CylinderGeometry(0.81, 0.79, 3.2, 28, 1, false, Math.PI * 0.15, Math.PI * 0.70);
+    dorsalGeo.rotateX(Math.PI / 2);
+    const dorsalCover = new THREE.Mesh(dorsalGeo, translucentDorsalMat);
+    dorsalCover.position.set(0, 0.08, -0.1);
+    fuselageGroup.add(dorsalCover);
 
-    // Ventral Sensor Gimbal / FLIR Turret (under nose)
-    const gimbalGeo = new THREE.SphereGeometry(0.28, 12, 10);
-    const gimbal = new THREE.Mesh(gimbalGeo, cyanAccentMat);
-    gimbal.position.set(0, -0.65, 2.2);
-    aircraftGroup.add(gimbal);
-
-    // 2. High-Aspect-Ratio Wing (NACA 64-215, 12.4m span)
-    const wingGeo = new THREE.BoxGeometry(AERO.wingspan, 0.16, 1.25);
-    const wing = new THREE.Mesh(wingGeo, whiteLiveryMat);
-    wing.position.set(0, 0.5, 0.4);
-    wing.castShadow = true;
-    wing.receiveShadow = true;
-    aircraftGroup.add(wing);
-
-    // Wingtips / Winglets (Aero endplates)
-    [-AERO.wingspan / 2, AERO.wingspan / 2].forEach(wx => {
-      const wletGeo = new THREE.BoxGeometry(0.08, 0.9, 0.65);
-      const wlet = new THREE.Mesh(wletGeo, cyanAccentMat);
-      wlet.position.set(wx, 0.85, 0.4);
-      aircraftGroup.add(wlet);
+    // Glowing Type-IV Cryogenic LH2 Tank inside
+    const tankCyl = new THREE.Mesh(new THREE.CylinderGeometry(0.44, 0.44, 1.8, 20), tankMat);
+    tankCyl.rotateX(Math.PI / 2);
+    tankCyl.position.set(0, 0.38, -0.7);
+    fuselageGroup.add(tankCyl);
+    [-0.9, 0.9].forEach(zOff => {
+      const capMesh = new THREE.Mesh(new THREE.SphereGeometry(0.44, 20, 14), tankMat);
+      capMesh.position.set(0, 0.38, -0.7 + zOff);
+      fuselageGroup.add(capMesh);
+    });
+    [-0.4, 0.0, 0.4].forEach(zBand => {
+      const band = new THREE.Mesh(new THREE.TorusGeometry(0.445, 0.02, 10, 24), cyanGlowMat);
+      band.position.set(0, 0.38, -0.7 + zBand);
+      fuselageGroup.add(band);
     });
 
-    // 3. Trailing Edge Flaps (Animatable 0° / 15° / 35°)
+    // Ballard PEM Fuel Cell Stack inside
+    const fcStack = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.52, 1.15), fcMat);
+    fcStack.position.set(0, 0.42, 0.85);
+    fuselageGroup.add(fcStack);
+    const fcCore = new THREE.Mesh(new THREE.BoxGeometry(0.79, 0.12, 1.16), emeraldGlowMat);
+    fcCore.position.set(0, 0.42, 0.85);
+    fuselageGroup.add(fcCore);
+
+    // Neon Speed Stripes along flanks
+    [-0.82, 0.82].forEach(xSign => {
+      const stripeMesh = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.06, 6.2), cyanGlowMat);
+      stripeMesh.position.set(xSign, 0.05, 0.3);
+      fuselageGroup.add(stripeMesh);
+    });
+
+    // Ventral Firefighting Water Bomb Bay Doors on Belly
+    const bayFrame = new THREE.Mesh(new THREE.BoxGeometry(0.64, 0.08, 1.8), carbonDarkMat);
+    bayFrame.position.set(0, -0.62, 0.2);
+    fuselageGroup.add(bayFrame);
+
+    const doorLGeo = new THREE.BoxGeometry(0.28, 0.04, 1.76);
+    doorLGeo.translate(0.14, 0, 0);
+    waterBayDoorL = new THREE.Mesh(doorLGeo, pearlCompositeMat);
+    waterBayDoorL.position.set(-0.28, -0.64, 0.2);
+    fuselageGroup.add(waterBayDoorL);
+
+    const doorRGeo = new THREE.BoxGeometry(0.28, 0.04, 1.76);
+    doorRGeo.translate(-0.14, 0, 0);
+    waterBayDoorR = new THREE.Mesh(doorRGeo, pearlCompositeMat);
+    waterBayDoorR.position.set(0.28, -0.64, 0.2);
+    fuselageGroup.add(waterBayDoorR);
+
+    // Sensor Gimbal Turret under nose chin
+    const gimbalTurret = new THREE.Mesh(new THREE.SphereGeometry(0.24, 18, 18), carbonDarkMat);
+    gimbalTurret.position.set(0, -0.52, 3.1);
+    const flirLens = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.06, 12), cyanGlowMat);
+    flirLens.rotateX(Math.PI / 2);
+    flirLens.position.set(0.06, 0, 0.22);
+    gimbalTurret.add(flirLens);
+    const ndviLens = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.06, 12), emeraldGlowMat);
+    ndviLens.rotateX(Math.PI / 2);
+    ndviLens.position.set(-0.06, 0, 0.22);
+    gimbalTurret.add(ndviLens);
+    fuselageGroup.add(gimbalTurret);
+
+    // ========================================================================
+    // 3. MAIN WING (NACA 64-215 Cambered Airfoil Lofting)
+    // ========================================================================
+    const wingGroup = new THREE.Group();
+    aircraftGroup.add(wingGroup);
+
+    const semiSpan = 6.0;
+    const wingShape = createNacaAirfoilShape(1.35, 0.14);
+
+    // Left Wing Panel
+    const leftWingGeo = new THREE.ExtrudeGeometry(wingShape, { depth: semiSpan, bevelEnabled: true, bevelThickness: 0.03, bevelSize: 0.02, bevelSegments: 2 });
+    leftWingGeo.rotateY(-Math.PI / 2);
+    leftWingGeo.computeVertexNormals();
+    const leftWing = new THREE.Mesh(leftWingGeo, pearlCompositeMat);
+    leftWing.position.set(0, 0.85, 0.5);
+    leftWing.castShadow = true;
+    wingGroup.add(leftWing);
+
+    // Right Wing Panel (Mirrored)
+    const rightWingGeo = new THREE.ExtrudeGeometry(wingShape, { depth: semiSpan, bevelEnabled: true, bevelThickness: 0.03, bevelSize: 0.02, bevelSegments: 2 });
+    rightWingGeo.rotateY(-Math.PI / 2);
+    rightWingGeo.scale(-1, 1, 1);
+    rightWingGeo.computeVertexNormals();
+    const rightWing = new THREE.Mesh(rightWingGeo, pearlCompositeMat);
+    rightWing.position.set(0, 0.85, 0.5);
+    rightWing.castShadow = true;
+    wingGroup.add(rightWing);
+
+    // Leading Edge Protective Boots (Dark CFRP)
+    [-3.0, 3.0].forEach(xCenter => {
+      const boot = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 5.8, 12), carbonDarkMat);
+      boot.rotateZ(Math.PI / 2);
+      boot.position.set(xCenter, 0.85, 0.96);
+      wingGroup.add(boot);
+    });
+
+    // Canted Winglets at Wingtips
+    [-1, 1].forEach(sign => {
+      const wingletGroup = new THREE.Group();
+      wingletGroup.position.set(sign * 6.05, 0.85, 0.5);
+
+      const wingletShape = new THREE.Shape();
+      wingletShape.moveTo(0.35, 0);
+      wingletShape.lineTo(-0.55, 0);
+      wingletShape.lineTo(-0.85, 0.85);
+      wingletShape.lineTo(-0.25, 0.85);
+      wingletShape.closePath();
+
+      const wingletGeo = new THREE.ExtrudeGeometry(wingletShape, { depth: 0.06, bevelEnabled: true, bevelThickness: 0.02, bevelSize: 0.015, bevelSegments: 2 });
+      wingletGeo.rotateY(sign > 0 ? -Math.PI / 2 : Math.PI / 2);
+      wingletGeo.computeVertexNormals();
+
+      const wingletMesh = new THREE.Mesh(wingletGeo, pearlCompositeMat);
+      wingletMesh.rotation.z = sign * 0.26; // cant outwards 15 deg
+      wingletGroup.add(wingletMesh);
+
+      // Glowing Cyan Winglet Edge Tip
+      const tipMesh = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.88, 0.04), cyanGlowMat);
+      tipMesh.position.set(sign * 0.12, 0.45, -0.55);
+      tipMesh.rotation.x = -0.35;
+      wingletGroup.add(tipMesh);
+
+      // Navigation position lights (Left = Red, Right = Green)
+      const navLightMat = new THREE.MeshBasicMaterial({ color: sign < 0 ? 0xff2222 : 0x00ff66 });
+      const navLight = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 12), navLightMat);
+      navLight.position.set(sign * 0.22, 0.88, -0.55);
+      wingletGroup.add(navLight);
+
+      wingGroup.add(wingletGroup);
+    });
+
+    // Underwing Spray Boom with 6 precision nozzles
+    const sprayManifold = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.024, 10.2, 12), metalMat);
+    sprayManifold.rotateZ(Math.PI / 2);
+    sprayManifold.position.set(0, 0.35, 0.28);
+    wingGroup.add(sprayManifold);
+
+    [-4.8, -2.9, -1.1, 1.1, 2.9, 4.8].forEach(posX => {
+      const nozzleUnit = new THREE.Group();
+      nozzleUnit.position.set(posX, 0.35, 0.28);
+      const pylon = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.32, 0.08), pearlCompositeMat);
+      pylon.position.set(0, 0.16, 0);
+      nozzleUnit.add(pylon);
+      const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.04, 0.08, 12), emeraldGlowMat);
+      cup.position.set(0, -0.06, 0);
+      nozzleUnit.add(cup);
+      wingGroup.add(nozzleUnit);
+    });
+
+    // ========================================================================
+    // 4. ANIMATED STOL FLAPS & AILERONS (Movable 3D Groups)
+    // ========================================================================
     flapMeshes = [];
-    [-3.2, 3.2].forEach(fx => {
-      const flapGeo = new THREE.BoxGeometry(3.0, 0.08, 0.35);
-      flapGeo.translate(0, 0, -0.175); // Hinge pivot at leading edge
-      const flap = new THREE.Mesh(flapGeo, carbonMat);
-      flap.position.set(fx, 0.46, -0.22);
-      aircraftGroup.add(flap);
-      flapMeshes.push(flap);
-    });
+    // Left Flap (hinge pivot at trailing edge)
+    flapLeftGroup = new THREE.Group();
+    flapLeftGroup.position.set(-2.5, 0.82, -0.18);
+    const flapGeoL = new THREE.BoxGeometry(2.6, 0.06, 0.32);
+    flapGeoL.translate(0, 0, -0.16); // Pivot along leading edge
+    const flapLMesh = new THREE.Mesh(flapGeoL, carbonDarkMat);
+    flapLeftGroup.add(flapLMesh);
+    aircraftGroup.add(flapLeftGroup);
+    flapMeshes.push(flapLeftGroup);
 
-    // 4. Twin Booms extending backward
-    [-2.2, 2.2].forEach(bx => {
-      const boomGeo = new THREE.CylinderGeometry(0.18, 0.12, 4.8, 10);
+    // Right Flap
+    flapRightGroup = new THREE.Group();
+    flapRightGroup.position.set(2.5, 0.82, -0.18);
+    const flapGeoR = new THREE.BoxGeometry(2.6, 0.06, 0.32);
+    flapGeoR.translate(0, 0, -0.16);
+    const flapRMesh = new THREE.Mesh(flapGeoR, carbonDarkMat);
+    flapRightGroup.add(flapRMesh);
+    aircraftGroup.add(flapRightGroup);
+    flapMeshes.push(flapRightGroup);
+
+    // Left Aileron (outer wing trailing edge)
+    aileronLeftGroup = new THREE.Group();
+    aileronLeftGroup.position.set(-4.8, 0.82, -0.18);
+    const ailGeoL = new THREE.BoxGeometry(1.9, 0.06, 0.28);
+    ailGeoL.translate(0, 0, -0.14);
+    const ailLMesh = new THREE.Mesh(ailGeoL, carbonDarkMat);
+    aileronLeftGroup.add(ailLMesh);
+    aircraftGroup.add(aileronLeftGroup);
+
+    // Right Aileron
+    aileronRightGroup = new THREE.Group();
+    aileronRightGroup.position.set(4.8, 0.82, -0.18);
+    const ailGeoR = new THREE.BoxGeometry(1.9, 0.06, 0.28);
+    ailGeoR.translate(0, 0, -0.14);
+    const ailRMesh = new THREE.Mesh(ailGeoR, carbonDarkMat);
+    aileronRightGroup.add(ailRMesh);
+    aircraftGroup.add(aileronRightGroup);
+
+    // ========================================================================
+    // 5. TWIN-BOOM TAIL ASSEMBLY & MOVABLE ELEVATOR & RUDDERS
+    // ========================================================================
+    const tailGroup = new THREE.Group();
+    aircraftGroup.add(tailGroup);
+
+    [-2.2, 2.2].forEach(xPos => {
+      // Aerodynamic oval boom
+      const boomGeo = new THREE.CylinderGeometry(0.18, 0.12, 5.3, 16);
       boomGeo.rotateX(Math.PI / 2);
-      const boom = new THREE.Mesh(boomGeo, carbonMat);
-      boom.position.set(bx, 0.4, -2.4);
+      boomGeo.scale(0.85, 1.15, 1.0);
+      const boom = new THREE.Mesh(boomGeo, pearlCompositeMat);
+      boom.position.set(xPos, 0.75, -2.15);
       boom.castShadow = true;
-      aircraftGroup.add(boom);
+      tailGroup.add(boom);
 
-      // Vertical Fins on Twin Booms
-      const finGeo = new THREE.BoxGeometry(0.08, 1.6, 0.9);
-      const fin = new THREE.Mesh(finGeo, cyanAccentMat);
-      fin.position.set(bx, 1.1, -4.6);
-      fin.castShadow = true;
-      aircraftGroup.add(fin);
+      // Vertical Fin
+      const finGroup = new THREE.Group();
+      finGroup.position.set(xPos, 1.45, -4.8);
+      const finMesh = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.35, 0.9), pearlCompositeMat);
+      finMesh.rotation.z = (xPos > 0 ? -1 : 1) * 0.1; // Cant outward 6 deg
+      finGroup.add(finMesh);
+
+      // Cyan fin cap
+      const cap = new THREE.Mesh(new THREE.BoxGeometry(0.084, 0.08, 0.85), cyanGlowMat);
+      cap.position.set(0, 0.68, 0);
+      cap.rotation.z = (xPos > 0 ? -1 : 1) * 0.1;
+      finGroup.add(cap);
+      tailGroup.add(finGroup);
     });
 
-    // High Horizontal Stabilizer (linking twin booms)
-    const stabGeo = new THREE.BoxGeometry(4.8, 0.1, 0.85);
-    const stab = new THREE.Mesh(stabGeo, whiteLiveryMat);
-    stab.position.set(0, 1.8, -4.6);
-    stab.castShadow = true;
-    aircraftGroup.add(stab);
+    // Twin Rudders (Movable)
+    rudderLeftGroup = new THREE.Group();
+    rudderLeftGroup.position.set(-2.2, 1.45, -5.2);
+    const rudLMesh = new THREE.Mesh(new THREE.BoxGeometry(0.075, 1.25, 0.28), carbonDarkMat);
+    rudLMesh.position.set(0, 0, -0.14);
+    rudderLeftGroup.add(rudLMesh);
+    aircraftGroup.add(rudderLeftGroup);
 
-    // 5. 4x Distributed Electric Propulsion (DEP) Motors & Props
+    rudderRightGroup = new THREE.Group();
+    rudderRightGroup.position.set(2.2, 1.45, -5.2);
+    const rudRMesh = new THREE.Mesh(new THREE.BoxGeometry(0.075, 1.25, 0.28), carbonDarkMat);
+    rudRMesh.position.set(0, 0, -0.14);
+    rudderRightGroup.add(rudRMesh);
+    aircraftGroup.add(rudderRightGroup);
+
+    // High Horizontal Stabilizer linking twin fins
+    const hStab = new THREE.Mesh(new THREE.BoxGeometry(4.48, 0.09, 0.85), pearlCompositeMat);
+    hStab.position.set(0, 1.95, -4.8);
+    hStab.castShadow = true;
+    tailGroup.add(hStab);
+
+    // Movable Elevator (Hinged at trailing edge of horizontal stabilizer)
+    elevatorGroup = new THREE.Group();
+    elevatorGroup.position.set(0, 1.95, -5.22);
+    const elevGeo = new THREE.BoxGeometry(4.44, 0.08, 0.32);
+    elevGeo.translate(0, 0, -0.16); // Pivot at leading edge
+    const elevMesh = new THREE.Mesh(elevGeo, carbonDarkMat);
+    elevatorGroup.add(elevMesh);
+    aircraftGroup.add(elevatorGroup);
+
+    // Rear white strobe light
+    const strobe = new THREE.Mesh(new THREE.SphereGeometry(0.05, 10, 10), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+    strobe.position.set(0, 2.02, -5.3);
+    tailGroup.add(strobe);
+
+    // ========================================================================
+    // 6. 4x DEP MOTORS & 3-BLADE SCIMITAR PROPELLERS
+    // ========================================================================
     propMeshes = [];
-    const motorXPositions = [-4.6, -1.8, 1.8, 4.6];
-    motorXPositions.forEach(mx => {
+    const motorPositions = [-4.2, -2.2, 2.2, 4.2];
+    motorPositions.forEach((xPos, idx) => {
       // Nacelle
-      const nacGeo = new THREE.CylinderGeometry(0.24, 0.22, 1.1, 10);
-      nacGeo.rotateX(Math.PI / 2);
-      const nacelle = new THREE.Mesh(nacGeo, carbonMat);
-      nacelle.position.set(mx, 0.48, 1.1);
+      const nacelleGeo = new THREE.CylinderGeometry(0.24, 0.21, 1.4, 18);
+      nacelleGeo.rotateX(Math.PI / 2);
+      const nacelle = new THREE.Mesh(nacelleGeo, pearlCompositeMat);
+      nacelle.position.set(xPos, 0.72, 1.05);
       nacelle.castShadow = true;
       aircraftGroup.add(nacelle);
 
-      // Spinner Dome
-      const spinGeo = new THREE.ConeGeometry(0.18, 0.4, 10);
-      spinGeo.rotateX(-Math.PI / 2);
-      const spinner = new THREE.Mesh(spinGeo, cyanAccentMat);
-      spinner.position.set(mx, 0.48, 1.7);
-      aircraftGroup.add(spinner);
+      // Cowl Ring & Stripe
+      const cowlRing = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.03, 10, 20), metalMat);
+      cowlRing.position.set(xPos, 0.72, 1.75);
+      aircraftGroup.add(cowlRing);
 
-      // 3-Blade Carbon Propeller
+      const stripeMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.242, 0.242, 0.08, 16), idx % 2 === 0 ? cyanGlowMat : emeraldGlowMat);
+      stripeMesh.rotateX(Math.PI / 2);
+      stripeMesh.position.set(xPos, 0.72, 1.35);
+      aircraftGroup.add(stripeMesh);
+
+      // Propeller Assembly
       const propGroup = new THREE.Group();
-      propGroup.position.set(mx, 0.48, 1.68);
-      for (let b = 0; b < 3; b++) {
-        const bladeGeo = new THREE.BoxGeometry(0.05, 0.85, 0.08);
-        const blade = new THREE.Mesh(bladeGeo, carbonMat);
-        blade.position.set(0, 0.4, 0);
-        blade.rotation.z = (b * Math.PI * 2) / 3;
-        propGroup.add(blade);
-      }
+      propGroup.position.set(xPos, 0.72, 1.78);
       aircraftGroup.add(propGroup);
+
+      // Spinner
+      const spinnerGeo = new THREE.ConeGeometry(0.14, 0.38, 16);
+      spinnerGeo.rotateX(Math.PI / 2);
+      const spinner = new THREE.Mesh(spinnerGeo, metalMat);
+      propGroup.add(spinner);
+
+      // 3 Scimitar Propeller Blades with Yellow Safety Tips
+      for (let b = 0; b < 3; b++) {
+        const bladeGroup = new THREE.Group();
+        bladeGroup.rotation.z = (b * Math.PI * 2) / 3;
+
+        const blade = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.78, 0.024), carbonDarkMat);
+        blade.position.y = 0.42;
+        bladeGroup.add(blade);
+
+        const yellowTip = new THREE.Mesh(new THREE.BoxGeometry(0.092, 0.12, 0.026), new THREE.MeshStandardMaterial({ color: 0xffd600, roughness: 0.3 }));
+        yellowTip.position.y = 0.76;
+        bladeGroup.add(yellowTip);
+
+        propGroup.add(bladeGroup);
+      }
+
+      // Propeller Blur Disc
+      const blurDisk = new THREE.Mesh(new THREE.CircleGeometry(0.85, 20), new THREE.MeshBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.18, side: THREE.DoubleSide }));
+      blurDisk.position.z = -0.04;
+      propGroup.add(blurDisk);
+
       propMeshes.push(propGroup);
     });
 
-    // 6. STOL Tricycle Landing Gear (Tires & Suspension)
-    const tireMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
-    // Nose gear
-    const noseStrut = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.1, 8), carbonMat);
-    noseStrut.position.set(0, -0.7, 2.2);
-    aircraftGroup.add(noseStrut);
-    const noseTire = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.16, 12), tireMat);
-    noseTire.rotateZ(Math.PI / 2);
-    noseTire.position.set(0, -1.2, 2.2);
-    aircraftGroup.add(noseTire);
+    // ========================================================================
+    // 7. RETRACTABLE ROUGH-TERRAIN STOL LANDING GEAR (3D Movable Groups)
+    // ========================================================================
+    // Nose Gear (Pivots around x-axis at y = -0.45, z = 2.8)
+    noseGearGroup = new THREE.Group();
+    noseGearGroup.position.set(0, -0.45, 2.8);
+    const noseStrut = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.95, 12), metalMat);
+    noseStrut.position.set(0, -0.48, 0);
+    noseGearGroup.add(noseStrut);
 
-    // Main gear under booms
-    [-1.8, 1.8].forEach(gx => {
-      const mStrut = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.2, 8), carbonMat);
-      mStrut.position.set(gx, -0.6, -0.4);
-      aircraftGroup.add(mStrut);
-      const mTire = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.22, 12), tireMat);
-      mTire.rotateZ(Math.PI / 2);
-      mTire.position.set(gx, -1.15, -0.4);
-      aircraftGroup.add(mTire);
-    });
+    const noseWheel = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.16, 16), tireMat);
+    noseWheel.rotateZ(Math.PI / 2);
+    noseWheel.position.set(0, -0.95, 0);
+    noseGearGroup.add(noseWheel);
+    aircraftGroup.add(noseGearGroup);
 
-    // 7. Navigation Lights & Landing Headlights
-    const navLightLeft = new THREE.PointLight(0xff0000, 1.5, 8); // Red Left
-    navLightLeft.position.set(-AERO.wingspan / 2, 0.85, 0.4);
-    aircraftGroup.add(navLightLeft);
+    // Left Main Gear (Pivots around z-axis under boom at x = -1.6, y = -0.45, z = 0.3)
+    mainGearLeftGroup = new THREE.Group();
+    mainGearLeftGroup.position.set(-1.6, -0.45, 0.3);
+    const mainStrutL = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 1.05, 12), metalMat);
+    mainStrutL.position.set(0, -0.52, 0);
+    mainGearLeftGroup.add(mainStrutL);
 
-    const navLightRight = new THREE.PointLight(0x00ff00, 1.5, 8); // Green Right
-    navLightRight.position.set(AERO.wingspan / 2, 0.85, 0.4);
-    aircraftGroup.add(navLightRight);
+    const mainWheelL = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.22, 16), tireMat);
+    mainWheelL.rotateZ(Math.PI / 2);
+    mainWheelL.position.set(0, -1.02, 0);
+    mainGearLeftGroup.add(mainWheelL);
+    aircraftGroup.add(mainGearLeftGroup);
 
-    // Dual Landing Spotlights
+    // Right Main Gear (Pivots around z-axis at x = +1.6, y = -0.45, z = 0.3)
+    mainGearRightGroup = new THREE.Group();
+    mainGearRightGroup.position.set(1.6, -0.45, 0.3);
+    const mainStrutR = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 1.05, 12), metalMat);
+    mainStrutR.position.set(0, -0.52, 0);
+    mainGearRightGroup.add(mainStrutR);
+
+    const mainWheelR = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.22, 16), tireMat);
+    mainWheelR.rotateZ(Math.PI / 2);
+    mainWheelR.position.set(0, -1.02, 0);
+    mainGearRightGroup.add(mainWheelR);
+    aircraftGroup.add(mainGearRightGroup);
+
+    // Landing Headlights
     [-1.2, 1.2].forEach(lx => {
       const spot = new THREE.SpotLight(0xffffff, 2.5, 120, Math.PI / 6, 0.4);
       spot.position.set(lx, 0.2, 1.5);
@@ -1231,9 +1591,87 @@
       landingLights.push(spot);
     });
 
+    // ========================================================================
+    // 8. 3D AERODYNAMIC FORCE VECTORS & WING STREAMLINES
+    // ========================================================================
+    createAeroVectors();
+
     // Position aircraft in scene
     aircraftGroup.position.copy(flight.pos);
     scene.add(aircraftGroup);
+  }
+
+  // --- 3D Aerodynamics Vectors Creation (Lift, Drag, Thrust, Streamlines) ---
+  function createAeroVectors() {
+    aeroVectorsGroup = new THREE.Group();
+    aeroVectorsGroup.visible = false;
+
+    // 1. Lift Vector (Green, pointing up from aerodynamic center)
+    const liftMat = new THREE.MeshBasicMaterial({ color: 0x00ff9d });
+    const liftShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.2, 8), liftMat);
+    liftShaft.position.y = 1.1;
+    const liftCone = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.45, 8), liftMat);
+    liftCone.position.y = 2.3;
+    liftArrow = new THREE.Group();
+    liftArrow.add(liftShaft);
+    liftArrow.add(liftCone);
+    liftArrow.position.set(0, 0.9, 0.4);
+    aeroVectorsGroup.add(liftArrow);
+
+    // 2. Drag Vector (Red, pointing backwards)
+    const dragMat = new THREE.MeshBasicMaterial({ color: 0xff3355 });
+    const dragShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.8, 8), dragMat);
+    dragShaft.position.z = -0.9;
+    dragShaft.rotateX(Math.PI / 2);
+    const dragCone = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.45, 8), dragMat);
+    dragCone.position.z = -1.9;
+    dragCone.rotateX(-Math.PI / 2);
+    dragArrow = new THREE.Group();
+    dragArrow.add(dragShaft);
+    dragArrow.add(dragCone);
+    dragArrow.position.set(0, 0.9, 0.4);
+    aeroVectorsGroup.add(dragArrow);
+
+    // 3. Thrust Vector (Cyan, pointing forwards)
+    const thrustMat = new THREE.MeshBasicMaterial({ color: 0x00e5ff });
+    const thrustShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.8, 8), thrustMat);
+    thrustShaft.position.z = 0.9;
+    thrustShaft.rotateX(Math.PI / 2);
+    const thrustCone = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.45, 8), thrustMat);
+    thrustCone.position.z = 1.9;
+    thrustCone.rotateX(Math.PI / 2);
+    thrustArrow = new THREE.Group();
+    thrustArrow.add(thrustShaft);
+    thrustArrow.add(thrustCone);
+    thrustArrow.position.set(0, 0.72, 1.8);
+    aeroVectorsGroup.add(thrustArrow);
+
+    // 4. Wing Airflow Streamlines
+    streamlinesGroup = new THREE.Group();
+    const streamMat = new THREE.LineBasicMaterial({
+      color: 0x00e5ff,
+      transparent: true,
+      opacity: 0.65
+    });
+    const xOffsets = [-4.5, -3.0, -1.5, 1.5, 3.0, 4.5];
+    streamlinesGroup.streamMeshes = [];
+    xOffsets.forEach(x => {
+      const geom = new THREE.BufferGeometry();
+      const pts = [
+        new THREE.Vector3(x, 0.9, 3.0),
+        new THREE.Vector3(x, 1.05, 1.2),
+        new THREE.Vector3(x, 1.15, 0.4),
+        new THREE.Vector3(x, 0.95, -0.3),
+        new THREE.Vector3(x, 0.75, -1.8)
+      ];
+      geom.setFromPoints(pts);
+      const line = new THREE.Line(geom, streamMat);
+      streamlinesGroup.add(line);
+      streamlinesGroup.streamMeshes.push({ line, x });
+    });
+    aeroVectorsGroup.add(streamlinesGroup);
+
+    aircraftGroup.add(aeroVectorsGroup);
   }
 
   // --- Particle Systems: Spray Mist & Water Salvo Drop ---
@@ -1313,20 +1751,18 @@
     let targetAileron = 0.0;
     let targetRudder = 0.0;
 
-    // ArrowDown / S = Штурвал на себя (задирает нос вверх / подъём)
-    if (input.down) targetElevator -= 1.0;
-    // ArrowUp / W = Штурвал от себя (опускает нос вниз / спуск)
-    if (input.up) targetElevator += 1.0;
+    // Штурвал на себя (ArrowDown / S) = задирает нос вверх (+Pitch / набор высоты)
+    if (input.down) targetElevator += 1.0;
+    // Штурвал от себя (ArrowUp / W) = опускает нос вниз (-Pitch / спуск)
+    if (input.up) targetElevator -= 1.0;
 
-    // Ailerons & Rudders: roll with coordinated turn
-    if (input.left || input.a) {
-      targetAileron -= 1.0;
-      targetRudder -= 0.7;
-    }
-    if (input.right || input.d) {
-      targetAileron += 1.0;
-      targetRudder += 0.7;
-    }
+    // Крен (ArrowLeft / A = крен влево, ArrowRight / D = крен вправо)
+    if (input.left) targetAileron -= 1.0;
+    if (input.right) targetAileron += 1.0;
+
+    // Рыскание рулями направления (Q = влево, E = вправо)
+    if (input.q) targetRudder -= 1.0;
+    if (input.e) targetRudder += 1.0;
 
     // Merge Touch inputs
     if (Math.abs(input.touchPitch) > 0.01) targetElevator = input.touchPitch;
@@ -1341,23 +1777,75 @@
       flight.aileron = THREE.MathUtils.lerp(flight.aileron, targetAileron, 14 * dt);
       flight.rudder = THREE.MathUtils.lerp(flight.rudder, targetRudder, 12 * dt);
 
-      // Keyboard throttle adjustment (W increases, S decreases)
-      if (input.w) flight.throttle = Math.min(1.0, flight.throttle + 0.35 * dt);
-      if (input.s) flight.throttle = Math.max(0.0, flight.throttle - 0.35 * dt);
       if (input.touchThrottle > 0) flight.throttle = input.touchThrottle;
     }
 
-    // 2. Propulsion System (Ballard FC + 4x DEP Motors)
+    // 2. Landing Gear 3D Animation & Drag
+    const gearTarget = flight.gearDown ? 1.0 : 0.0;
+    flight.gearAnim = THREE.MathUtils.lerp(flight.gearAnim, gearTarget, 2.0 * dt);
+    if (noseGearGroup) noseGearGroup.rotation.x = -(1.0 - flight.gearAnim) * (Math.PI * 0.48);
+    if (mainGearLeftGroup) mainGearLeftGroup.rotation.z = (1.0 - flight.gearAnim) * (Math.PI * 0.45);
+    if (mainGearRightGroup) mainGearRightGroup.rotation.z = -(1.0 - flight.gearAnim) * (Math.PI * 0.45);
+
+    // Parasite drag: 0.026 with gear UP, 0.042 with gear DOWN
+    const currentGearDrag = flight.gearAnim * AERO.CD_gear;
+
+    // 3. STOL Blown Flaps 3D Animation & Aerodynamics
+    if (flight.flapsStage === 1) {
+      flight.flapsTargetDeg = 15;
+    } else if (flight.flapsStage === 2) {
+      flight.flapsTargetDeg = 35;
+    } else {
+      flight.flapsTargetDeg = 0;
+    }
+    flight.flapsAngleDeg = THREE.MathUtils.lerp(flight.flapsAngleDeg, flight.flapsTargetDeg, 14 * dt);
+    const flapRotRad = THREE.MathUtils.degToRad(flight.flapsAngleDeg);
+    if (flapLeftGroup) flapLeftGroup.rotation.x = -flapRotRad;
+    if (flapRightGroup) flapRightGroup.rotation.x = -flapRotRad;
+
+    // Flap increments: 15° -> CL +0.55 (CL = 1.35), 35° -> CL +1.15 (CL = 1.95, Blown Wing)
+    let deltaCLFlaps = 0;
+    let deltaCDFlaps = 0;
+    if (flight.flapsStage === 1) {
+      deltaCLFlaps = AERO.CL_flaps15;
+      deltaCDFlaps = AERO.CD_flaps15;
+    } else if (flight.flapsStage === 2) {
+      deltaCLFlaps = AERO.CL_flaps35;
+      deltaCDFlaps = AERO.CD_flaps35;
+    }
+
+    // 4. Control Surfaces 3D Deflections (Ailerons, Elevator, Rudders)
+    if (aileronLeftGroup && aileronRightGroup) {
+      const ailRad = flight.aileron * THREE.MathUtils.degToRad(18);
+      aileronLeftGroup.rotation.x = -ailRad;
+      aileronRightGroup.rotation.x = ailRad;
+    }
+    if (elevatorGroup) {
+      const elevRad = flight.elevator * THREE.MathUtils.degToRad(20);
+      elevatorGroup.rotation.x = -elevRad;
+    }
+    if (rudderLeftGroup && rudderRightGroup) {
+      const rudRad = flight.rudder * THREE.MathUtils.degToRad(22);
+      rudderLeftGroup.rotation.y = -rudRad;
+      rudderRightGroup.rotation.y = -rudRad;
+    }
+
+    // 5. Water Bay Doors Animation
+    if (waterBayDoorL && waterBayDoorR) {
+      const doorTarget = (waterDropSystem && waterDropSystem.active) ? 1.0 : 0.0;
+      waterBayDoorL.rotation.z = THREE.MathUtils.lerp(waterBayDoorL.rotation.z, doorTarget * 1.2, 4.0 * dt);
+      waterBayDoorR.rotation.z = THREE.MathUtils.lerp(waterBayDoorR.rotation.z, -doorTarget * 1.2, 4.0 * dt);
+    }
+
+    // 6. Propulsion System (Ballard FC + 4x DEP Motors)
     const targetRPM = flight.throttle * 3800; // 0 to 3800 RPM
     flight.motorRPM = THREE.MathUtils.lerp(flight.motorRPM, targetRPM, 6 * dt);
     
     // Electric power calculation
     if (flight.throttle <= 0.75) {
-      // Pure Fuel Cell cruise
       flight.electricKW = (flight.throttle / 0.75) * AERO.fuelCellPowerMax;
       flight.massH2 = Math.max(0, flight.massH2 - (flight.throttle * AERO.h2BurnRateMax * dt) / 3600);
     } else {
-      // FC Max + LiPo Buffer STOL Boost
       const boostFraction = (flight.throttle - 0.75) / 0.25;
       flight.electricKW = AERO.fuelCellPowerMax + boostFraction * AERO.lipoBoostPowerMax;
       flight.massH2 = Math.max(0, flight.massH2 - (AERO.h2BurnRateMax * dt) / 3600);
@@ -1368,15 +1856,20 @@
     const spinRad = (flight.motorRPM * Math.PI * 2 * dt) / 60;
     propMeshes.forEach(p => p.rotateZ(spinRad));
 
+    // Dynamic mass with fluid depletion
+    const currentMass = AERO.massEmpty + flight.massH2 + flight.massFluid;
+
     // Thrust calculation
     const thrust = flight.throttle * AERO.maxThrustTotal;
 
-    // 3. Dynamic Mass & Center of Gravity
-    const currentMass = AERO.massEmpty + flight.massH2 + flight.massFluid;
+    // Forward, Up, and Right unit vectors in aircraft frame
+    const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(flight.quat);
+    const up = new THREE.Vector3(0, 1, 0).applyQuaternion(flight.quat);
+    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(flight.quat);
 
-    // 4. Relative Wind & Airspeed Calculations
+    // Relative Wind & Airspeed Calculations
     const trueAirVelocity = new THREE.Vector3().subVectors(flight.vel, weatherState.windVec);
-    flight.airspeedTAS = trueAirVelocity.length(); // m/s
+    flight.airspeedTAS = trueAirVelocity.length();
     flight.airspeedIAS = flight.airspeedTAS * 3.6; // km/h
 
     // Blown-Wing STOL Propulsion Wash
@@ -1386,11 +1879,6 @@
       AERO.kBlown * propWashVel * propWashVel
     );
 
-    // Forward, Up, and Right unit vectors in aircraft frame
-    const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(flight.quat);
-    const up = new THREE.Vector3(0, 1, 0).applyQuaternion(flight.quat);
-    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(flight.quat);
-
     // Angle of Attack (AoA α)
     let rawAoA = 0;
     if (flight.airspeedTAS > 1.0) {
@@ -1399,35 +1887,14 @@
     }
     flight.aoa = THREE.MathUtils.radToDeg(rawAoA);
 
-    // 5. Lift Coefficient & Stall Model
-    // Flap increments: 0° / 15° / 35°
-    let deltaCLFlaps = 0;
-    let deltaCDFlaps = 0;
-    if (flight.flapsStage === 1) {
-      deltaCLFlaps = AERO.CL_flaps15;
-      deltaCDFlaps = AERO.CD_flaps15;
-      flight.flapsAngleDeg = 15;
-    } else if (flight.flapsStage === 2) {
-      deltaCLFlaps = AERO.CL_flaps35;
-      deltaCDFlaps = AERO.CD_flaps35;
-      flight.flapsAngleDeg = 35;
-    } else {
-      flight.flapsAngleDeg = 0;
-    }
-
-    // Animate Flap Meshes
-    const flapRotRad = THREE.MathUtils.degToRad(flight.flapsAngleDeg);
-    flapMeshes.forEach(f => (f.rotation.x = -flapRotRad));
-
+    // Lift Coefficient
     let CL = AERO.CL0 + AERO.CL_alpha * rawAoA + deltaCLFlaps;
 
-    // Stall Check: beyond 16° or speed below stall limit
-    const stallSpeed = 38.0 - deltaCLFlaps * 8.0; // km/h stall threshold
+    // Stall Check: beyond 17° or speed below stall limit (32 km/h at 35° flaps, 48 km/h at 15°, 68 km/h clean)
+    const stallSpeed = 68.0 - (deltaCLFlaps / 1.15) * 36.0;
     if (rawAoA > AERO.alphaCrit || (flight.airspeedIAS < stallSpeed && !flight.onGround && flight.altitudeAGL > 2.0)) {
       flight.stalling = true;
-      // Post-stall lift breakdown
-      CL = Math.max(0.3, CL * 0.45);
-      // Stall Buffeting
+      CL = Math.max(0.35, CL * 0.45);
       flight.buffeting = (Math.random() - 0.5) * 0.08;
       flight.angVel.x -= 1.8 * dt; // Aerodynamic nose pitch-down restoring moment
     } else {
@@ -1435,22 +1902,19 @@
       flight.buffeting = 0.0;
     }
 
-    // 6. McCormick Ground Effect Model
+    // Ground Effect Model
     const hOverB = Math.max(0.05, flight.altitudeAGL / AERO.wingspan);
     let sigmaGround = 1.0;
     if (hOverB < 0.5) {
-      // Induced drag reduction factor
       sigmaGround = (16.0 * hOverB * hOverB) / (1.0 + 16.0 * hOverB * hOverB);
-      // Lift bonus near ground
       CL *= 1.0 + (0.5 - hOverB) * 0.25;
     }
 
-    // 7. Drag Coefficient
+    // Drag Coefficient
     const inducedDrag = (CL * CL) / (Math.PI * AERO.aspectRatio * AERO.oswaldEff) * sigmaGround;
-    const gearDrag = flight.gearDown ? AERO.CD_gear : 0.0;
-    const CD = AERO.CD0 + deltaCDFlaps + gearDrag + inducedDrag;
+    const CD = AERO.CD0 + deltaCDFlaps + currentGearDrag + inducedDrag;
 
-    // 8. Forces in World Coordinates
+    // Forces in World Coordinates
     const dynamicPressure = 0.5 * AERO.rho0 * effectiveV * effectiveV;
     const liftMagnitude = dynamicPressure * AERO.wingArea * CL;
     const dragMagnitude = dynamicPressure * AERO.wingArea * CD;
@@ -1471,11 +1935,11 @@
     if (flight.gLoad > flight.maxGLoad) flight.maxGLoad = flight.gLoad;
     if (flight.gLoad < flight.minGLoad) flight.minGLoad = flight.gLoad;
 
-    // 9. Angular Moments & Rotational Dynamics
+    // 7. Angular Moments & Rotational Dynamics
     const aeroPressureRatio = Math.max(0.65, Math.min(1.8, flight.airspeedTAS / 22.0));
 
-    // Control Moments
-    const pitchMoment = flight.elevator * AERO.pitchAuthority * aeroPressureRatio;
+    // Pitch: pulling stick (+elevator) lifts nose (-rot.x in Three.js Euler)
+    const pitchMoment = -flight.elevator * AERO.pitchAuthority * aeroPressureRatio;
     const rollMoment = flight.aileron * AERO.rollAuthority * aeroPressureRatio;
     const yawMoment = flight.rudder * AERO.yawAuthority * aeroPressureRatio;
 
@@ -1483,7 +1947,7 @@
     flight.angVel.y += (yawMoment - flight.angVel.y * AERO.yawDamping) * dt;
     flight.angVel.z += (rollMoment - flight.angVel.z * AERO.rollDamping) * dt;
 
-    // 10. Numerical Integration: Rotation
+    // Numerical Integration: Rotation
     const deltaRot = new THREE.Quaternion().setFromEuler(
       new THREE.Euler(
         flight.angVel.x * dt + flight.buffeting,
@@ -1495,29 +1959,68 @@
     flight.quat.multiply(deltaRot);
     flight.rot.setFromQuaternion(flight.quat, 'YXZ');
 
-    // Coordinated Turn: banking directly turns heading smoothly (yaw += roll * 0.8 * dt)
+    // Clamp roll to ±45° and smoothly return to level when bank keys are released
+    if (!input.left && !input.right && Math.abs(input.touchRoll) < 0.05) {
+      flight.rot.z = THREE.MathUtils.lerp(flight.rot.z, 0, 2.4 * dt);
+    }
+    flight.rot.z = THREE.MathUtils.clamp(flight.rot.z, -0.785, 0.785); // ±45°
+
+    // Coordinated Turn: banking directly turns heading smoothly
     if (!flight.onGround) {
-      flight.rot.y -= flight.rot.z * 0.82 * dt;
+      flight.rot.y -= flight.rot.z * 0.85 * dt;
       flight.quat.setFromEuler(flight.rot);
 
-      // Aerodynamic flight path alignment
-      if (flight.airspeedTAS > 2.0) {
-        const fwdVector = new THREE.Vector3(0, 0, 1).applyQuaternion(flight.quat);
-        const flightSpeed = Math.max(18.0, flight.throttle * 32.0);
-        flight.vel.lerp(fwdVector.multiplyScalar(flightSpeed), 4.2 * dt);
-      }
+      // Pitch & Speed coupling: Climbing bleeds speed, diving accelerates!
+      const climbAngle = -flight.rot.x; // positive when nose up
+      const gravityAlongPath = -AERO.gravity * Math.sin(climbAngle);
+      const targetSpeed = Math.max(6.0, 18.0 + flight.throttle * 26.0 + (flight.gearAnim < 0.5 ? 4.0 : 0.0));
+      
+      let curFwdSpeed = flight.vel.dot(forward);
+      curFwdSpeed = THREE.MathUtils.lerp(curFwdSpeed, targetSpeed, 1.8 * dt) + gravityAlongPath * dt;
+      flight.vel.copy(forward.clone().multiplyScalar(curFwdSpeed));
+      
+      // Vertical lift balance
+      flight.vel.y += ((liftMagnitude - currentMass * AERO.gravity) / currentMass) * dt * 0.35;
     }
 
     flight.pitchDeg = THREE.MathUtils.radToDeg(-flight.rot.x);
     flight.rollDeg = THREE.MathUtils.radToDeg(flight.rot.z);
     flight.headingDeg = (THREE.MathUtils.radToDeg(-flight.rot.y) + 360) % 360;
 
-    // 11. Numerical Integration: Velocity & Position
+    // Numerical Integration: Velocity & Position
     const acceleration = totalForce.divideScalar(currentMass);
-    flight.vel.addScaledVector(acceleration, dt);
+    flight.vel.addScaledVector(acceleration, dt * 0.25);
     flight.pos.addScaledVector(flight.vel, dt);
 
-    // 12. Ground Collision & Landing Gear Physics
+    // 8. 3D Aerodynamics Vectors Visualizer Update
+    if (aeroVectorsGroup && flight.showAeroVectors) {
+      aeroVectorsGroup.visible = true;
+      const lScale = Math.max(0.1, (liftMagnitude / 18000) * 1.5);
+      liftArrow.scale.set(1, lScale, 1);
+      const dScale = Math.max(0.1, (dragMagnitude / 4000) * 1.5);
+      dragArrow.scale.set(1, 1, dScale);
+      const tScale = Math.max(0.1, (thrust / 8400) * 1.5);
+      thrustArrow.scale.set(1, 1, tScale);
+
+      const downwash = THREE.MathUtils.degToRad(flight.flapsAngleDeg * 0.45 + Math.max(0, flight.aoa) * 0.55);
+      if (streamlinesGroup && streamlinesGroup.streamMeshes) {
+        streamlinesGroup.streamMeshes.forEach(sm => {
+          const x = sm.x;
+          const pts = [
+            new THREE.Vector3(x, 0.9, 3.0),
+            new THREE.Vector3(x, 1.05, 1.2),
+            new THREE.Vector3(x, 1.15, 0.4),
+            new THREE.Vector3(x, 0.95 - Math.sin(downwash) * 0.35, -0.3),
+            new THREE.Vector3(x, 0.75 - Math.sin(downwash) * 1.15, -1.8)
+          ];
+          sm.line.geometry.setFromPoints(pts);
+        });
+      }
+    } else if (aeroVectorsGroup) {
+      aeroVectorsGroup.visible = false;
+    }
+
+    // 9. Ground Collision & Landing Gear Physics
     const terrainY = getTerrainHeight(flight.pos.x, flight.pos.z);
     const gearHeight = 1.25;
 
@@ -1920,12 +2423,18 @@
     if (fluidFill) fluidFill.style.width = `${Math.round((flight.massFluid / AERO.massFluidMax) * 100)}%`;
     if (fluidVal) fluidVal.innerText = `${Math.round(flight.massFluid)} L (${Math.round((flight.massFluid / AERO.massFluidMax) * 100)}%)`;
 
-    // Annunciators
+    // Annunciators & Controls Feedback
     const annunFlaps = document.getElementById('annun-flaps');
-    if (annunFlaps) annunFlaps.innerText = `FLAPS: ${flight.flapsAngleDeg}°`;
+    if (annunFlaps) {
+      annunFlaps.innerText = `FLAPS: ${Math.round(flight.flapsAngleDeg)}°`;
+      annunFlaps.className = `annun-pill ${flight.flapsAngleDeg > 0 ? 'active' : ''}`;
+    }
 
     const annunGear = document.getElementById('annun-gear');
-    if (annunGear) annunGear.innerText = `GEAR: ${flight.onGround ? 'DOWN' : 'UP'}`;
+    if (annunGear) {
+      annunGear.innerText = `GEAR: ${flight.gearDown ? 'DOWN' : 'UP'}`;
+      annunGear.className = `annun-pill ${flight.gearDown ? 'active' : ''}`;
+    }
 
     const annunSpray = document.getElementById('annun-spray');
     if (annunSpray) {
@@ -1937,6 +2446,23 @@
     if (annunAP) {
       annunAP.innerText = `AP: ${SIM.autopilotActive ? 'ACTIVE' : 'READY'}`;
       annunAP.className = `annun-pill ${SIM.autopilotActive ? 'active' : ''}`;
+    }
+
+    const annunAeroVec = document.getElementById('annun-aero-vec');
+    if (annunAeroVec) {
+      annunAeroVec.className = `annun-pill ${flight.showAeroVectors ? 'active' : ''}`;
+    }
+
+    // Bottom Action Bar Buttons live text
+    const btnActGear = document.getElementById('btn-action-gear');
+    if (btnActGear) {
+      btnActGear.innerText = `🛞 Шасси (${flight.gearDown ? 'ВЫП' : 'УБР'})`;
+      btnActGear.classList.toggle('active', flight.gearDown);
+    }
+    const btnActFlaps = document.getElementById('btn-action-flaps');
+    if (btnActFlaps) {
+      btnActFlaps.innerText = `🪽 Закрылки (${Math.round(flight.flapsAngleDeg)}°)`;
+      btnActFlaps.classList.toggle('active', flight.flapsAngleDeg > 0);
     }
 
     // Stall Warning Banner
@@ -2424,7 +2950,8 @@
     const flightControlKeys = [
       'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
       'Space', 'KeyW', 'KeyS', 'KeyA', 'KeyD', 'KeyQ', 'KeyE',
-      'KeyF', 'KeyG', 'KeyC', 'KeyR'
+      'KeyF', 'KeyG', 'KeyC', 'KeyR', 'KeyP', 'KeyH', 'KeyI', 'KeyK',
+      'ShiftLeft', 'ShiftRight', 'ControlLeft', 'ControlRight'
     ];
 
     // Keyboard keydown
@@ -2436,65 +2963,79 @@
       }
 
       switch (e.code) {
+        // Pitch: W / S or ArrowUp / ArrowDown
         case 'KeyW':
-          input.w = true;
-          // Smooth throttle increase
-          flight.throttle = Math.min(1.0, flight.throttle + 0.05);
+        case 'ArrowUp':
+          input.up = true; // Nose down / dive
           break;
         case 'KeyS':
-          input.s = true;
-          // Smooth throttle decrease
-          flight.throttle = Math.max(0.0, flight.throttle - 0.05);
+        case 'ArrowDown':
+          input.down = true; // Nose up / climb
           break;
+
+        // Roll: A / D or ArrowLeft / ArrowRight
         case 'KeyA':
-        case 'KeyQ':
-          input.a = true;
+        case 'ArrowLeft':
           input.left = true;
           break;
         case 'KeyD':
-        case 'KeyE':
-          input.d = true;
-          input.right = true;
-          break;
-        case 'ArrowUp':
-        case 'KeyI':
-          input.up = true; // Nose down
-          break;
-        case 'ArrowDown':
-        case 'KeyK':
-          input.down = true; // Nose up / climb
-          break;
-        case 'ArrowLeft':
-        case 'KeyJ':
-          input.left = true;
-          input.a = true;
-          break;
         case 'ArrowRight':
-        case 'KeyL':
           input.right = true;
-          input.d = true;
           break;
+
+        // Rudder: Q / E
+        case 'KeyQ':
+          input.q = true;
+          break;
+        case 'KeyE':
+          input.e = true;
+          break;
+
+        // Throttle: Shift / Ctrl or I / K
+        case 'ShiftLeft':
+        case 'ShiftRight':
+        case 'KeyI':
+          flight.throttle = Math.min(1.0, flight.throttle + 0.05);
+          break;
+        case 'ControlLeft':
+        case 'ControlRight':
+        case 'KeyK':
+          flight.throttle = Math.max(0.0, flight.throttle - 0.05);
+          break;
+
+        // Water Salvo / Spray (Space)
         case 'Space':
           triggerWaterSalvo();
           flight.sprayActive = !flight.sprayActive;
           break;
+
+        // Flaps (F: 0° -> 15° -> 35° -> 0°)
         case 'KeyF':
-          // Cycle flaps: 0 -> 1 (15°) -> 2 (35°) -> 0
           flight.flapsStage = (flight.flapsStage + 1) % 3;
           break;
+
+        // Landing Gear (G: UP / DOWN)
         case 'KeyG':
           flight.gearDown = !flight.gearDown;
           flight.brakes = flight.gearDown && flight.onGround;
           break;
+
+        // Camera mode (C)
         case 'KeyC':
           cycleCameraMode();
           break;
+
+        // HUD toggle (H)
         case 'KeyH':
           toggleHUD();
           break;
+
+        // Pause (P)
         case 'KeyP':
           SIM.paused = !SIM.paused;
           break;
+
+        // Reset scenario (R)
         case 'KeyR':
           setScenario(SIM.scenario);
           break;
@@ -2504,31 +3045,27 @@
     // Keyboard keyup
     window.addEventListener('keyup', e => {
       switch (e.code) {
-        case 'KeyW': input.w = false; break;
-        case 'KeyS': input.s = false; break;
+        case 'KeyW':
+        case 'ArrowUp':
+          input.up = false;
+          break;
+        case 'KeyS':
+        case 'ArrowDown':
+          input.down = false;
+          break;
         case 'KeyA':
-        case 'KeyQ':
-          input.a = false;
+        case 'ArrowLeft':
           input.left = false;
           break;
         case 'KeyD':
-        case 'KeyE':
-          input.d = false;
-          input.right = false;
-          break;
-        case 'ArrowUp':
-        case 'KeyI': input.up = false; break;
-        case 'ArrowDown':
-        case 'KeyK': input.down = false; break;
-        case 'ArrowLeft':
-        case 'KeyJ':
-          input.left = false;
-          input.a = false;
-          break;
         case 'ArrowRight':
-        case 'KeyL':
           input.right = false;
-          input.d = false;
+          break;
+        case 'KeyQ':
+          input.q = false;
+          break;
+        case 'KeyE':
+          input.e = false;
           break;
       }
     });
@@ -2872,7 +3409,29 @@
       });
     }
 
+    const tpCharvak = document.getElementById('btn-tp-charvak');
+    if (tpCharvak) {
+      tpCharvak.addEventListener('click', () => {
+        initAudioEngine();
+        flight.pos.set(NAV.charvak.x, 180, NAV.charvak.z);
+        flight.rot.set(0, THREE.MathUtils.degToRad(-45), 0);
+        flight.quat.setFromEuler(flight.rot);
+        flight.vel.set(0, 0, 26.4);
+        flight.throttle = 0.75;
+        flight.onGround = false;
+        flight.gearDown = false;
+      });
+    }
+
     // Bottom Action Bar Buttons
+    const takeoffBtn = document.getElementById('btn-action-takeoff');
+    if (takeoffBtn) {
+      takeoffBtn.addEventListener('click', () => {
+        initAudioEngine();
+        setScenario('rwy-start');
+      });
+    }
+
     const modeBtn = document.getElementById('btn-sim-mode-toggle');
     const modeLbl = document.getElementById('lbl-sim-mode');
     let isAirMode = true;
@@ -2898,6 +3457,41 @@
         initAudioEngine();
         triggerWaterSalvo();
         flight.sprayActive = !flight.sprayActive;
+      });
+    }
+
+    const actGear = document.getElementById('btn-action-gear');
+    if (actGear) {
+      actGear.addEventListener('click', () => {
+        initAudioEngine();
+        flight.gearDown = !flight.gearDown;
+        flight.brakes = flight.gearDown && flight.onGround;
+      });
+    }
+
+    const actFlaps = document.getElementById('btn-action-flaps');
+    if (actFlaps) {
+      actFlaps.addEventListener('click', () => {
+        initAudioEngine();
+        flight.flapsStage = (flight.flapsStage + 1) % 3;
+      });
+    }
+
+    const actCam = document.getElementById('btn-action-cam');
+    if (actCam) {
+      actCam.addEventListener('click', () => {
+        initAudioEngine();
+        cycleCameraMode();
+      });
+    }
+
+    const actTouch = document.getElementById('btn-action-touch');
+    const touchOverlay = document.getElementById('sim-touch-controls');
+    if (actTouch && touchOverlay) {
+      actTouch.addEventListener('click', () => {
+        const isHidden = window.getComputedStyle(touchOverlay).display === 'none';
+        touchOverlay.style.display = isHidden ? 'flex' : 'none';
+        actTouch.classList.toggle('active', isHidden);
       });
     }
 
@@ -2937,6 +3531,15 @@
         initAudioEngine();
         triggerWaterSalvo();
         flight.sprayActive = !flight.sprayActive;
+      });
+    }
+
+    const aeroVecPill = document.getElementById('annun-aero-vec');
+    if (aeroVecPill) {
+      aeroVecPill.addEventListener('click', () => {
+        flight.showAeroVectors = !flight.showAeroVectors;
+        aeroVecPill.classList.toggle('active', flight.showAeroVectors);
+        if (aeroVectorsGroup) aeroVectorsGroup.visible = flight.showAeroVectors;
       });
     }
   }

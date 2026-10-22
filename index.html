@@ -49,7 +49,6 @@
         <li class="nav-item"><a href="#blueprint-section" class="active"><i class="fa-solid fa-compass-drafting"></i> <span data-i18n="nav_blueprint">Инженерный Паспорт</span></a></li>
         <li class="nav-item"><a href="#hangar-section"><i class="fa-solid fa-cube"></i> <span data-i18n="nav_hangar">3D Ангар</span></a></li>
         <li class="nav-item"><a href="#simulator-section" class="nav-sim-link" id="nav-simulator-tab"><span class="pulse-indicator-neon"></span><i class="fa-solid fa-gamepad"></i> <span data-i18n="nav_sim">🎮 ПОЛЁТ (MSFS Sim)</span></a></li>
-        <li class="nav-item"><a href="#earth-section" class="nav-earth-link" id="nav-earth-tab"><span class="pulse-indicator-neon" style="background:#10b981;box-shadow:0 0 10px #10b981;"></span><i class="fa-solid fa-earth-americas"></i> <span data-i18n="nav_earth">🌍 ЗЕМЛЯ (Google 3D)</span></a></li>
         <li class="nav-item"><a href="#math-section"><i class="fa-solid fa-calculator"></i> <span data-i18n="nav_math">Инженерная Математика</span></a></li>
         <li class="nav-item"><a href="#mission-section"><i class="fa-solid fa-map-location-dot"></i> <span data-i18n="nav_mission">Миссии и Пульт RC</span></a></li>
         <li class="nav-item"><a href="#club-section"><i class="fa-solid fa-users-gear"></i> <span data-i18n="nav_club">Клуб & ИИ Конструктор</span></a></li>
@@ -358,6 +357,9 @@
         <button class="nav-tp-btn btn-tp-lake" id="btn-tp-lake" title="Телепорт к озеру для забора воды">
           <i class="fa-solid fa-water"></i> <span>🌊 Озеро LAKE</span>
         </button>
+        <button class="nav-tp-btn btn-tp-charvak" id="btn-tp-charvak" title="Телепорт к Чарвакскому водохранилищу">
+          <i class="fa-solid fa-mountain-sun"></i> <span>🏔️ Чарвак вдхр.</span>
+        </button>
       </div>
 
       <!-- Minimal Flight Path Vector (FPV) marker center screen (100% clean view of 3D plane) -->
@@ -386,6 +388,11 @@
             <span class="msfs-throttle-num" id="sim-throttle-val">75%</span>
             <span class="msfs-throttle-sub">THROTTLE</span>
           </div>
+          <div class="msfs-throttle-quick-col">
+            <button class="msfs-thr-btn" id="btn-throttle-100" title="Тяга 100%">100%</button>
+            <button class="msfs-thr-btn active" id="btn-throttle-75" title="Тяга 75%">75%</button>
+            <button class="msfs-thr-btn" id="btn-throttle-25" title="Тяга 25%">25%</button>
+          </div>
         </div>
         <div class="msfs-motors-row">
           <div class="msfs-motor-col"><div class="msfs-m-fill" id="sim-m1-fill" style="height: 75%;"></div><span>M1</span></div>
@@ -412,7 +419,7 @@
       <!-- Bottom-Right: MSFS 2024 Altimeter, VSI & Configuration Panel -->
       <div class="msfs-hud-panel msfs-panel-right" id="msfs-sim-panel-right">
         <div class="msfs-panel-title-row">
-          <span><i class="fa-solid fa-mountain"></i> ALTITUDE &amp; ATTITUDE</span>
+          <span><i class="fa-solid fa-mountain"></i> ALTITUDE &amp; MECHANICS</span>
           <span id="sim-aoa-val" style="color: #00e5ff;">α: +2.1°</span>
         </div>
         <div class="msfs-alt-row">
@@ -431,33 +438,21 @@
         </div>
         <div class="msfs-config-pills">
           <button class="msfs-pill" id="annun-flaps" title="Переключить закрылки (Клавиша F)">FLAPS: 0°</button>
-          <button class="msfs-pill active" id="annun-gear" title="Шасси (Клавиша G)">GEAR: UP</button>
+          <button class="msfs-pill active" id="annun-gear" title="Шасси убрать/выпустить (Клавиша G)">GEAR: UP</button>
           <button class="msfs-pill" id="annun-spray" title="Спрей / Сброс (Пробел)">SPRAY: OFF</button>
+          <button class="msfs-pill" id="annun-aero-vec" title="3D Векторы аэродинамики (L/D/T)">🌬️ AERO VEC</button>
         </div>
       </div>
 
-      <!-- Bottom-Center: Flight Quick Action Bar -->
-      <div class="sim-flight-actions-bar">
-        <button class="flight-act-btn active" id="btn-sim-mode-toggle" title="Переключить режим: В воздухе или Старт с ВПП">
-          <i class="fa-solid fa-plane"></i> <span id="lbl-sim-mode">✈️ В воздухе (85 км/ч)</span>
-        </button>
-        <button class="flight-act-btn btn-action-salvo" id="btn-action-salvo" title="Сбросить воду на огонь или включить опрыскивание (Пробел)">
-          <i class="fa-solid fa-droplet"></i> <span>💧 СБРОС / СПРЕЙ</span>
-        </button>
-        <button class="flight-act-btn" id="btn-throttle-100" title="Полный форсаж 100%">🚀 100%</button>
-        <button class="flight-act-btn" id="btn-throttle-75" title="Крейсерская тяга 75%">✈️ 75%</button>
-        <button class="flight-act-btn" id="btn-throttle-25" title="Малый газ 25%">🛬 25%</button>
-        <button class="flight-act-btn" id="btn-toggle-help" title="Показать подсказки управления">⌨️ Управление</button>
-      </div>
-
-      <!-- Controls Guide Tooltip (Toggleable) -->
-      <div class="sim-controls-guide-tooltip" id="sim-controls-guide-tooltip">
-        <span>🎮 <kbd>W / S</kbd> Тяга</span>
-        <span>🕹️ <kbd>↓ S</kbd> Нос Вверх (Подъём)</span>
-        <span>🕹️ <kbd>↑ W</kbd> Нос Вниз (Спуск)</span>
-        <span>✈️ <kbd>← → / A D</kbd> Крен и Разворот</span>
-        <span>💧 <kbd>Space</kbd> Сброс Воды / Спрей</span>
-        <span>🖱️ Зажмите мышь для обзора</span>
+      <!-- Bottom-Center: Flight Quick Action Bar (Single Clean Bar) -->
+      <div class="sim-flight-actions-bar" id="sim-flight-actions-bar">
+        <button class="flight-act-btn" id="btn-action-takeoff" title="Взлёт с ВПП 09"><i class="fa-solid fa-plane-departure"></i> <span>🛫 Взлёт с ВПП</span></button>
+        <button class="flight-act-btn active" id="btn-sim-mode-toggle" title="Позиция в воздухе"><i class="fa-solid fa-plane"></i> <span id="lbl-sim-mode">✈️ В воздухе</span></button>
+        <button class="flight-act-btn btn-action-salvo" id="btn-action-salvo" title="Сбросить воду / Спрей (Пробел)"><i class="fa-solid fa-droplet"></i> <span>💧 СБРОС / СПРЕЙ</span></button>
+        <button class="flight-act-btn" id="btn-action-gear" title="Шасси убрать/выпустить (Клавиша G)"><i class="fa-solid fa-circle-dot"></i> <span>🛞 Шасси (G)</span></button>
+        <button class="flight-act-btn" id="btn-action-flaps" title="Закрылки 0° / 15° / 35° (Клавиша F)"><i class="fa-solid fa-feather-pointed"></i> <span>🪽 Закрылки (F)</span></button>
+        <button class="flight-act-btn" id="btn-action-cam" title="Переключить камеру (Клавиша C)"><i class="fa-solid fa-camera"></i> <span>🎥 Камера (C)</span></button>
+        <button class="flight-act-btn" id="btn-action-touch" title="Сенсорные стики"><i class="fa-solid fa-mobile-screen"></i> <span>📱 Джойстик</span></button>
       </div>
 
       <!-- Top-Right: Tactical Minimap MFD Radar -->
