@@ -330,6 +330,14 @@
           <i class="fa-solid fa-plane-departure"></i>
           <span>Старт с ВПП</span>
         </button>
+        <button class="sim-top-btn" id="btn-sim-touch-toggle" title="Включить / скрыть сенсорный джойстик на экране">
+          <i class="fa-solid fa-gamepad"></i>
+          <span id="sim-touch-label">Джойстик</span>
+        </button>
+        <button class="sim-top-btn prof-btn" id="btn-sim-professor" title="Показать живые формулы аэродинамики и телеметрию">
+          <i class="fa-solid fa-graduation-cap"></i>
+          <span>Формулы</span>
+        </button>
         <button class="sim-top-btn" id="btn-sim-help" title="Инструкция по управлению самолётом">
           <i class="fa-solid fa-circle-question"></i>
           <span>Помощь</span>
@@ -420,6 +428,12 @@
             <button class="btn-thr-step" id="btn-thr-dec" title="Уменьшить тягу на 5% (E)">−</button>
             <input type="range" class="sim-thr-range" id="sim-slider-throttle" min="0" max="100" value="75">
             <button class="btn-thr-step" id="btn-thr-inc" title="Увеличить тягу на 5% (Q)">+</button>
+          </div>
+          <div class="thr-presets-row">
+            <button class="btn-thr-preset" data-thr="100" title="Тяга 100%">100%</button>
+            <button class="btn-thr-preset active" data-thr="75" title="Тяга 75%">75%</button>
+            <button class="btn-thr-preset" data-thr="25" title="Тяга 25%">25%</button>
+            <button class="btn-thr-preset" data-thr="0" title="Тяга 0% (Холостой)">0%</button>
           </div>
         </div>
 
@@ -543,6 +557,129 @@
             <span>РАДИОВЫСОТА (AGL):</span>
             <b id="sim-radar-agl">695 м</b>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile Dual-Stick Touch / Virtual Joystick Overlay -->
+    <div class="sim-touch-controls" id="sim-touch-controls">
+      <!-- Left Stick: Throttle & Rudder -->
+      <div class="touch-throttle-block">
+        <div class="touch-throttle-track" id="touch-throttle-track">
+          <div class="touch-throttle-handle" id="touch-throttle-handle" style="bottom: 75%;">
+            <span id="touch-throttle-pct">75%</span>
+            <span>THR</span>
+          </div>
+        </div>
+        <div class="touch-rudder-row">
+          <button class="touch-rudder-btn" id="touch-rudder-left">◄ RUD</button>
+          <button class="touch-rudder-btn" id="touch-rudder-right">RUD ►</button>
+        </div>
+      </div>
+
+      <!-- Center Touch Action Quick Buttons -->
+      <div class="touch-action-bar">
+        <button class="touch-act-btn spray-btn" id="btn-touch-spray" title="Опрыскивание садов (X)"><i class="fa-solid fa-spray-can-sparkles"></i> SPRAY</button>
+        <button class="touch-act-btn salvo-btn" id="btn-touch-salvo" title="Сброс воды (Пробел)"><i class="fa-solid fa-droplet"></i> СБРОС</button>
+        <button class="touch-act-btn" id="btn-touch-flaps" title="Закрылки STOL (F)"><i class="fa-solid fa-angles-down"></i> ЗАКРЫЛКИ</button>
+        <button class="touch-act-btn ap-btn" id="btn-touch-ap" title="Удержание горизонта (1)"><i class="fa-solid fa-scale-balanced"></i> ИИ LEVEL</button>
+        <button class="touch-act-btn gyro-btn" id="btn-touch-gyro" title="Включить управление наклоном телефона (Гироскоп)"><i class="fa-solid fa-mobile-screen"></i> ГИРО</button>
+        <button class="touch-act-btn" id="btn-touch-cam" title="Переключить камеру (C)"><i class="fa-solid fa-camera"></i> КАМЕРА</button>
+      </div>
+
+      <!-- Right Stick: Virtual 3D Joystick (Pitch & Roll) -->
+      <div class="touch-joystick-block">
+        <div class="virtual-joystick-zone" id="virtual-joystick-zone">
+          <div class="virtual-joystick-knob" id="virtual-joystick-knob"></div>
+        </div>
+        <span class="joystick-label">🕹️ ТАНГАЖ &amp; КРЕН</span>
+      </div>
+    </div>
+
+    <!-- Professor Telemetry & Physics Formulas Overlay -->
+    <div class="sim-professor-overlay" id="sim-professor-overlay" style="display: none;">
+      <div class="prof-header">
+        <div class="prof-title">
+          <i class="fa-solid fa-atom"></i>
+          <span>AEROTERRA H2 — LIVE 6-DOF FLIGHT TELEMETRY (PROFESSOR MODE)</span>
+        </div>
+        <button class="prof-close-btn" id="btn-close-prof"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="prof-content-grid">
+        <div class="prof-card">
+          <h5>1. ПОДЪЁМНАЯ СИЛА И ОБДУВ КРЫЛА (BLOWN-WING DEP EFFECT)</h5>
+          <div class="prof-formula">L = 0.5 · ρ(h) · V_eff² · S · CL(α, δ_flaps)</div>
+          <div class="prof-data-row"><span>Эффективный обдув V_eff:</span> <b id="prof-veff">0.0 м/с</b></div>
+          <div class="prof-data-row"><span>Угол атаки (AoA α):</span> <b id="prof-aoa">2.4°</b></div>
+          <div class="prof-data-row"><span>Коэффициент CL:</span> <b id="prof-cl">0.52</b></div>
+          <div class="prof-data-row highlight"><span>Подъёмная сила L:</span> <b id="prof-lift">18,140 Н</b></div>
+        </div>
+        <div class="prof-card">
+          <h5>2. ПОЛЯРА СОПРОТИВЛЕНИЯ И ЭКРАННЫЙ ЭФФЕКТ (MCCORMICK GROUND EFFECT)</h5>
+          <div class="prof-formula">CD = CD0 + ΔCD_flaps + ΔCD_gear + CL² / (π · AR · e) · σ(h/b)</div>
+          <div class="prof-data-row"><span>Фактор экрана σ(h/b):</span> <b id="prof-sigma">1.00 (Out of Ground)</b></div>
+          <div class="prof-data-row"><span>Лобовое сопротивление D:</span> <b id="prof-drag">850 Н</b></div>
+          <div class="prof-data-row highlight"><span>Аэродинамическое качество L/D:</span> <b id="prof-ld">21.3</b></div>
+        </div>
+        <div class="prof-card">
+          <h5>3. ДИНАМИЧЕСКАЯ МАССА, ИНЕРЦИЯ И ЦЕНТРОВКА (MASS &amp; CG SHIFT)</h5>
+          <div class="prof-formula">m(t) = m_empty + m_H2(t) + m_fluid(t) &nbsp;|&nbsp; a = F_net / m</div>
+          <div class="prof-data-row"><span>Текущая масса m(t):</span> <b id="prof-mass">1850.0 кг</b></div>
+          <div class="prof-data-row"><span>Остаток химраствора / воды:</span> <b id="prof-fluid-mass">600.0 кг</b></div>
+          <div class="prof-data-row highlight"><span>Перегрузка G-load (Nz):</span> <b id="prof-gload">1.00 G</b></div>
+        </div>
+        <div class="prof-card">
+          <h5>4. БАЛАНС ЭНЕРГИИ: ВОДОРОДНАЯ ЯЧЕЙКА + БУФЕР LIPO</h5>
+          <div class="prof-formula">P_shaft = η_mot · (P_FC + P_boost_LiPo)</div>
+          <div class="prof-data-row"><span>Ballard PEMFC выход:</span> <b id="prof-pfc">42.0 kW</b></div>
+          <div class="prof-data-row"><span>LiPo буфер буст:</span> <b id="prof-pbuf">0.0 kW (STOL off)</b></div>
+          <div class="prof-data-row highlight"><span>Удельный расход H2:</span> <b id="prof-h2flow">2.4 кг/ч</b></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Debriefing Report Certificate Modal -->
+    <div class="sim-debriefing-modal-overlay" id="sim-debriefing-modal" style="display: none;">
+      <div class="sim-debriefing-card">
+        <button class="debriefing-close-btn" id="btn-close-debriefing"><i class="fa-solid fa-xmark"></i></button>
+        <div class="debriefing-rank-badge" id="debrief-rank">RANK: S (EXCELLENT)</div>
+        <div class="debriefing-header">
+          <h3 id="debrief-title">СЕРТИФИКАТ ЛЁТНЫХ ИСПЫТАНИЙ</h3>
+          <p id="debrief-subtitle">AEROTERRA H2-01 STOL · FLIGHT TEST &amp; MISSION COMPLETION REPORT</p>
+        </div>
+        <div class="debriefing-stats-grid">
+          <div class="d-stat-box">
+            <span class="d-lbl">Точность выполнения миссии</span>
+            <span class="d-val emerald" id="debrief-accuracy">98.4%</span>
+          </div>
+          <div class="d-stat-box">
+            <span class="d-lbl">Дистанция взлёта / посадки STOL</span>
+            <span class="d-val cyan" id="debrief-dist">34.2 м</span>
+          </div>
+          <div class="d-stat-box">
+            <span class="d-lbl">Максимальная перегрузка (G-load)</span>
+            <span class="d-val" id="debrief-gpeak">+1.65 G / -0.2 G</span>
+          </div>
+          <div class="d-stat-box">
+            <span class="d-lbl">Сэкономлено авиакеросина Jet-A1</span>
+            <span class="d-val emerald" id="debrief-fuel-saved">48.2 л</span>
+          </div>
+          <div class="d-stat-box">
+            <span class="d-lbl">Выбросы CO₂ и токсичных оксидов</span>
+            <span class="d-val emerald">0.00 кг (100% Zero Emission)</span>
+          </div>
+          <div class="d-stat-box">
+            <span class="d-lbl">Время в полёте</span>
+            <span class="d-val" id="debrief-time">04:18 мин</span>
+          </div>
+        </div>
+        <div class="debriefing-actions">
+          <button class="btn-debriefing-action download" id="btn-download-cert">
+            <i class="fa-solid fa-file-arrow-down"></i> <span>Скачать Сертификат (PDF)</span>
+          </button>
+          <button class="btn-debriefing-action" id="btn-restart-mission">
+            <i class="fa-solid fa-rotate-right"></i> <span>Повторить Полёт</span>
+          </button>
         </div>
       </div>
     </div>

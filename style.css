@@ -4394,6 +4394,34 @@ a:hover {
   pointer-events: none;
   z-index: 45;
 }
+.sim-touch-controls.active {
+  display: flex !important;
+}
+
+/* Throttle Presets Quick Row */
+.thr-presets-row {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+}
+.btn-thr-preset {
+  flex: 1;
+  padding: 3px 0;
+  background: rgba(0, 229, 255, 0.1);
+  border: 1px solid rgba(0, 229, 255, 0.3);
+  color: #00e5ff;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.btn-thr-preset:hover, .btn-thr-preset.active {
+  background: #00e5ff;
+  color: #060b16;
+  box-shadow: 0 0 8px rgba(0, 229, 255, 0.6);
+}
 
 .touch-throttle-block {
   width: 110px;
@@ -4995,6 +5023,55 @@ a:hover {
 .sim-controls-guide-tooltip {
   display: none !important;
 }
+
+/* Responsive bottom HUD layout */
+@media (max-width: 1280px) {
+  .sim-bottom-hud-layout {
+    gap: 8px;
+    left: 0.5rem;
+    right: 0.5rem;
+    bottom: 8px;
+  }
+  .sim-panel-left {
+    width: 270px;
+    padding: 0.5rem;
+  }
+  .sim-panel-right {
+    width: 220px;
+    padding: 0.5rem;
+  }
+}
+
+@media (max-width: 1024px) {
+  .sim-bottom-hud-layout {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .sim-panel-center {
+    order: 3;
+    width: 100%;
+    max-width: 650px;
+  }
+}
+
+@media (max-width: 768px) {
+  .sim-top-control-bar {
+    flex-direction: column;
+    gap: 6px;
+    padding: 0.4rem;
+  }
+  .sim-top-selects-group {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .sim-bottom-hud-layout {
+    display: none;
+  }
+  .sim-touch-controls {
+    display: flex !important;
+  }
+}
+
 
 
 

@@ -18,7 +18,7 @@
   window.AeroTerraSim = {
     initialized: false,
     running: false,
-    paused: false,
+    paused: true,            // Paused until user opens simulator tab!
     planeModel: 'full',      // 'full', 'rc', 'agro', 'fire'
     locationId: 'charvak',   // 'charvak', 'dubai', 'california', 'fergana', 'innsbruck'
     mapProvider: 'google-sat',// 'google-sat', 'google-hybrid', 'esri-terrain'
@@ -29,6 +29,8 @@
     boostActive: false,
     boostTimer: 0,
     sensitivity: 1.0,
+    touchControlsActive: false,
+    gyroActive: false,
     apMode: {
       level: false,
       alt: false,
@@ -192,7 +194,17 @@
 
     // Propellers RPM
     propRpm: 2400,
-    propAngle: 0
+    propAngle: 0,
+
+    // Live Aerodynamic & Mission Metrics (for Professor Formulas & Debriefing)
+    liveCL: 0.38,
+    liveCD: 0.028,
+    liveLiftN: 16050,
+    liveDragN: 1120,
+    liveLD: 14.3,
+    liveVeff: 58.0,
+    liveSigma: 1.0,
+    liveMass: 1638.0
   };
 
   // Three.js Core Globals
@@ -958,6 +970,7 @@
   // 10. 6-DOF AERODYNAMIC FLIGHT PHYSICS ENGINE
   // ----------------------------------------------------------------------------
   function updatePhysics(dt) {
+    if (SIM.paused) return;
     const cfg = PLANE_CONFIGS[SIM.planeModel] || PLANE_CONFIGS.full;
 
     // 1. Throttle & Propeller dynamics
@@ -968,157 +981,246 @@
       if (SIM.boostTimer <= 0) SIM.boostActive = false;
     }
 
-    // Prop RPM tracks throttle
     const targetRPM = 600 + effectiveThrottle * 2400;
     flight.propRpm += (targetRPM - flight.propRpm) * 4 * dt;
     flight.propAngle += (flight.propRpm * (Math.PI * 2) / 60) * dt;
 
-    // Spin 4 propellers
     propMeshes.forEach((p) => {
       p.rotation.z = flight.propAngle;
     });
 
     // 2. Mechanization Animations
-    // Flaps rotation
     const targetFlapRad = (flight.flapsStage * 17.5 * Math.PI) / 180;
     flight.flapsAngle += (targetFlapRad - flight.flapsAngle) * 6 * dt;
     flapMeshes.forEach((f) => {
       f.rotation.x = -flight.flapsAngle;
     });
 
-    // Spoilers deployment
     const targetSpoiler = flight.spoilersActive ? 0.78 : 0.0;
     flight.spoilersPos += (targetSpoiler - flight.spoilersPos) * 8 * dt;
     spoilerMeshes.forEach((s) => {
       s.rotation.x = flight.spoilersPos;
     });
 
-    // Landing Gear extend/retract
     flight.gearPos += (flight.gearTarget - flight.gearPos) * 2 * dt;
     gearMeshes.forEach((g) => {
       g.pivot.rotation.x = g.retractRotX * (1.0 - flight.gearPos);
     });
 
-    // 3. Autopilot logic
+    // 3. Autopilot logic (Stable PD control without unbounded integrator!)
     if (SIM.apMode.level) {
-      // Auto-level pitch and roll
-      flight.pitchInput += (0.02 - flight.rot.x) * 2.5 * dt;
-      flight.rollInput += (0.0 - flight.rot.z) * 3.5 * dt;
+      const targetPitch = -0.012;
+      flight.pitchInput = THREE.MathUtils.clamp((flight.rot.x - targetPitch) * 2.8, -1.0, 1.0);
+      flight.rollInput = THREE.MathUtils.clamp(-flight.rot.z * 3.5, -1.0, 1.0);
     }
     if (SIM.apMode.alt) {
-      // Pitch towards target altitude
       const altErr = SIM.apMode.targetAlt - flight.pos.y;
-      const desiredPitch = Math.max(-0.25, Math.min(0.25, altErr * 0.005));
-      flight.pitchInput += (desiredPitch - flight.rot.x) * 2.5 * dt;
+      const targetPitch = THREE.MathUtils.clamp(altErr * 0.002 - flight.vsi * 0.025, -0.22, 0.22);
+      flight.pitchInput = THREE.MathUtils.clamp((flight.rot.x - targetPitch) * 2.8, -1.0, 1.0);
     }
     if (SIM.apMode.hdg) {
-      // Steer heading
       const curHdg = ((-flight.rot.y * 180 / Math.PI) % 360 + 360) % 360;
       let hdgDiff = SIM.apMode.targetHdg - curHdg;
       if (hdgDiff > 180) hdgDiff -= 360;
       if (hdgDiff < -180) hdgDiff += 360;
-      flight.rollInput += Math.max(-0.6, Math.min(0.6, hdgDiff * 0.02)) * dt;
+      const targetRoll = THREE.MathUtils.clamp(-hdgDiff * 0.015, -0.45, 0.45);
+      flight.rollInput = THREE.MathUtils.clamp((flight.rot.z - targetRoll) * 2.5, -1.0, 1.0);
     }
 
     // 4. Pilot Angular Accelerations
+    // Aviation convention:
+    // pitchInput > 0 (S / stick back / touch down) -> nose UP (rot.x decreases)
+    // pitchInput < 0 (W / stick fwd / touch up) -> nose DOWN (rot.x increases)
+    // rollInput > 0 (D / stick right / touch right) -> bank RIGHT (rot.z decreases)
+    // rollInput < 0 (A / stick left / touch left) -> bank LEFT (rot.z increases)
     const sens = SIM.sensitivity;
-    const pitchRate = flight.pitchInput * cfg.pitchAuth * sens;
+    const pitchRate = -flight.pitchInput * cfg.pitchAuth * sens;
     const rollRate = -flight.rollInput * cfg.rollAuth * sens;
     const yawRate = -flight.yawInput * cfg.yawAuth * sens;
 
-    // Apply Euler rotations
     flight.rot.x += pitchRate * dt;
     flight.rot.y += yawRate * dt;
     flight.rot.z += rollRate * dt;
 
-    // Natural stability & damping
-    flight.rot.x *= (1.0 - 0.4 * dt);
-    if (!SIM.apMode.level && Math.abs(flight.rollInput) < 0.05) {
-      flight.rot.z *= (1.0 - 0.6 * dt); // Soft wing-leveling
+    // Natural longitudinal stability (tail pitch trim restored towards equilibrium AoA)
+    if (Math.abs(flight.pitchInput) < 0.05) {
+      flight.rot.x += (-flight.aoa * (Math.PI / 180) * 0.75 - flight.rot.x * 0.2) * dt;
     }
+    // Lateral stability (wings level)
+    if (Math.abs(flight.rollInput) < 0.05 && !SIM.apMode.level) {
+      flight.rot.z *= (1.0 - 0.5 * dt);
+    }
+    // Turn coordination: banking turns heading smoothly
+    flight.rot.y += (flight.rot.z * 0.55) * dt;
+
+    // Clamp pitch attitude to safe flight envelope: [-60°, +60°]
+    flight.rot.x = THREE.MathUtils.clamp(flight.rot.x, -1.05, 1.05);
 
     flight.quat.setFromEuler(flight.rot);
 
-    // 5. Speed & Aerodynamic Forces
-    // Forward direction vector
+    // 5. 6-DOF Aerodynamic Forces
     const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(flight.quat);
+    const up = new THREE.Vector3(0, 1, 0).applyQuaternion(flight.quat);
+    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(flight.quat);
+
+    const tas = Math.max(0.1, flight.vel.length());
+    const uV = flight.vel.clone().normalize();
+
+    // True 3D Angle of Attack (AoA)
+    const V_fwd = flight.vel.dot(fwd);
+    const V_down = -flight.vel.dot(up);
+    const aoaRad = Math.atan2(V_down, Math.max(1.5, V_fwd));
+    flight.aoa = THREE.MathUtils.clamp(aoaRad * 180 / Math.PI, -25.0, 25.0);
+
+    // ISA Atmosphere: exponential air density decay with altitude
+    const alt = Math.max(0, flight.pos.y);
+    const rho = 1.225 * Math.max(0.1, Math.exp(-alt / 8500));
+
+    // Blown-Wing STOL: DEP propwash adds airflow over upper wing surface
+    const propWashVel = effectiveThrottle * 22.0;
+    const effectiveAirspeed = tas + propWashVel * 0.45;
+    const qEff = 0.5 * rho * Math.pow(effectiveAirspeed, 2);
+
+    // Lift coefficient: Base camber + Flaps + Linear slope with stall curve
+    const baseCL = 0.38 + flight.flapsStage * 0.38;
+    const clSlope = 4.8;
+    let cl = baseCL + clSlope * (flight.aoa * Math.PI / 180);
+    // Stall drop-off beyond ±16°
+    if (Math.abs(flight.aoa) > 16.0) {
+      const stallExcess = (Math.abs(flight.aoa) - 16.0) * (Math.PI / 180);
+      cl *= Math.max(0.2, Math.cos(stallExcess * 2.5));
+    }
+    cl = THREE.MathUtils.clamp(cl, -0.9, 2.5);
+
+    // McCormick Ground Effect factor: reduces induced drag near runway
+    const wingHeight = Math.max(0.5, flight.pos.y - 1.25);
+    const b = 12.4; // wingspan
+    const sigmaGround = Math.min(1.0, Math.pow(16 * wingHeight / b, 2) / (1 + Math.pow(16 * wingHeight / b, 2)));
+
+    // Lift force magnitude
+    const currentMass = cfg.mass + (flight.fluidRemaining * 1.0);
+    const liftForceN = qEff * cfg.wingArea * cl * (1.0 + (1.0 - sigmaGround) * 0.12);
+
+    // Lift direction is normal to velocity in aircraft symmetry plane
+    let liftDir;
+    if (tas > 2.0) {
+      liftDir = uV.clone().cross(right).normalize();
+    } else {
+      liftDir = up.clone();
+    }
+    const liftAcc = liftDir.clone().multiplyScalar(liftForceN / currentMass);
+
+    // Drag: Parasite + Gear + Flaps + Spoilers + Stall + Induced
+    const cdGear = (1.0 - flight.gearPos) * 0.005 + flight.gearPos * 0.035;
+    const cdFlaps = flight.flapsStage * 0.032;
+    const cdSpoilers = flight.spoilersPos * 0.075;
+    const cdStall = Math.abs(flight.aoa) > 16.0 ? Math.pow((Math.abs(flight.aoa) - 16.0) * 0.05, 2) : 0;
+    const cdParasite = 0.025 + cdGear + cdFlaps + cdSpoilers + cdStall;
+    const cdInduced = (Math.pow(cl, 2) / (Math.PI * 11.5 * 0.85)) * sigmaGround;
+    const totalCD = cdParasite + cdInduced;
+    const dragForceN = 0.5 * rho * Math.pow(tas, 2) * cfg.wingArea * totalCD;
+    const dragAcc = uV.clone().multiplyScalar(-dragForceN / currentMass);
 
     // Thrust
-    const thrustN = effectiveThrottle * cfg.thrustMax;
-    const thrustAcc = thrustN / cfg.mass;
+    const thrustN = effectiveThrottle * cfg.thrustMax * Math.pow(rho / 1.225, 0.7);
+    const thrustAcc = fwd.clone().multiplyScalar(thrustN / currentMass);
 
-    // Blown-Wing STOL Lift: DEP propwash keeps lift high even at low forward speeds!
-    const propWashVel = effectiveThrottle * 28.0;
-    const effectiveAirspeed = flight.tas + propWashVel * 0.55;
+    // Gravity
+    const gravAcc = new THREE.Vector3(0, -9.80665, 0);
 
-    // Lift coefficient: Base + Flap increments
-    const baseCL = 0.55 + flight.flapsStage * 0.45;
-    const liftForceN = 0.5 * 1.225 * Math.pow(effectiveAirspeed, 2) * cfg.wingArea * baseCL;
-    const liftAcc = liftForceN / cfg.mass;
+    // Weathercock velocity alignment & sideslip damping
+    const vSide = flight.vel.dot(right);
+    const sideDampingAcc = right.clone().multiplyScalar(-vSide * 2.8);
 
-    // Drag: Parasite + Gear + Flaps + Spoilers
-    const cdGear = (1.0 - flight.gearPos) * 0.01 + flight.gearPos * 0.035;
-    const cdFlaps = flight.flapsStage * 0.025;
-    const cdSpoilers = flight.spoilersPos * 0.06;
-    const totalCD = 0.026 + cdGear + cdFlaps + cdSpoilers;
-    const dragForceN = 0.5 * 1.225 * Math.pow(flight.tas, 2) * cfg.wingArea * totalCD;
-    const dragAcc = dragForceN / cfg.mass;
-
-    // Acceleration vector
+    // Total Acceleration
     const acc = new THREE.Vector3();
-    acc.addScaledVector(fwd, thrustAcc - dragAcc);
-    acc.y += liftAcc - 9.80665; // Lift vs Gravity
+    acc.add(thrustAcc);
+    acc.add(liftAcc);
+    acc.add(dragAcc);
+    acc.add(gravAcc);
+    acc.add(sideDampingAcc);
 
     // Integrate velocity
     flight.vel.addScaledVector(acc, dt);
 
-    // Speed limits & ground interaction
+    // Update speeds
     flight.tas = flight.vel.length();
-    flight.ias = flight.tas * 3.6; // km/h
+    flight.ias = flight.tas * 3.6 * Math.sqrt(rho / 1.225); // km/h
     flight.kts = flight.tas * 1.94384;
     flight.vsi = flight.vel.y;
 
     // Move aircraft in world space
     flight.pos.addScaledVector(flight.vel, dt);
 
-    // Ground collision / Roll physics on runway
+    // Ground collision & Runway Roll physics
     const groundLevel = 1.25;
     if (flight.pos.y <= groundLevel) {
       flight.pos.y = groundLevel;
       flight.vel.y = Math.max(0, flight.vel.y);
-      flight.rot.x = Math.max(-0.02, flight.rot.x);
-      flight.rot.z = 0; // Level on wheels
+      flight.rot.z *= 0.8;
+      // Allow nose-up pitch rotation on runway up to -12° (-0.21 rad) for STOL takeoff!
+      flight.rot.x = Math.max(-0.21, Math.min(0.02, flight.rot.x));
       flight.altAGL = 0;
+
+      // Ground rolling resistance & brakes
+      if (flight.gearPos > 0.5) {
+        flight.vel.x *= Math.max(0, 1.0 - 1.5 * dt);
+        if (flight.throttle < 0.1 || flight.spoilersActive) {
+          flight.vel.z *= Math.max(0, 1.0 - 1.2 * dt);
+        }
+      }
     } else {
-      flight.altAGL = flight.pos.y;
+      flight.altAGL = flight.pos.y - 1.25;
     }
     flight.altMSL = flight.pos.y;
 
-    // Angle of Attack (AoA)
-    flight.aoa = (flight.rot.x * 180 / Math.PI) - (Math.atan2(flight.vel.y, Math.max(1, flight.tas)) * 180 / Math.PI);
-    flight.gLoad = 1.0 + (acc.y / 9.80665);
-
-    // Stall Warning (AoA > 15° with low speed)
-    const stallBanner = document.getElementById('sim-stall-warning');
-    if (stallBanner) {
-      stallBanner.style.display = (flight.aoa > 15.0 && flight.ias < 70) ? 'flex' : 'none';
+    // Absolute service ceiling safety clamp (cannot fly into space!)
+    if (flight.pos.y >= 4000.0) {
+      flight.pos.y = 4000.0;
+      flight.vel.y = Math.min(0, flight.vel.y);
     }
 
-    // Update 3D plane mesh transform
+    flight.gLoad = 1.0 + (acc.y / 9.80665);
+
+    // Stall Warning
+    const stallBanner = document.getElementById('sim-stall-warning');
+    if (stallBanner) {
+      stallBanner.style.display = (Math.abs(flight.aoa) > 15.0 && flight.ias < 75) ? 'flex' : 'none';
+    }
+
+    // Update 3D mesh transforms
     planeGroup.position.copy(flight.pos);
     planeGroup.quaternion.copy(flight.quat);
 
-    // Hydrogen consumption
+    // Consumables consumption
     flight.h2MassRemaining = Math.max(0, flight.h2MassRemaining - (effectiveThrottle * 0.0008 * dt));
+    if (flight.waterDropping) {
+      flight.fluidRemaining = Math.max(0, flight.fluidRemaining - 120 * dt);
+      if (flight.fluidRemaining <= 0) flight.waterDropping = false;
+    }
+    if (flight.agroSpraying) {
+      flight.fluidRemaining = Math.max(0, flight.fluidRemaining - 15 * dt);
+      if (flight.fluidRemaining <= 0) flight.agroSpraying = false;
+    }
+
+    // Save live metrics for Professor formulas
+    flight.liveCL = cl;
+    flight.liveCD = totalCD;
+    flight.liveLiftN = Math.round(liftForceN);
+    flight.liveDragN = Math.round(dragForceN);
+    flight.liveLD = dragForceN > 1 ? (liftForceN / dragForceN) : 0;
+    flight.liveVeff = effectiveAirspeed;
+    flight.liveSigma = sigmaGround;
+    flight.liveMass = currentMass;
 
     // Update Aerodynamic Vector Helpers
     if (flight.showAeroVectors && aeroVectorGroup) {
       const lArrow = aeroVectorGroup.getObjectByName('liftArrow');
       const tArrow = aeroVectorGroup.getObjectByName('thrustArrow');
       const dArrow = aeroVectorGroup.getObjectByName('dragArrow');
-      if (lArrow) lArrow.setLength(Math.min(6, Math.max(0.5, liftAcc * 0.4)));
-      if (tArrow) tArrow.setLength(Math.min(6, Math.max(0.5, thrustAcc * 0.4)));
-      if (dArrow) dArrow.setLength(Math.min(6, Math.max(0.5, dragAcc * 0.4)));
+      if (lArrow) lArrow.setLength(Math.min(7, Math.max(0.5, (liftForceN / currentMass) * 0.35)));
+      if (tArrow) tArrow.setLength(Math.min(7, Math.max(0.5, (thrustN / currentMass) * 0.35)));
+      if (dArrow) dArrow.setLength(Math.min(7, Math.max(0.5, (dragForceN / currentMass) * 0.35)));
     }
   }
 
@@ -1325,20 +1427,71 @@
     if (radarCoords) {
       const deltaZ = flight.pos.z;
       const deltaX = flight.pos.x;
-      const curLat = currentOriginLat - (deltaZ / 111132);
-      const curLon = currentOriginLon + (deltaX / (111132 * Math.cos(currentOriginLat * Math.PI / 180)));
+      const curLat = THREE.MathUtils.clamp(currentOriginLat - (deltaZ / 111132), -85.0, 85.0);
+      const cosLat = Math.max(0.1, Math.cos(currentOriginLat * Math.PI / 180));
+      const curLon = THREE.MathUtils.clamp(currentOriginLon + (deltaX / (111132 * cosLat)), -180.0, 180.0);
       const latHem = curLat >= 0 ? 'N' : 'S';
       const lonHem = curLon >= 0 ? 'E' : 'W';
       radarCoords.textContent = `${Math.abs(curLat).toFixed(4)}°${latHem} ${Math.abs(curLon).toFixed(4)}°${lonHem}`;
     }
 
-    // 7. FPV Reticle & Pitch Ladder
+    // 7. FPV Reticle & Pitch Ladder (moves UP when nose pitches up)
     const fpvWrap = document.getElementById('sim-fpv-marker');
     if (fpvWrap) {
-      const pitchPx = THREE.MathUtils.clamp(-flight.rot.x * 250, -120, 120);
+      const pitchPx = THREE.MathUtils.clamp(flight.rot.x * 260, -120, 120);
       const rollDeg = -flight.rot.z * 180 / Math.PI;
       fpvWrap.style.transform = `translate(-50%, calc(-50% + ${pitchPx}px)) rotate(${rollDeg}deg)`;
     }
+
+    // 8. Update Touch Throttle handle UI
+    const touchThrHandle = document.getElementById('touch-throttle-handle');
+    const touchThrPct = document.getElementById('touch-throttle-pct');
+    if (touchThrHandle && touchThrPct) {
+      touchThrHandle.style.bottom = `${thrPct * 0.72}%`;
+      touchThrPct.textContent = `${thrPct}%`;
+    }
+
+    // 9. Throttle Presets active class sync
+    document.querySelectorAll('.btn-thr-preset').forEach((btn) => {
+      const bThr = parseInt(btn.getAttribute('data-thr'), 10);
+      btn.classList.toggle('active', Math.abs(bThr - thrPct) <= 5);
+    });
+  }
+
+  // Live Professor Aerodynamics Formulas & Telemetry Overlay
+  function updateProfessorOverlay() {
+    const overlay = document.getElementById('sim-professor-overlay');
+    if (!overlay || overlay.style.display === 'none') return;
+
+    const elVeff = document.getElementById('prof-veff');
+    const elAoa = document.getElementById('prof-aoa');
+    const elCl = document.getElementById('prof-cl');
+    const elLift = document.getElementById('prof-lift');
+    const elSigma = document.getElementById('prof-sigma');
+    const elDrag = document.getElementById('prof-drag');
+    const elLD = document.getElementById('prof-ld');
+    const elMass = document.getElementById('prof-mass');
+    const elFluid = document.getElementById('prof-fluid-mass');
+    const elGload = document.getElementById('prof-gload');
+    const elPfc = document.getElementById('prof-pfc');
+    const elPbuf = document.getElementById('prof-pbuf');
+    const elH2flow = document.getElementById('prof-h2flow');
+
+    if (elVeff) elVeff.textContent = `${flight.liveVeff.toFixed(1)} м/с (${Math.round(flight.liveVeff * 3.6)} км/ч)`;
+    if (elAoa) elAoa.textContent = `${flight.aoa.toFixed(1)}°`;
+    if (elCl) elCl.textContent = flight.liveCL.toFixed(2);
+    if (elLift) elLift.textContent = `${flight.liveLiftN.toLocaleString()} Н`;
+    if (elSigma) {
+      elSigma.textContent = flight.liveSigma < 0.98 ? `${flight.liveSigma.toFixed(2)} (Ground Effect)` : '1.00 (Out of Ground)';
+    }
+    if (elDrag) elDrag.textContent = `${flight.liveDragN.toLocaleString()} Н`;
+    if (elLD) elLD.textContent = flight.liveLD.toFixed(1);
+    if (elMass) elMass.textContent = `${flight.liveMass.toFixed(1)} кг`;
+    if (elFluid) elFluid.textContent = `${flight.fluidRemaining.toFixed(1)} кг`;
+    if (elGload) elGload.textContent = `${flight.gLoad.toFixed(2)} G`;
+    if (elPfc) elPfc.textContent = `${(flight.throttle * 42.0).toFixed(1)} kW`;
+    if (elPbuf) elPbuf.textContent = SIM.boostActive ? '35.0 kW (BOOST ON)' : '0.0 kW (STOL off)';
+    if (elH2flow) elH2flow.textContent = `${(flight.throttle * 2.4).toFixed(1)} кг/ч`;
   }
 
   // ----------------------------------------------------------------------------
@@ -1542,7 +1695,287 @@
   // ----------------------------------------------------------------------------
   // 15. UI BINDINGS & KEYBOARD INPUT
   // ----------------------------------------------------------------------------
+  // Touch Controls & Sensor Handlers
+  function initTouchControls() {
+    const joyZone = document.getElementById('virtual-joystick-zone');
+    const joyKnob = document.getElementById('virtual-joystick-knob');
+    const thrTrack = document.getElementById('touch-throttle-track');
+    const thrHandle = document.getElementById('touch-throttle-handle');
+    const thrPctLabel = document.getElementById('touch-throttle-pct');
+    const rudLeft = document.getElementById('touch-rudder-left');
+    const rudRight = document.getElementById('touch-rudder-right');
+    const touchOverlay = document.getElementById('sim-touch-controls');
+    const touchToggleBtn = document.getElementById('btn-sim-touch-toggle');
+    const touchToggleLabel = document.getElementById('sim-touch-label');
+
+    // Auto-detect touchscreen device
+    const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (window.innerWidth <= 1024);
+    if (isTouchDevice && touchOverlay) {
+      touchOverlay.classList.add('active');
+      SIM.touchControlsActive = true;
+      if (touchToggleBtn) touchToggleBtn.classList.add('active');
+      if (touchToggleLabel) touchToggleLabel.textContent = 'Джойстик ВКЛ';
+    }
+
+    if (touchToggleBtn && touchOverlay) {
+      touchToggleBtn.addEventListener('click', () => {
+        SIM.touchControlsActive = !SIM.touchControlsActive;
+        touchOverlay.classList.toggle('active', SIM.touchControlsActive);
+        touchToggleBtn.classList.toggle('active', SIM.touchControlsActive);
+        if (touchToggleLabel) {
+          touchToggleLabel.textContent = SIM.touchControlsActive ? 'Джойстик ВКЛ' : 'Джойстик ВЫКЛ';
+        }
+        showToast(SIM.touchControlsActive ? '🕹️ СЕНСОРНЫЙ ДЖОЙСТИК ВКЛЮЧЕН' : 'ДЖОЙСТИК СКРЫТ');
+      });
+    }
+
+    // Virtual 3D Flight Stick (Pitch & Roll)
+    if (joyZone && joyKnob) {
+      let isJoyDragging = false;
+      const maxR = 48;
+
+      const resetJoy = () => {
+        isJoyDragging = false;
+        joyKnob.style.transform = 'translate(-50%, -50%)';
+        flight.pitchInput = 0;
+        flight.rollInput = 0;
+      };
+
+      const updateJoy = (clientX, clientY) => {
+        const rect = joyZone.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        let dx = clientX - centerX;
+        let dy = clientY - centerY;
+        const dist = Math.hypot(dx, dy);
+        if (dist > maxR) {
+          dx = (dx / dist) * maxR;
+          dy = (dy / dist) * maxR;
+        }
+        joyKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+
+        // dx > 0 -> drag right -> roll right (+rollInput)
+        // dy > 0 -> drag down -> stick back -> pitch up (+pitchInput)
+        flight.rollInput = THREE.MathUtils.clamp(dx / maxR, -1.0, 1.0);
+        flight.pitchInput = THREE.MathUtils.clamp(dy / maxR, -1.0, 1.0);
+      };
+
+      joyZone.addEventListener('pointerdown', (e) => {
+        isJoyDragging = true;
+        joyZone.setPointerCapture(e.pointerId);
+        updateJoy(e.clientX, e.clientY);
+        initAudioEngine();
+      });
+
+      joyZone.addEventListener('pointermove', (e) => {
+        if (isJoyDragging) updateJoy(e.clientX, e.clientY);
+      });
+
+      joyZone.addEventListener('pointerup', (e) => {
+        resetJoy();
+        try { joyZone.releasePointerCapture(e.pointerId); } catch (_) {}
+      });
+
+      joyZone.addEventListener('pointercancel', resetJoy);
+    }
+
+    // Touch Throttle Slider
+    if (thrTrack && thrHandle) {
+      let isThrDragging = false;
+
+      const updateThr = (clientY) => {
+        const rect = thrTrack.getBoundingClientRect();
+        const trackH = rect.height;
+        const relY = THREE.MathUtils.clamp((rect.bottom - clientY) / trackH, 0.0, 1.0);
+        flight.throttle = relY;
+        const pct = Math.round(relY * 100);
+        thrHandle.style.bottom = `${pct * 0.72}%`;
+        if (thrPctLabel) thrPctLabel.textContent = `${pct}%`;
+        initAudioEngine();
+      };
+
+      thrTrack.addEventListener('pointerdown', (e) => {
+        isThrDragging = true;
+        thrTrack.setPointerCapture(e.pointerId);
+        updateThr(e.clientY);
+      });
+
+      thrTrack.addEventListener('pointermove', (e) => {
+        if (isThrDragging) updateThr(e.clientY);
+      });
+
+      thrTrack.addEventListener('pointerup', (e) => {
+        isThrDragging = false;
+        try { thrTrack.releasePointerCapture(e.pointerId); } catch (_) {}
+      });
+
+      thrTrack.addEventListener('pointercancel', () => { isThrDragging = false; });
+    }
+
+    // Touch Rudder Buttons
+    if (rudLeft) {
+      const startRudL = (e) => { e.preventDefault(); flight.yawInput = -1.0; };
+      const stopRudL = () => { flight.yawInput = 0; };
+      rudLeft.addEventListener('pointerdown', startRudL);
+      rudLeft.addEventListener('pointerup', stopRudL);
+      rudLeft.addEventListener('pointercancel', stopRudL);
+    }
+    if (rudRight) {
+      const startRudR = (e) => { e.preventDefault(); flight.yawInput = 1.0; };
+      const stopRudR = () => { flight.yawInput = 0; };
+      rudRight.addEventListener('pointerdown', startRudR);
+      rudRight.addEventListener('pointerup', stopRudR);
+      rudRight.addEventListener('pointercancel', stopRudR);
+    }
+
+    // Action buttons
+    const btnTouchSpray = document.getElementById('btn-touch-spray');
+    if (btnTouchSpray) {
+      btnTouchSpray.addEventListener('click', () => {
+        const btn = document.getElementById('btn-act-spray');
+        if (btn) btn.click();
+      });
+    }
+
+    const btnTouchSalvo = document.getElementById('btn-touch-salvo');
+    if (btnTouchSalvo) {
+      btnTouchSalvo.addEventListener('click', () => {
+        const btn = document.getElementById('btn-act-water');
+        if (btn) btn.click();
+      });
+    }
+
+    const btnTouchFlaps = document.getElementById('btn-touch-flaps');
+    if (btnTouchFlaps) {
+      btnTouchFlaps.addEventListener('click', () => {
+        const btn = document.getElementById('btn-act-flaps');
+        if (btn) btn.click();
+      });
+    }
+
+    const btnTouchAp = document.getElementById('btn-touch-ap');
+    if (btnTouchAp) {
+      btnTouchAp.addEventListener('click', () => {
+        const btn = document.getElementById('btn-ap-level');
+        if (btn) btn.click();
+      });
+    }
+
+    const btnTouchCam = document.getElementById('btn-touch-cam');
+    if (btnTouchCam) {
+      btnTouchCam.addEventListener('click', () => {
+        const modes = ['chase', 'cockpit', 'satellite', 'orbit'];
+        const curIdx = modes.indexOf(SIM.cameraMode);
+        const nextMode = modes[(curIdx + 1) % modes.length];
+        const btn = document.getElementById(`btn-cam-${nextMode === 'cockpit' ? 'fpv' : (nextMode === 'satellite' ? 'sat' : nextMode)}`);
+        if (btn) btn.click();
+      });
+    }
+
+    // Gyroscope / Tilt Sensor Mode
+    const btnTouchGyro = document.getElementById('btn-touch-gyro');
+    if (btnTouchGyro) {
+      btnTouchGyro.addEventListener('click', () => {
+        if (!SIM.gyroActive) {
+          if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+            DeviceOrientationEvent.requestPermission().then((res) => {
+              if (res === 'granted') {
+                enableGyro();
+              } else {
+                showToast('❌ ДОСТУП К ДАТЧИКУ НАКЛОНА ОТКЛОНЁН');
+              }
+            }).catch(() => {
+              enableGyro();
+            });
+          } else {
+            enableGyro();
+          }
+        } else {
+          disableGyro();
+        }
+      });
+    }
+
+    function enableGyro() {
+      SIM.gyroActive = true;
+      if (btnTouchGyro) btnTouchGyro.classList.add('active');
+      window.addEventListener('deviceorientation', handleOrientation);
+      showToast('📱 ДАТЧИК НАКЛОНА АКТИВЕН: НАКЛОНЯЙТЕ ТЕЛЕФОН!');
+    }
+
+    function disableGyro() {
+      SIM.gyroActive = false;
+      if (btnTouchGyro) btnTouchGyro.classList.remove('active');
+      window.removeEventListener('deviceorientation', handleOrientation);
+      flight.pitchInput = 0;
+      flight.rollInput = 0;
+      showToast('ДАТЧИК НАКЛОНА ВЫКЛЮЧЕН');
+    }
+
+    function handleOrientation(e) {
+      if (!SIM.gyroActive) return;
+      const beta = e.beta || 45;   // Front-back tilt
+      const gamma = e.gamma || 0;  // Left-right tilt
+
+      // Holding phone at ~45 deg pitch:
+      // Tilt forward (beta < 45) -> stick fwd (pitch down, negative pitchInput)
+      // Tilt back (beta > 45) -> stick back (pitch up, positive pitchInput)
+      flight.pitchInput = THREE.MathUtils.clamp((beta - 45) / 25, -1.0, 1.0);
+      // Tilt right (gamma > 0) -> roll right (+rollInput)
+      flight.rollInput = THREE.MathUtils.clamp(gamma / 30, -1.0, 1.0);
+    }
+  }
+
   function initControls() {
+    initTouchControls();
+
+    // Throttle Quick Preset Buttons (100%, 75%, 25%, 0%)
+    document.querySelectorAll('.btn-thr-preset').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        initAudioEngine();
+        const thrVal = parseFloat(e.currentTarget.getAttribute('data-thr')) / 100;
+        flight.throttle = thrVal;
+        document.querySelectorAll('.btn-thr-preset').forEach(b => b.classList.remove('active'));
+        e.currentTarget.classList.add('active');
+        const thrSlider = document.getElementById('sim-slider-throttle');
+        if (thrSlider) thrSlider.value = Math.round(thrVal * 100);
+        showToast(`ТЯГА УСТАНОВЛЕНА: ${Math.round(thrVal * 100)}%`);
+      });
+    });
+
+    // Professor Telemetry Modal Toggle
+    const btnProf = document.getElementById('btn-sim-professor');
+    const modalProf = document.getElementById('sim-professor-overlay');
+    const btnCloseProf = document.getElementById('btn-close-prof');
+    if (btnProf && modalProf) {
+      btnProf.addEventListener('click', () => {
+        const isShown = modalProf.style.display !== 'none';
+        modalProf.style.display = isShown ? 'none' : 'block';
+        btnProf.classList.toggle('active', !isShown);
+        showToast(!isShown ? '📐 ФОРМУЛЫ АЭРОДИНАМИКИ ВКЛЮЧЕНЫ' : 'ФОРМУЛЫ СКРЫТЫ');
+      });
+    }
+    if (btnCloseProf && modalProf) {
+      btnCloseProf.addEventListener('click', () => {
+        modalProf.style.display = 'none';
+        if (btnProf) btnProf.classList.remove('active');
+      });
+    }
+
+    // Debriefing Modal Listeners
+    const modalDebrief = document.getElementById('sim-debriefing-modal');
+    const btnCloseDebrief = document.getElementById('btn-close-debriefing');
+    const btnRestartMission = document.getElementById('btn-restart-mission');
+    if (btnCloseDebrief && modalDebrief) {
+      btnCloseDebrief.addEventListener('click', () => { modalDebrief.style.display = 'none'; });
+    }
+    if (btnRestartMission && modalDebrief) {
+      btnRestartMission.addEventListener('click', () => {
+        modalDebrief.style.display = 'none';
+        startFromRunway();
+      });
+    }
+
     // 1. Top Select Dropdowns
     const selPlane = document.getElementById('sim-select-plane');
     if (selPlane) {
@@ -1947,10 +2380,17 @@
     window.addEventListener('resize', () => handleResize());
   }
 
-  // Multi-stage onShow ensures WebGL is NEVER 0x0
+  // Multi-stage onShow ensures WebGL is NEVER 0x0 and unpauses cleanly
   SIM.onShow = function () {
+    if (!SIM.initialized) {
+      initSimulator();
+    }
     SIM.running = true;
     SIM.paused = false;
+
+    if (SIM.audioEnabled && audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
 
     const container = document.getElementById('simulator-section');
     if (container) {
@@ -1983,6 +2423,10 @@
   };
 
   SIM.onHide = function () {
+    SIM.paused = true; // PAUSE physics loop completely when leaving simulator tab!
+    if (audioCtx && audioCtx.state === 'running') {
+      audioCtx.suspend();
+    }
     const container = document.getElementById('simulator-section');
     if (container) {
       container.classList.remove('active');
@@ -1994,6 +2438,12 @@
   // ----------------------------------------------------------------------------
   function animate() {
     requestAnimationFrame(animate);
+
+    // If paused (user is on another tab), drain delta clock and skip simulation!
+    if (SIM.paused) {
+      clock.getDelta();
+      return;
+    }
 
     const dt = Math.min(0.05, Math.max(0.001, clock.getDelta()));
 
@@ -2012,9 +2462,10 @@
     // 5. Camera
     updateCamera();
 
-    // 6. UI Instruments & Radar
+    // 6. UI Instruments, Radar & Live Professor Formulas
     updateHUDInstruments();
     updateRadar();
+    updateProfessorOverlay();
 
     // 7. Render 3D Scene
     if (renderer && scene && camera) {
