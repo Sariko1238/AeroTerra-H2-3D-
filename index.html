@@ -333,128 +333,131 @@
     </div>
 
     <!-- HUD Overlay Layer (Garmin G1000 Glass Cockpit) -->
+    <!-- HUD Overlay Layer (MSFS 2024 Clean Cockpit & Corner Avionics) -->
     <div class="sim-hud-overlay" id="sim-hud-overlay">
-      <!-- Center Compass Ribbon Tape -->
+      <!-- Row 1: Center Compass Ribbon Tape (top: 72px) -->
       <div class="sim-compass-tape-wrap">
         <div class="compass-lubber-line"></div>
         <div class="sim-compass-ribbon" id="sim-compass-ribbon">
           <!-- Ticks generated dynamically in sim-engine.js -->
         </div>
         <div class="compass-digital-hdg" id="sim-hdg-val">HDG 090°</div>
-        <div class="compass-nav-bugs">
-          <span class="nav-bug bug-rwy" id="sim-bug-rwy">RWY: 090° (0.4 км)</span>
-          <span class="nav-bug bug-agro" id="sim-bug-agro">AGRO: 045° (1.2 км)</span>
-          <span class="nav-bug bug-fire" id="sim-bug-fire">FIRE: 320° (2.1 км)</span>
-          <span class="nav-bug bug-lake" id="sim-bug-lake">LAKE: 210° (1.8 км)</span>
-        </div>
       </div>
 
-      <!-- Primary Flight Display (PFD) Center: Artificial Horizon -->
-      <div class="sim-pfd-center">
-        <canvas id="sim-horizon-canvas"></canvas>
-        <!-- Flight Path Vector (FPV) marker -->
+      <!-- Row 2: Clickable Teleport Navigation Chips (top: 112px, NO text overlap!) -->
+      <div class="sim-nav-teleport-bar" id="sim-nav-teleport-bar">
+        <button class="nav-tp-btn btn-tp-rwy" id="btn-tp-rwy" title="Телепорт на взлётно-посадочную полосу">
+          <i class="fa-solid fa-plane-departure"></i> <span>🛫 ВПП (RWY 09)</span>
+        </button>
+        <button class="nav-tp-btn btn-tp-agro" id="btn-tp-agro" title="Телепорт к садам для опрыскивания">
+          <i class="fa-solid fa-seedling"></i> <span>🌳 Сады AGRO</span>
+        </button>
+        <button class="nav-tp-btn btn-tp-fire" id="btn-tp-fire" title="Телепорт к очагу лесного пожара">
+          <i class="fa-solid fa-fire"></i> <span>🔥 Пожар FIRE</span>
+        </button>
+        <button class="nav-tp-btn btn-tp-lake" id="btn-tp-lake" title="Телепорт к озеру для забора воды">
+          <i class="fa-solid fa-water"></i> <span>🌊 Озеро LAKE</span>
+        </button>
+      </div>
+
+      <!-- Minimal Flight Path Vector (FPV) marker center screen (100% clean view of 3D plane) -->
+      <div class="sim-fpv-center-wrap">
         <div class="sim-fpv-marker" id="sim-fpv-marker">
           <div class="fpv-circle"></div>
           <div class="fpv-wing-left"></div>
           <div class="fpv-wing-right"></div>
           <div class="fpv-fin-top"></div>
         </div>
-        <!-- Slip Ball -->
-        <div class="sim-slip-indicator">
-          <div class="slip-bracket-left"></div>
-          <div class="slip-bracket-right"></div>
-          <div class="slip-ball" id="sim-slip-ball"></div>
+      </div>
+
+      <!-- Bottom-Left: MSFS 2024 Engine, Speed & Power Panel -->
+      <div class="msfs-hud-panel msfs-panel-left" id="msfs-sim-panel-left">
+        <div class="msfs-panel-title-row">
+          <span><i class="fa-solid fa-bolt"></i> AEROTERRA DEP POWER</span>
+          <span id="sim-pwr-mode" style="color: #00ff9d;">CRUISE (75%)</span>
+        </div>
+        <div class="msfs-speed-throttle-row">
+          <div class="msfs-speed-box">
+            <div class="msfs-speed-val" id="sim-speed-val">85</div>
+            <div class="msfs-speed-lbl">IAS KM/H · TAS <span id="sim-tas-val">85</span></div>
+          </div>
+          <div class="msfs-throttle-circle">
+            <div class="msfs-throttle-fill-bg" id="sim-throttle-fill" style="height: 75%;"></div>
+            <span class="msfs-throttle-num" id="sim-throttle-val">75%</span>
+            <span class="msfs-throttle-sub">THROTTLE</span>
+          </div>
+        </div>
+        <div class="msfs-motors-row">
+          <div class="msfs-motor-col"><div class="msfs-m-fill" id="sim-m1-fill" style="height: 75%;"></div><span>M1</span></div>
+          <div class="msfs-motor-col"><div class="msfs-m-fill" id="sim-m2-fill" style="height: 75%;"></div><span>M2</span></div>
+          <div class="msfs-motor-col"><div class="msfs-m-fill" id="sim-m3-fill" style="height: 75%;"></div><span>M3</span></div>
+          <div class="msfs-motor-col"><div class="msfs-m-fill" id="sim-m4-fill" style="height: 75%;"></div><span>M4</span></div>
+        </div>
+        <div class="msfs-engine-specs">
+          <span>MOTORS: <b id="sim-rpm-val">2850</b> RPM</span>
+          <span>POWER: <b id="sim-power-val">96</b> kW</span>
+        </div>
+        <div class="msfs-bar-item">
+          <span class="msfs-bar-lbl">H₂ FUEL</span>
+          <div class="msfs-bar-track"><div class="msfs-bar-prog cyan" id="sim-h2-fill" style="width: 100%;"></div></div>
+          <span class="msfs-bar-val" id="sim-h2-val">28.5 kg (100%)</span>
+        </div>
+        <div class="msfs-bar-item">
+          <span class="msfs-bar-lbl">WATER/FL</span>
+          <div class="msfs-bar-track"><div class="msfs-bar-prog amber" id="sim-fluid-fill" style="width: 100%;"></div></div>
+          <span class="msfs-bar-val" id="sim-fluid-val">600 L (100%)</span>
         </div>
       </div>
 
-      <!-- Left Vertical Airspeed Tape (IAS) -->
-      <div class="sim-tape-wrap sim-speed-tape">
-        <div class="tape-header-label">IAS km/h</div>
-        <div class="tape-viewport">
-          <div class="tape-ladder" id="sim-speed-ladder">
-            <!-- Ticks generated in sim-engine.js -->
-          </div>
-          <div class="tape-readout-box" id="sim-speed-val">0</div>
-          <div class="speed-trend-vector" id="sim-speed-trend"></div>
+      <!-- Bottom-Right: MSFS 2024 Altimeter, VSI & Configuration Panel -->
+      <div class="msfs-hud-panel msfs-panel-right" id="msfs-sim-panel-right">
+        <div class="msfs-panel-title-row">
+          <span><i class="fa-solid fa-mountain"></i> ALTITUDE &amp; ATTITUDE</span>
+          <span id="sim-aoa-val" style="color: #00e5ff;">α: +2.1°</span>
         </div>
-        <div class="tape-sub-data">
-          <div>TAS: <b id="sim-tas-val">0</b> km/h</div>
-          <div>M: <b id="sim-mach-val">0.00</b></div>
+        <div class="msfs-alt-row">
+          <div class="msfs-alt-box">
+            <div class="msfs-alt-val" id="sim-alt-val">80</div>
+            <div class="msfs-alt-lbl">ALT MSL (METERS)</div>
+          </div>
+          <div class="msfs-vsi-box">
+            <div class="msfs-vsi-val" id="sim-vsi-digital">+0.0</div>
+            <div class="msfs-vsi-lbl">VSI M/S</div>
+          </div>
+        </div>
+        <div class="msfs-agl-row">
+          <span>RADIO ALTIMETER:</span>
+          <span>AGL <b id="sim-rad-alt-val">78.5</b> m</span>
+        </div>
+        <div class="msfs-config-pills">
+          <button class="msfs-pill" id="annun-flaps" title="Переключить закрылки (Клавиша F)">FLAPS: 0°</button>
+          <button class="msfs-pill active" id="annun-gear" title="Шасси (Клавиша G)">GEAR: UP</button>
+          <button class="msfs-pill" id="annun-spray" title="Спрей / Сброс (Пробел)">SPRAY: OFF</button>
         </div>
       </div>
 
-      <!-- Right Vertical Altitude & VSI Tape -->
-      <div class="sim-tape-wrap sim-alt-tape">
-        <div class="tape-header-label">ALT MSL (m)</div>
-        <div class="tape-viewport">
-          <div class="tape-ladder" id="sim-alt-ladder">
-            <!-- Ticks generated in sim-engine.js -->
-          </div>
-          <div class="tape-readout-box" id="sim-alt-val">120</div>
-          <div class="vsi-indicator-scale">
-            <div class="vsi-zero-line"></div>
-            <div class="vsi-pointer" id="sim-vsi-pointer"></div>
-            <div class="vsi-digital" id="sim-vsi-digital">+0.0</div>
-          </div>
-        </div>
-        <div class="tape-sub-data agl-box">
-          <div>AGL: <b id="sim-rad-alt-val" style="color: #00ff9d;">1.2</b> m</div>
-          <div>BARO: <b>1013.25</b></div>
-        </div>
+      <!-- Bottom-Center: Flight Quick Action Bar -->
+      <div class="sim-flight-actions-bar">
+        <button class="flight-act-btn active" id="btn-sim-mode-toggle" title="Переключить режим: В воздухе или Старт с ВПП">
+          <i class="fa-solid fa-plane"></i> <span id="lbl-sim-mode">✈️ В воздухе (85 км/ч)</span>
+        </button>
+        <button class="flight-act-btn btn-action-salvo" id="btn-action-salvo" title="Сбросить воду на огонь или включить опрыскивание (Пробел)">
+          <i class="fa-solid fa-droplet"></i> <span>💧 СБРОС / СПРЕЙ</span>
+        </button>
+        <button class="flight-act-btn" id="btn-throttle-100" title="Полный форсаж 100%">🚀 100%</button>
+        <button class="flight-act-btn" id="btn-throttle-75" title="Крейсерская тяга 75%">✈️ 75%</button>
+        <button class="flight-act-btn" id="btn-throttle-25" title="Малый газ 25%">🛬 25%</button>
+        <button class="flight-act-btn" id="btn-toggle-help" title="Показать подсказки управления">⌨️ Управление</button>
       </div>
 
-      <!-- Bottom-Left: EICAS Engine & Systems Monitoring Panel -->
-      <div class="sim-eicas-panel" id="sim-eicas-panel">
-        <div class="eicas-title-row">
-          <span class="eicas-title"><i class="fa-solid fa-gauge-high"></i> EICAS · BALLARD FC + 4x DEP</span>
-          <span class="eicas-mode" id="sim-pwr-mode">CRUISE (FC 100%)</span>
-        </div>
-        <div class="eicas-grid">
-          <!-- Throttle Dial -->
-          <div>
-            <div class="throttle-gauge-box">
-              <div class="throttle-bar-fill" id="sim-throttle-fill" style="height: 0%;"></div>
-              <span class="throttle-val-text" id="sim-throttle-val">0%</span>
-            </div>
-            <span class="eicas-sub-lbl">THROTTLE</span>
-          </div>
-          <!-- Motors RPM -->
-          <div>
-            <div class="motors-bars-row">
-              <div class="motor-mini-bar"><div class="m-fill" id="sim-m1-fill"></div><span>M1</span></div>
-              <div class="motor-mini-bar"><div class="m-fill" id="sim-m2-fill"></div><span>M2</span></div>
-              <div class="motor-mini-bar"><div class="m-fill" id="sim-m3-fill"></div><span>M3</span></div>
-              <div class="motor-mini-bar"><div class="m-fill" id="sim-m4-fill"></div><span>M4</span></div>
-            </div>
-            <div class="motors-rpm-text"><span id="sim-rpm-val">0</span> RPM · <span id="sim-power-val">0</span> kW</div>
-          </div>
-          <!-- Fluids & Energy Bars -->
-          <div class="eicas-fluids-col">
-            <div class="fluid-metric-row">
-              <span class="f-lbl">H₂ FUEL</span>
-              <div class="f-bar-track"><div class="f-bar-val cyan-bg" id="sim-h2-fill" style="width: 100%;"></div></div>
-              <span class="f-val" id="sim-h2-val">28.5 kg (100%)</span>
-            </div>
-            <div class="fluid-metric-row">
-              <span class="f-lbl">BUFFER</span>
-              <div class="f-bar-track"><div class="f-bar-val emerald-bg" id="sim-lipo-fill" style="width: 95%;"></div></div>
-              <span class="f-val" id="sim-lipo-val">12S 48V (95%)</span>
-            </div>
-            <div class="fluid-metric-row">
-              <span class="f-lbl">TANK</span>
-              <div class="f-bar-track"><div class="f-bar-val amber-bg" id="sim-fluid-fill" style="width: 100%;"></div></div>
-              <span class="f-val" id="sim-fluid-val">600 L (100%)</span>
-            </div>
-          </div>
-        </div>
-        <!-- Annunciators Row -->
-        <div class="eicas-annunciators">
-          <span class="annun-pill active" id="annun-flaps">FLAPS: 0°</span>
-          <span class="annun-pill active" id="annun-gear">GEAR: DOWN</span>
-          <span class="annun-pill" id="annun-spray">SPRAY: OFF</span>
-          <span class="annun-pill" id="annun-water">WATER: FULL</span>
-          <span class="annun-pill" id="annun-ap">AP: READY</span>
-        </div>
+      <!-- Controls Guide Tooltip (Toggleable) -->
+      <div class="sim-controls-guide-tooltip" id="sim-controls-guide-tooltip">
+        <span>🎮 <kbd>W / S</kbd> Тяга</span>
+        <span>🕹️ <kbd>↓ S</kbd> Нос Вверх (Подъём)</span>
+        <span>🕹️ <kbd>↑ W</kbd> Нос Вниз (Спуск)</span>
+        <span>✈️ <kbd>← → / A D</kbd> Крен и Разворот</span>
+        <span>💧 <kbd>Space</kbd> Сброс Воды / Спрей</span>
+        <span>🖱️ Зажмите мышь для обзора</span>
       </div>
 
       <!-- Top-Right: Tactical Minimap MFD Radar -->
@@ -655,16 +658,19 @@
         <span id="earth-tileset-status">GOOGLE 3D TILES · GLOBAL 6-DOF</span>
       </div>
 
-      <!-- Airports Selector (Ташкент, Самарканд, Турин) -->
+      <!-- Real-World Demonstration Locations for Professor -->
       <div class="earth-airports-scroll">
-        <button class="earth-airport-btn active" data-airport="uttt" id="earth-air-uttt" title="Ташкент UTTT (Южный)">
-          <i class="fa-solid fa-plane-departure"></i> <span>🇺🇿 Ташкент (UTTT)</span>
+        <button class="earth-airport-btn active" data-airport="charvak" id="earth-loc-charvak" title="Ташкентский Агро-Кластер и Чарвакское водохранилище (Узбекистан)">
+          <i class="fa-solid fa-water"></i> <span>🇺🇿 Чарвак &amp; Агро (Узбекистан)</span>
         </button>
-        <button class="earth-airport-btn" data-airport="utss" id="earth-air-utss" title="Самарканд UTSS">
-          <i class="fa-solid fa-plane-departure"></i> <span>🇺🇿 Самарканд (UTSS)</span>
+        <button class="earth-airport-btn" data-airport="california" id="earth-loc-california" title="Лесной массив и пожарный полигон (Калифорния / Тахо)">
+          <i class="fa-solid fa-fire"></i> <span>🌲 Леса &amp; Пожары (Калифорния)</span>
         </button>
-        <button class="earth-airport-btn" data-airport="limf" id="earth-air-limf" title="Турин LIMF (Казелле, Италия)">
-          <i class="fa-solid fa-plane-departure"></i> <span>🇮🇹 Турин (LIMF)</span>
+        <button class="earth-airport-btn" data-airport="alps" id="earth-loc-alps" title="Фруктовые сады и фермерские долины (Европа / Альпы)">
+          <i class="fa-solid fa-mountain"></i> <span>🍏 Сады &amp; Долины (Альпы)</span>
+        </button>
+        <button class="earth-airport-btn" data-airport="orbital" id="earth-loc-orbital" title="Обзор всей 3D-Планеты из космоса (Orbital 3D Globe View)">
+          <i class="fa-solid fa-globe"></i> <span>🌐 3D-Планета (Орбита)</span>
         </button>
       </div>
 
@@ -710,105 +716,91 @@
     <!-- Notice Banner (When running on OSM / Terrain fallback or missing token) -->
     <div class="earth-notice-banner" id="earth-notice-banner" style="display: none;">
       <i class="fa-solid fa-circle-info"></i>
-      <span id="earth-notice-text">Используется Cesium World Terrain + OSM. Для Google Photorealistic 3D Tiles добавьте свой Cesium Ion токен.</span>
+      <span id="earth-notice-text">Загружена спутниковая карта Esri World Imagery высокого разрешения.</span>
       <button id="earth-notice-btn"><i class="fa-solid fa-key"></i> Ввести токен</button>
     </div>
 
-    <!-- HUD Overlay Layer for Earth (PFD, Tapes, Heading, EICAS) -->
+    <!-- HUD Overlay Layer for Earth (MSFS 2024 Clean Cockpit & Corner Avionics) -->
     <div class="sim-hud-overlay" id="earth-hud-overlay">
-      <!-- Center Compass Ribbon Tape -->
+      <!-- Center Compass Ribbon Tape (top: 72px) -->
       <div class="sim-compass-tape-wrap">
         <div class="compass-lubber-line"></div>
         <div class="sim-compass-ribbon" id="earth-compass-ribbon"></div>
         <div class="compass-digital-hdg" id="earth-hdg-val">HDG 090°</div>
       </div>
 
-      <!-- Primary Flight Display (PFD) Center -->
-      <div class="sim-pfd-center">
-        <canvas id="earth-horizon-canvas"></canvas>
+      <!-- Minimal Flight Path Vector (FPV) marker center screen (100% clean view of 3D plane) -->
+      <div class="sim-fpv-center-wrap">
         <div class="sim-fpv-marker" id="earth-fpv-marker">
           <div class="fpv-circle"></div>
           <div class="fpv-wing-left"></div>
           <div class="fpv-wing-right"></div>
           <div class="fpv-fin-top"></div>
         </div>
-        <div class="sim-slip-indicator">
-          <div class="slip-bracket-left"></div>
-          <div class="slip-bracket-right"></div>
-          <div class="slip-ball" id="earth-slip-ball"></div>
+      </div>
+
+      <!-- Bottom-Left: MSFS 2024 Engine, Speed & Power Panel for Earth -->
+      <div class="msfs-hud-panel msfs-panel-left" id="msfs-earth-panel-left">
+        <div class="msfs-panel-title-row">
+          <span><i class="fa-solid fa-satellite"></i> EARTH ORBIT · AERO DEP</span>
+          <span id="earth-pwr-mode" style="color: #00ff9d;">CRUISE (75%)</span>
+        </div>
+        <div class="msfs-speed-throttle-row">
+          <div class="msfs-speed-box">
+            <div class="msfs-speed-val" id="earth-speed-val">85</div>
+            <div class="msfs-speed-lbl">IAS KM/H · TAS <span id="earth-tas-val">85</span></div>
+          </div>
+          <div class="msfs-throttle-circle">
+            <div class="msfs-throttle-fill-bg" id="earth-throttle-fill" style="height: 75%;"></div>
+            <span class="msfs-throttle-num" id="earth-throttle-val">75%</span>
+            <span class="msfs-throttle-sub">THROTTLE</span>
+          </div>
+        </div>
+        <div class="msfs-motors-row">
+          <div class="msfs-motor-col"><div class="msfs-m-fill" id="earth-m1-fill" style="height: 75%;"></div><span>M1</span></div>
+          <div class="msfs-motor-col"><div class="msfs-m-fill" id="earth-m2-fill" style="height: 75%;"></div><span>M2</span></div>
+          <div class="msfs-motor-col"><div class="msfs-m-fill" id="earth-m3-fill" style="height: 75%;"></div><span>M3</span></div>
+          <div class="msfs-motor-col"><div class="msfs-m-fill" id="earth-m4-fill" style="height: 75%;"></div><span>M4</span></div>
+        </div>
+        <div class="msfs-engine-specs">
+          <span>MOTORS: <b id="earth-rpm-val">2850</b> RPM</span>
+          <span>POWER: <b id="earth-power-val">96</b> kW</span>
+        </div>
+        <div class="msfs-bar-item">
+          <span class="msfs-bar-lbl">H₂ FUEL</span>
+          <div class="msfs-bar-track"><div class="msfs-bar-prog cyan" id="earth-h2-fill" style="width: 100%;"></div></div>
+          <span class="msfs-bar-val" id="earth-h2-val">28.5 kg (100%)</span>
+        </div>
+        <div class="msfs-bar-item">
+          <span class="msfs-bar-lbl">BUFFER</span>
+          <div class="msfs-bar-track"><div class="msfs-bar-prog cyan" id="earth-lipo-fill" style="width: 95%;"></div></div>
+          <span class="msfs-bar-val" id="earth-lipo-val">95%</span>
         </div>
       </div>
 
-      <!-- Left Vertical Airspeed Tape (IAS) -->
-      <div class="sim-tape-wrap sim-speed-tape">
-        <div class="tape-header-label">IAS km/h</div>
-        <div class="tape-viewport">
-          <div class="tape-ladder" id="earth-speed-ladder"></div>
-          <div class="tape-readout-box" id="earth-speed-val">0</div>
-          <div class="speed-trend-vector" id="earth-speed-trend"></div>
+      <!-- Bottom-Right: MSFS 2024 Altimeter & Systems Panel for Earth -->
+      <div class="msfs-hud-panel msfs-panel-right" id="msfs-earth-panel-right">
+        <div class="msfs-panel-title-row">
+          <span><i class="fa-solid fa-mountain"></i> ALTITUDE &amp; POSITION</span>
+          <span id="earth-annun-loc" style="color: #00e5ff;">LOC: ЧАРВАК</span>
         </div>
-        <div class="tape-sub-data">
-          <div>TAS: <b id="earth-tas-val">0</b> km/h</div>
-        </div>
-      </div>
-
-      <!-- Right Vertical Altitude & VSI Tape -->
-      <div class="sim-tape-wrap sim-alt-tape">
-        <div class="tape-header-label">ALT MSL (m)</div>
-        <div class="tape-viewport">
-          <div class="tape-ladder" id="earth-alt-ladder"></div>
-          <div class="tape-readout-box" id="earth-alt-val">0</div>
-          <div class="vsi-indicator-scale">
-            <div class="vsi-zero-line"></div>
-            <div class="vsi-pointer" id="earth-vsi-pointer"></div>
-            <div class="vsi-digital" id="earth-vsi-digital">+0.0</div>
+        <div class="msfs-alt-row">
+          <div class="msfs-alt-box">
+            <div class="msfs-alt-val" id="earth-alt-val">1100</div>
+            <div class="msfs-alt-lbl">ALT MSL (METERS)</div>
+          </div>
+          <div class="msfs-vsi-box">
+            <div class="msfs-vsi-val" id="earth-vsi-digital">+0.0</div>
+            <div class="msfs-vsi-lbl">VSI M/S</div>
           </div>
         </div>
-        <div class="tape-sub-data agl-box">
-          <div>AGL: <b id="earth-rad-alt-val" style="color: #00ff9d;">0.0</b> m</div>
+        <div class="msfs-agl-row">
+          <span>RADIO ALTIMETER:</span>
+          <span>AGL <b id="earth-rad-alt-val">80.0</b> m</span>
         </div>
-      </div>
-
-      <!-- Bottom-Left: EICAS Status -->
-      <div class="sim-eicas-panel" id="earth-eicas-panel">
-        <div class="eicas-title-row">
-          <span class="eicas-title"><i class="fa-solid fa-gauge-high"></i> EICAS · BALLARD FC + 4x DEP</span>
-          <span class="eicas-mode" id="earth-pwr-mode">CRUISE (FC 100%)</span>
-        </div>
-        <div class="eicas-grid">
-          <div>
-            <div class="throttle-gauge-box">
-              <div class="throttle-bar-fill" id="earth-throttle-fill" style="height: 0%;"></div>
-              <span class="throttle-val-text" id="earth-throttle-val">0%</span>
-            </div>
-            <span class="eicas-sub-lbl">THROTTLE</span>
-          </div>
-          <div>
-            <div class="motors-bars-row">
-              <div class="motor-mini-bar"><div class="m-fill" id="earth-m1-fill"></div><span>M1</span></div>
-              <div class="motor-mini-bar"><div class="m-fill" id="earth-m2-fill"></div><span>M2</span></div>
-              <div class="motor-mini-bar"><div class="m-fill" id="earth-m3-fill"></div><span>M3</span></div>
-              <div class="motor-mini-bar"><div class="m-fill" id="earth-m4-fill"></div><span>M4</span></div>
-            </div>
-            <div class="motors-rpm-text"><span id="earth-rpm-val">0</span> RPM · <span id="earth-power-val">0</span> kW</div>
-          </div>
-          <div class="eicas-fluids-col">
-            <div class="fluid-metric-row">
-              <span class="f-lbl">H₂ FUEL</span>
-              <div class="f-bar-track"><div class="f-bar-val cyan-bg" id="earth-h2-fill" style="width: 100%;"></div></div>
-              <span class="f-val" id="earth-h2-val">28.5 kg (100%)</span>
-            </div>
-            <div class="fluid-metric-row">
-              <span class="f-lbl">BUFFER</span>
-              <div class="f-bar-track"><div class="f-bar-val emerald-bg" id="earth-lipo-fill" style="width: 95%;"></div></div>
-              <span class="f-val" id="earth-lipo-val">12S 48V (95%)</span>
-            </div>
-          </div>
-        </div>
-        <div class="eicas-annunciators">
-          <span class="annun-pill active" id="earth-annun-flaps">FLAPS: 0°</span>
-          <span class="annun-pill active" id="earth-annun-gear">GEAR: DOWN</span>
-          <span class="annun-pill active" id="earth-annun-loc">LOC: UTTT</span>
+        <div class="msfs-config-pills">
+          <button class="msfs-pill" id="earth-annun-flaps" title="Закрылки (Клавиша F)">FLAPS: 0°</button>
+          <button class="msfs-pill active" id="earth-annun-gear" title="Шасси (Клавиша G)">GEAR: UP</button>
         </div>
       </div>
 

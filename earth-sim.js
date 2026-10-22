@@ -23,35 +23,55 @@
   // 1. AIRPORT PRESETS & CONSTANTS
   // --------------------------------------------------------------------------
   const AIRPORTS = {
+    charvak: {
+      id: 'charvak',
+      name: 'Чарвак & Ташкент (Агро)',
+      country: '🇺🇿 Узбекистан',
+      lat: 41.6350,
+      lon: 70.0350,
+      alt: 950,
+      heading: 60,
+      description: 'Чарвакское водохранилище и предгорные агро-кластеры Узбекистана'
+    },
+    california: {
+      id: 'california',
+      name: 'Пожарный полигон (Тахо)',
+      country: '🌲 Калифорния / США',
+      lat: 39.0968,
+      lon: -120.0324,
+      alt: 1900,
+      heading: 320,
+      description: 'Лесной массив и пожарный патрульный полигон вокруг озера Тахо'
+    },
+    alps: {
+      id: 'alps',
+      name: 'Сады и Долины (Альпы)',
+      country: '🍏 Италия / Франция',
+      lat: 45.3200,
+      lon: 7.4800,
+      alt: 650,
+      heading: 340,
+      description: 'Фруктовые сады и фермерские долины у подножия Альп'
+    },
+    orbital: {
+      id: 'orbital',
+      name: '3D-Планета (Орбита)',
+      country: '🌐 Космос',
+      lat: 41.0,
+      lon: 69.0,
+      alt: 12000000,
+      heading: 0,
+      description: 'Обзор всей 3D-Планеты Земля из космоса в реальном времени'
+    },
+    // Backwards compatibility alias
     uttt: {
-      id: 'uttt',
-      name: 'Ташкент (UTTT / Южный)',
-      country: '🇺🇿 Узбекистан',
-      lat: 41.2579,
-      lon: 69.2812,
-      alt: 432, // meters MSL
-      heading: 80, // Runway 08L
-      description: 'Главный международный аэропорт Узбекистана им. Ислама Каримова'
-    },
-    utss: {
-      id: 'utss',
-      name: 'Самарканд (UTSS)',
-      country: '🇺🇿 Узбекистан',
-      lat: 39.7005,
-      lon: 66.9839,
-      alt: 720,
-      heading: 90, // Runway 09
-      description: 'Новый терминал в форме открытой книги у подножия гор Зеравшан'
-    },
-    limf: {
-      id: 'limf',
-      name: 'Турин (LIMF / Казелле)',
-      country: '🇮🇹 Италия',
-      lat: 45.2008,
-      lon: 7.6496,
-      alt: 301,
-      heading: 360, // Runway 36
-      description: 'Северная Италия у подножия Альп, исторический авиационный центр Leonardo'
+      id: 'charvak',
+      name: 'Чарвак & Ташкент',
+      country: '🇺🇿',
+      lat: 41.6350,
+      lon: 70.0350,
+      alt: 950,
+      heading: 60
     }
   };
 
@@ -223,7 +243,7 @@
       this.aircraftEntity = null;
       this.audio = new SimAudio();
 
-      this.currentAirport = AIRPORTS.uttt;
+      this.currentAirport = AIRPORTS.charvak || AIRPORTS.uttt;
       this.refOrigin = {
         lat: this.currentAirport.lat,
         lon: this.currentAirport.lon,
@@ -326,10 +346,11 @@
           shouldAnimate: true,
         });
 
-        // Atmospheric rendering & HDR
-        this.viewer.scene.globe.enableLighting = true;
-        this.viewer.scene.highDynamicRange = true;
-        this.viewer.scene.globe.depthTestAgainstTerrain = true;
+        // Atmospheric rendering & daylight (never pitch black!)
+        this.viewer.scene.globe.enableLighting = false;
+        this.viewer.scene.highDynamicRange = false;
+        this.viewer.scene.globe.depthTestAgainstTerrain = false;
+        this.viewer.scene.globe.baseColor = Cesium.Color.fromCssColorString('#142a4a');
 
         // Load 3D Tileset or fallback to World Terrain + OSM
         await this.loadTilesetOrFallback();
@@ -411,64 +432,45 @@
     }
 
     // ------------------------------------------------------------------------
-    // TILESET & TERRAIN LOADER (Google Photorealistic 3D Tiles vs OSM Fallback)
+    // TILESET & TERRAIN LOADER (Esri World Imagery + Optional Google 3D Tiles)
     // ------------------------------------------------------------------------
     async loadTilesetOrFallback() {
-      const hasToken = !!Cesium.Ion.defaultAccessToken && Cesium.Ion.defaultAccessToken.length > 20;
+      // 1. High-resolution Esri World Imagery (free, open, no API key required, global daylight coverage)
+      try {
+        this.viewer.imageryLayers.removeAll();
+        const esriProvider = new Cesium.UrlTemplateImageryProvider({
+          url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+          maximumLevel: 19,
+          credit: 'Esri World Imagery'
+        });
+        this.viewer.imageryLayers.addImageryProvider(esriProvider);
+        this.viewer.scene.terrainProvider = new Cesium.EllipsoidTerrainProvider();
 
+        if (this.els.statusChip) {
+          this.els.statusChip.textContent = 'ESRI WORLD IMAGERY · HIGH RES 3D SATELLITE';
+        }
+      } catch (imageryErr) {
+        console.warn('Esri imagery setup note:', imageryErr);
+      }
+
+      // 2. Optional: If user specified Cesium Ion Token, attempt Google Photorealistic 3D Tiles overlay
+      const hasToken = !!Cesium.Ion.defaultAccessToken && Cesium.Ion.defaultAccessToken.length > 20;
       if (hasToken) {
         try {
-          if (this.els.statusChip) this.els.statusChip.textContent = 'ЗАГРУЗКА GOOGLE 3D TILES...';
-
-          // Google Photorealistic 3D Tiles via Cesium Ion Asset 2275207
           let googleTileset;
           if (typeof Cesium.createGooglePhotorealistic3DTileset === 'function') {
             googleTileset = await Cesium.createGooglePhotorealistic3DTileset();
           } else {
             googleTileset = await Cesium.Cesium3DTileset.fromIonAssetId(2275207);
           }
-
-          if (this.tileset) {
-            this.viewer.scene.primitives.remove(this.tileset);
-          }
-
+          if (this.tileset) this.viewer.scene.primitives.remove(this.tileset);
           this.tileset = this.viewer.scene.primitives.add(googleTileset);
-
           if (this.els.statusChip) {
             this.els.statusChip.textContent = 'GOOGLE 3D TILES · ASSET 2275207';
           }
-          if (this.els.noticeBanner) {
-            this.els.noticeBanner.style.display = 'none';
-          }
-          return;
         } catch (err) {
-          console.warn('⚠️ Google 3D Tiles error, falling back to World Terrain + OSM:', err);
+          console.warn('Google 3D Tiles asset note, maintaining Esri World Imagery:', err);
         }
-      }
-
-      // Fallback: Cesium World Terrain + OpenStreetMap Imagery
-      try {
-        if (this.els.statusChip) this.els.statusChip.textContent = 'CESIUM WORLD TERRAIN + OSM';
-        this.viewer.scene.terrainProvider = await Cesium.createWorldTerrainAsync({
-          requestVertexNormals: true,
-          requestWaterMask: true,
-        });
-
-        // Add OpenStreetMap
-        this.viewer.imageryLayers.removeAll();
-        this.viewer.imageryLayers.addImageryProvider(
-          new Cesium.OpenStreetMapImageryProvider({
-            url: 'https://tile.openstreetmap.org/',
-          })
-        );
-
-        if (this.els.noticeBanner) {
-          this.els.noticeBanner.style.display = 'flex';
-          this.els.noticeText.textContent =
-            'Используется Cesium World Terrain + OSM. Для фотореалистичных Google 3D Tiles укажите токен Cesium Ion.';
-        }
-      } catch (fallbackErr) {
-        console.error('Fallback terrain error:', fallbackErr);
       }
     }
 
@@ -578,7 +580,7 @@
     // TELEPORT SYSTEM (Airport presets, Custom Lat/Lon, Geocoding)
     // ------------------------------------------------------------------------
     async teleportToAirport(airportKey) {
-      const ap = AIRPORTS[airportKey] || AIRPORTS.uttt;
+      const ap = AIRPORTS[airportKey] || AIRPORTS.charvak || AIRPORTS.uttt;
       this.currentAirport = ap;
       this.refOrigin = { lat: ap.lat, lon: ap.lon, alt: ap.alt };
 
@@ -593,11 +595,22 @@
       if (this.els.latInput) this.els.latInput.value = ap.lat.toFixed(4);
       if (this.els.lonInput) this.els.lonInput.value = ap.lon.toFixed(4);
 
+      if (ap.id === 'orbital') {
+        if (this.viewer && this.viewer.camera) {
+          this.viewer.camera.flyTo({
+            destination: Cesium.Cartesian3.fromDegrees(ap.lon, ap.lat, 16000000),
+            duration: 1.5
+          });
+        }
+        this.resetFlight(0, true);
+        return;
+      }
+
       // Query terrain height at coordinates
       await this.sampleTerrainAtOrigin();
 
-      // Reset flight dynamics
-      this.resetFlight(ap.heading);
+      // Reset flight dynamics in air at 80m, 85 km/h, 75% throttle
+      this.resetFlight(ap.heading, true);
     }
 
     async teleportToCoordinates(lat, lon, alt = null) {
@@ -618,7 +631,7 @@
       document.querySelectorAll('.earth-airport-btn').forEach(btn => btn.classList.remove('active'));
 
       await this.sampleTerrainAtOrigin();
-      this.resetFlight(90);
+      this.resetFlight(90, true);
     }
 
     async sampleTerrainAtOrigin() {
@@ -674,28 +687,32 @@
       }
     }
 
-    resetFlight(heading = 90) {
+    resetFlight(heading = 90, inAir = true) {
       this.state.x = 0;
       this.state.y = 0;
-      this.state.z = AERO_SPECS.wheelHeight;
-      this.state.vx = 0;
-      this.state.vy = 0;
-      this.state.vz = 0;
-      this.state.speedKmh = 0;
-      this.state.tasKmh = 0;
+      const initialAlt = inAir ? 80 : AERO_SPECS.wheelHeight;
+      this.state.z = initialAlt;
       this.state.pitch = 0;
       this.state.roll = 0;
       this.state.heading = heading;
       this.state.p = 0;
       this.state.q = 0;
       this.state.r = 0;
-      this.state.throttle = 0.0;
-      this.state.rpm = 0;
-      this.state.powerKW = 0;
-      this.state.onGround = true;
+
+      const spdMs = inAir ? (85 / 3.6) : 0;
+      const headingRad = (heading * Math.PI) / 180;
+      this.state.vx = Math.sin(headingRad) * spdMs;
+      this.state.vy = Math.cos(headingRad) * spdMs;
+      this.state.vz = 0;
+      this.state.speedKmh = inAir ? 85 : 0;
+      this.state.tasKmh = inAir ? 85 : 0;
+      this.state.throttle = inAir ? 0.75 : 0.0;
+      this.state.rpm = inAir ? 2850 : 0;
+      this.state.powerKW = inAir ? 96 : 0;
+      this.state.onGround = !inAir;
       this.state.crashed = false;
       this.state.isStall = false;
-      this.state.agl = 0;
+      this.state.agl = inAir ? 80 : 0;
 
       if (this.els.crashWarning) this.els.crashWarning.style.display = 'none';
       if (this.els.stallWarning) this.els.stallWarning.style.display = 'none';
@@ -1257,39 +1274,46 @@
     // EVENT LISTENERS & CONTROLS
     // ------------------------------------------------------------------------
     setupEventListeners() {
+      const earthControlKeys = [
+        'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
+        'Space', 'KeyW', 'KeyS', 'KeyA', 'KeyD', 'KeyQ', 'KeyE',
+        'KeyF', 'KeyG', 'KeyC', 'KeyR'
+      ];
+
       // Keyboard Controls
       window.addEventListener('keydown', (e) => {
         if (!this.isRunning) return;
         const code = e.code;
+
+        if (earthControlKeys.includes(code)) {
+          e.preventDefault();
+        }
 
         if (code === 'KeyW' || code === 'ShiftLeft' || code === 'ShiftRight') {
           this.inputs.throttleUp = true;
           this.audio.init();
         } else if (code === 'KeyS' || code === 'ControlLeft' || code === 'ControlRight') {
           this.inputs.throttleDown = true;
-        } else if (code === 'ArrowDown' || code === 'KeyS' && e.altKey || code === 'KeyK') {
-          this.inputs.pitchUp = true; // Pull back on stick
+        } else if (code === 'ArrowDown' || code === 'KeyK') {
+          this.inputs.pitchUp = true; // Pull back on stick -> nose up
         } else if (code === 'ArrowUp' || code === 'KeyI') {
-          this.inputs.pitchDown = true; // Push forward
-        } else if (code === 'ArrowLeft' || code === 'KeyJ') {
+          this.inputs.pitchDown = true; // Push forward -> nose down
+        } else if (code === 'ArrowLeft' || code === 'KeyJ' || code === 'KeyA') {
           this.inputs.rollLeft = true;
-        } else if (code === 'ArrowRight' || code === 'KeyL') {
-          this.inputs.rollRight = true;
-        } else if (code === 'KeyA' || code === 'KeyQ') {
           this.inputs.yawLeft = true;
-        } else if (code === 'KeyD' || code === 'KeyE') {
+        } else if (code === 'ArrowRight' || code === 'KeyL' || code === 'KeyD') {
+          this.inputs.rollRight = true;
           this.inputs.yawRight = true;
         } else if (code === 'KeyB') {
           this.inputs.brakes = true;
         } else if (code === 'KeyF') {
-          // Cycle flaps: 0° -> 15° -> 30° -> 0°
           this.state.flaps = this.state.flaps === 0 ? 15 : this.state.flaps === 15 ? 30 : 0;
         } else if (code === 'KeyG') {
           this.state.gear = !this.state.gear;
         } else if (code === 'KeyC') {
           this.toggleCamera();
         } else if (code === 'KeyR') {
-          this.resetFlight(this.currentAirport.heading);
+          this.resetFlight(this.currentAirport.heading, true);
         }
       });
 

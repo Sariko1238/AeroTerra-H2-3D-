@@ -1313,12 +1313,20 @@
     let targetAileron = 0.0;
     let targetRudder = 0.0;
 
-    if (input.up || input.w_pitch) targetElevator += 1.0;
-    if (input.down || input.s_pitch) targetElevator -= 1.0;
-    if (input.left) targetAileron -= 1.0;
-    if (input.right) targetAileron += 1.0;
-    if (input.a) targetRudder -= 1.0;
-    if (input.d) targetRudder += 1.0;
+    // ArrowDown / S = Штурвал на себя (задирает нос вверх / подъём)
+    if (input.down) targetElevator -= 1.0;
+    // ArrowUp / W = Штурвал от себя (опускает нос вниз / спуск)
+    if (input.up) targetElevator += 1.0;
+
+    // Ailerons & Rudders: roll with coordinated turn
+    if (input.left || input.a) {
+      targetAileron -= 1.0;
+      targetRudder -= 0.7;
+    }
+    if (input.right || input.d) {
+      targetAileron += 1.0;
+      targetRudder += 0.7;
+    }
 
     // Merge Touch inputs
     if (Math.abs(input.touchPitch) > 0.01) targetElevator = input.touchPitch;
@@ -1329,13 +1337,13 @@
     if (SIM.autopilotActive) {
       runAutopilotGuidance(dt);
     } else {
-      flight.elevator = THREE.MathUtils.lerp(flight.elevator, targetElevator, 12 * dt);
-      flight.aileron = THREE.MathUtils.lerp(flight.aileron, targetAileron, 12 * dt);
-      flight.rudder = THREE.MathUtils.lerp(flight.rudder, targetRudder, 10 * dt);
+      flight.elevator = THREE.MathUtils.lerp(flight.elevator, targetElevator, 14 * dt);
+      flight.aileron = THREE.MathUtils.lerp(flight.aileron, targetAileron, 14 * dt);
+      flight.rudder = THREE.MathUtils.lerp(flight.rudder, targetRudder, 12 * dt);
 
-      // Keyboard throttle adjustment
-      if (input.w) flight.throttle = Math.min(1.0, flight.throttle + 0.45 * dt);
-      if (input.s) flight.throttle = Math.max(0.0, flight.throttle - 0.45 * dt);
+      // Keyboard throttle adjustment (W increases, S decreases)
+      if (input.w) flight.throttle = Math.min(1.0, flight.throttle + 0.35 * dt);
+      if (input.s) flight.throttle = Math.max(0.0, flight.throttle - 0.35 * dt);
       if (input.touchThrottle > 0) flight.throttle = input.touchThrottle;
     }
 
@@ -1464,7 +1472,7 @@
     if (flight.gLoad < flight.minGLoad) flight.minGLoad = flight.gLoad;
 
     // 9. Angular Moments & Rotational Dynamics
-    const aeroPressureRatio = Math.min(1.5, flight.airspeedTAS / 35.0);
+    const aeroPressureRatio = Math.max(0.65, Math.min(1.8, flight.airspeedTAS / 22.0));
 
     // Control Moments
     const pitchMoment = flight.elevator * AERO.pitchAuthority * aeroPressureRatio;
@@ -1487,7 +1495,20 @@
     flight.quat.multiply(deltaRot);
     flight.rot.setFromQuaternion(flight.quat, 'YXZ');
 
-    flight.pitchDeg = THREE.MathUtils.radToDeg(flight.rot.x);
+    // Coordinated Turn: banking directly turns heading smoothly (yaw += roll * 0.8 * dt)
+    if (!flight.onGround) {
+      flight.rot.y -= flight.rot.z * 0.82 * dt;
+      flight.quat.setFromEuler(flight.rot);
+
+      // Aerodynamic flight path alignment
+      if (flight.airspeedTAS > 2.0) {
+        const fwdVector = new THREE.Vector3(0, 0, 1).applyQuaternion(flight.quat);
+        const flightSpeed = Math.max(18.0, flight.throttle * 32.0);
+        flight.vel.lerp(fwdVector.multiplyScalar(flightSpeed), 4.2 * dt);
+      }
+    }
+
+    flight.pitchDeg = THREE.MathUtils.radToDeg(-flight.rot.x);
     flight.rollDeg = THREE.MathUtils.radToDeg(flight.rot.z);
     flight.headingDeg = (THREE.MathUtils.radToDeg(-flight.rot.y) + 360) % 360;
 
@@ -1523,8 +1544,8 @@
         flight.quat.setFromEuler(flight.rot);
       }
 
-      // Restrict pitch on ground
-      flight.rot.x = Math.max(-0.04, Math.min(0.22, flight.rot.x));
+      // Allow pitch rotation on ground for STOL takeoff
+      flight.rot.x = Math.max(-0.35, Math.min(0.22, flight.rot.x));
       flight.rot.z *= 0.85; // Wings level on ground
       flight.quat.setFromEuler(flight.rot);
 
@@ -2081,6 +2102,8 @@
   // ----------------------------------------------------------------------------
   // 9. 5 CAMERA MODES & RENDER LOOP
   // ----------------------------------------------------------------------------
+  const chaseOrbit = { yaw: 0, pitch: 0, isDragging: false, lastX: 0, lastY: 0 };
+
   function updateCamera() {
     if (!camera || !aircraftGroup) return;
 
@@ -2089,11 +2112,14 @@
 
     switch (SIM.cameraMode) {
       case 'chase':
-        // Smooth 3rd-person Chase Cam behind aircraft
-        const offset = new THREE.Vector3(0, 2.6, -9.2).applyQuaternion(planeQuat);
+        // Smooth 3rd-person Chase Cam behind aircraft with mouse orbit support
+        const baseOffset = new THREE.Vector3(0, 2.6, -9.2);
+        baseOffset.applyAxisAngle(new THREE.Vector3(1, 0, 0), chaseOrbit.pitch);
+        baseOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), chaseOrbit.yaw);
+        const offset = baseOffset.applyQuaternion(planeQuat);
         const targetPos = planePos.clone().add(offset);
-        camera.position.lerp(targetPos, 0.12);
-        cameraLookTarget.lerp(planePos.clone().add(new THREE.Vector3(0, 0.8, 4).applyQuaternion(planeQuat)), 0.15);
+        camera.position.lerp(targetPos, 0.14);
+        cameraLookTarget.lerp(planePos.clone().add(new THREE.Vector3(0, 0.8, 3.5).applyQuaternion(planeQuat)), 0.18);
         camera.lookAt(cameraLookTarget);
         break;
 
@@ -2248,18 +2274,38 @@
 
     switch (scen) {
       case 'stol':
-        // Start on runway 09
-        flight.pos.set(-150, 1.25, 0);
-        flight.rot.set(0, -Math.PI / 2, 0); // Heading 090
+        // Start immediately in the air at 80m altitude, 85 km/h, 75% throttle (user request!)
+        flight.pos.set(0, 80, -200);
+        flight.rot.set(0, 0, 0);
         flight.quat.setFromEuler(flight.rot);
-        flight.throttle = 0.0;
-        flight.flapsStage = 1; // 15°
-        flight.gearDown = true;
+        flight.throttle = 0.75;
+        flight.vel.set(0, 0, 23.6); // 85 km/h
+        flight.flapsStage = 0;
+        flight.gearDown = false;
+        flight.onGround = false;
         flight.massFluid = 600.0;
         SIM.autopilotActive = false;
         updateMissionBanner(
-          'МИССИЯ 1: КОРОТКИЙ ВЗЛЁТ STOL (35 МЕТРОВ)',
-          'Дайте полный газ W/Shift до 100%, разгонитесь по полосе и плавно потяните штурвал на себя при достижении 42 км/ч!',
+          '🎮 ПОЛЁТ: AEROTERRA H2 В ВОЗДУХЕ (85 КМ/Ч)',
+          'Штурвал на себя (↓ / S) — набор высоты, от себя (↑ / W) — спуск, стрелки ← → (A / D) — крен и вираж, Space — сброс/спрей!',
+          '100%'
+        );
+        break;
+
+      case 'rwy-start':
+        // Start on runway 09 for takeoff practice
+        flight.pos.set(-150, 1.25, 0);
+        flight.rot.set(0, -Math.PI / 2, 0);
+        flight.quat.setFromEuler(flight.rot);
+        flight.throttle = 0.0;
+        flight.flapsStage = 1;
+        flight.gearDown = true;
+        flight.onGround = true;
+        flight.massFluid = 600.0;
+        SIM.autopilotActive = false;
+        updateMissionBanner(
+          '🛫 СТАРТ С ВПП: КОРОТКИЙ ВЗЛЁТ STOL',
+          'Дайте полный газ (W / 100%), разгонитесь до 42 км/ч и потяните штурвал на себя (Стрелка вниз / S)!',
           '0%'
         );
         break;
@@ -2372,44 +2418,73 @@
   }
 
   // ----------------------------------------------------------------------------
-  // 13. USER CONTROLS EVENT HANDLERS (KEYBOARD & TOUCH)
+  // 13. USER CONTROLS EVENT HANDLERS (KEYBOARD, MOUSE ORBIT & TOUCH)
   // ----------------------------------------------------------------------------
   function initControls() {
+    const flightControlKeys = [
+      'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
+      'Space', 'KeyW', 'KeyS', 'KeyA', 'KeyD', 'KeyQ', 'KeyE',
+      'KeyF', 'KeyG', 'KeyC', 'KeyR'
+    ];
+
     // Keyboard keydown
     window.addEventListener('keydown', e => {
       initAudioEngine(); // Start audio on first user gesture
 
+      if (flightControlKeys.includes(e.code)) {
+        e.preventDefault();
+      }
+
       switch (e.code) {
         case 'KeyW':
-          if (e.shiftKey) flight.throttle = Math.min(1.0, flight.throttle + 0.15);
-          else input.w = true;
+          input.w = true;
+          // Smooth throttle increase
+          flight.throttle = Math.min(1.0, flight.throttle + 0.05);
           break;
         case 'KeyS':
-          if (e.ctrlKey) flight.throttle = Math.max(0.0, flight.throttle - 0.15);
-          else input.s = true;
+          input.s = true;
+          // Smooth throttle decrease
+          flight.throttle = Math.max(0.0, flight.throttle - 0.05);
           break;
-        case 'KeyA': input.a = true; break;
-        case 'KeyD': input.d = true; break;
+        case 'KeyA':
+        case 'KeyQ':
+          input.a = true;
+          input.left = true;
+          break;
+        case 'KeyD':
+        case 'KeyE':
+          input.d = true;
+          input.right = true;
+          break;
         case 'ArrowUp':
-        case 'KeyI': input.up = true; break;
+        case 'KeyI':
+          input.up = true; // Nose down
+          break;
         case 'ArrowDown':
-        case 'KeyK': input.down = true; break;
+        case 'KeyK':
+          input.down = true; // Nose up / climb
+          break;
         case 'ArrowLeft':
-        case 'KeyJ': input.left = true; break;
+        case 'KeyJ':
+          input.left = true;
+          input.a = true;
+          break;
         case 'ArrowRight':
-        case 'KeyL': input.right = true; break;
+        case 'KeyL':
+          input.right = true;
+          input.d = true;
+          break;
         case 'Space':
-          e.preventDefault();
-          if (SIM.scenario === 'fire') triggerWaterSalvo();
-          else flight.sprayActive = !flight.sprayActive;
+          triggerWaterSalvo();
+          flight.sprayActive = !flight.sprayActive;
           break;
         case 'KeyF':
           // Cycle flaps: 0 -> 1 (15°) -> 2 (35°) -> 0
           flight.flapsStage = (flight.flapsStage + 1) % 3;
           break;
         case 'KeyG':
-          input.g = true;
-          flight.brakes = true;
+          flight.gearDown = !flight.gearDown;
+          flight.brakes = flight.gearDown && flight.onGround;
           break;
         case 'KeyC':
           cycleCameraMode();
@@ -2431,22 +2506,54 @@
       switch (e.code) {
         case 'KeyW': input.w = false; break;
         case 'KeyS': input.s = false; break;
-        case 'KeyA': input.a = false; break;
-        case 'KeyD': input.d = false; break;
+        case 'KeyA':
+        case 'KeyQ':
+          input.a = false;
+          input.left = false;
+          break;
+        case 'KeyD':
+        case 'KeyE':
+          input.d = false;
+          input.right = false;
+          break;
         case 'ArrowUp':
         case 'KeyI': input.up = false; break;
         case 'ArrowDown':
         case 'KeyK': input.down = false; break;
         case 'ArrowLeft':
-        case 'KeyJ': input.left = false; break;
+        case 'KeyJ':
+          input.left = false;
+          input.a = false;
+          break;
         case 'ArrowRight':
-        case 'KeyL': input.right = false; break;
-        case 'KeyG':
-          input.g = false;
-          flight.brakes = false;
+        case 'KeyL':
+          input.right = false;
+          input.d = false;
           break;
       }
     });
+
+    // --- Mouse Drag 360° Orbit View around Aircraft ---
+    const simCanvas = document.getElementById('simulator-canvas');
+    if (simCanvas) {
+      simCanvas.addEventListener('pointerdown', e => {
+        chaseOrbit.isDragging = true;
+        chaseOrbit.lastX = e.clientX;
+        chaseOrbit.lastY = e.clientY;
+      });
+      window.addEventListener('pointermove', e => {
+        if (!chaseOrbit.isDragging) return;
+        const dx = e.clientX - chaseOrbit.lastX;
+        const dy = e.clientY - chaseOrbit.lastY;
+        chaseOrbit.lastX = e.clientX;
+        chaseOrbit.lastY = e.clientY;
+        chaseOrbit.yaw += dx * 0.007;
+        chaseOrbit.pitch = Math.max(-0.6, Math.min(0.8, chaseOrbit.pitch + dy * 0.006));
+      });
+      window.addEventListener('pointerup', () => {
+        chaseOrbit.isDragging = false;
+      });
+    }
 
     // --- Mobile Touch Controls Setup ---
     initTouchControls();
@@ -2708,6 +2815,128 @@
         } else {
           alert('Сертификат подготовлен! Нажмите Ctrl+P для печати.');
         }
+      });
+    }
+
+    // Teleport Buttons (Row 2 below compass)
+    const tpRwy = document.getElementById('btn-tp-rwy');
+    if (tpRwy) {
+      tpRwy.addEventListener('click', () => {
+        initAudioEngine();
+        flight.pos.set(0, 80, -200);
+        flight.rot.set(0, 0, 0);
+        flight.quat.setFromEuler(flight.rot);
+        flight.vel.set(0, 0, 23.6);
+        flight.throttle = 0.75;
+        flight.onGround = false;
+        flight.gearDown = false;
+      });
+    }
+
+    const tpAgro = document.getElementById('btn-tp-agro');
+    if (tpAgro) {
+      tpAgro.addEventListener('click', () => {
+        initAudioEngine();
+        flight.pos.set(NAV.agro.x, 60, NAV.agro.z - 200);
+        flight.rot.set(0, 0, 0);
+        flight.quat.setFromEuler(flight.rot);
+        flight.vel.set(0, 0, 23.6);
+        flight.throttle = 0.75;
+        flight.onGround = false;
+      });
+    }
+
+    const tpFire = document.getElementById('btn-tp-fire');
+    if (tpFire) {
+      tpFire.addEventListener('click', () => {
+        initAudioEngine();
+        flight.pos.set(NAV.fire.x, 120, NAV.fire.z - 250);
+        flight.rot.set(0, 0, 0);
+        flight.quat.setFromEuler(flight.rot);
+        flight.vel.set(0, 0, 23.6);
+        flight.throttle = 0.75;
+        flight.onGround = false;
+      });
+    }
+
+    const tpLake = document.getElementById('btn-tp-lake');
+    if (tpLake) {
+      tpLake.addEventListener('click', () => {
+        initAudioEngine();
+        flight.pos.set(NAV.lake.x, 50, NAV.lake.z - 200);
+        flight.rot.set(0, 0, 0);
+        flight.quat.setFromEuler(flight.rot);
+        flight.vel.set(0, 0, 23.6);
+        flight.throttle = 0.75;
+        flight.onGround = false;
+      });
+    }
+
+    // Bottom Action Bar Buttons
+    const modeBtn = document.getElementById('btn-sim-mode-toggle');
+    const modeLbl = document.getElementById('lbl-sim-mode');
+    let isAirMode = true;
+    if (modeBtn) {
+      modeBtn.addEventListener('click', () => {
+        initAudioEngine();
+        isAirMode = !isAirMode;
+        if (isAirMode) {
+          setScenario('stol');
+          if (modeLbl) modeLbl.innerHTML = '✈️ В воздухе (85 км/ч)';
+          modeBtn.classList.add('active');
+        } else {
+          setScenario('rwy-start');
+          if (modeLbl) modeLbl.innerHTML = '🛫 Старт с ВПП';
+          modeBtn.classList.remove('active');
+        }
+      });
+    }
+
+    const salvoBtn = document.getElementById('btn-action-salvo');
+    if (salvoBtn) {
+      salvoBtn.addEventListener('click', () => {
+        initAudioEngine();
+        triggerWaterSalvo();
+        flight.sprayActive = !flight.sprayActive;
+      });
+    }
+
+    const th100 = document.getElementById('btn-throttle-100');
+    if (th100) th100.addEventListener('click', () => { initAudioEngine(); flight.throttle = 1.0; });
+    const th75 = document.getElementById('btn-throttle-75');
+    if (th75) th75.addEventListener('click', () => { initAudioEngine(); flight.throttle = 0.75; });
+    const th25 = document.getElementById('btn-throttle-25');
+    if (th25) th25.addEventListener('click', () => { initAudioEngine(); flight.throttle = 0.25; });
+
+    const btnHelp = document.getElementById('btn-toggle-help');
+    const helpTooltip = document.getElementById('sim-controls-guide-tooltip');
+    if (btnHelp && helpTooltip) {
+      btnHelp.addEventListener('click', () => {
+        const isShown = helpTooltip.style.display !== 'none';
+        helpTooltip.style.display = isShown ? 'none' : 'flex';
+      });
+    }
+
+    // Corner HUD Flaps & Gear Buttons
+    const flapPill = document.getElementById('annun-flaps');
+    if (flapPill) {
+      flapPill.addEventListener('click', () => {
+        flight.flapsStage = (flight.flapsStage + 1) % 3;
+      });
+    }
+    const gearPill = document.getElementById('annun-gear');
+    if (gearPill) {
+      gearPill.addEventListener('click', () => {
+        flight.gearDown = !flight.gearDown;
+        flight.brakes = flight.gearDown && flight.onGround;
+      });
+    }
+    const sprayPill = document.getElementById('annun-spray');
+    if (sprayPill) {
+      sprayPill.addEventListener('click', () => {
+        initAudioEngine();
+        triggerWaterSalvo();
+        flight.sprayActive = !flight.sprayActive;
       });
     }
   }

@@ -3109,19 +3109,20 @@ a:hover {
   z-index: 20;
 }
 
-/* Center Compass Tape (Positioned below top control bar without overlapping) */
+/* Top Compass Ribbon Tape (Row 1 at top: 72px) */
 .sim-compass-tape-wrap {
   position: absolute;
-  top: 4.2rem;
+  top: 72px;
   left: 50%;
   transform: translateX(-50%);
   width: min(480px, 86vw);
-  height: 44px;
+  height: 32px;
   background: rgba(6, 12, 26, 0.85);
-  border: 1px solid rgba(0, 229, 255, 0.3);
-  border-radius: 8px;
+  border: 1px solid rgba(0, 229, 255, 0.35);
+  border-radius: 6px;
   overflow: hidden;
   backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   z-index: 24;
 }
 
@@ -3139,7 +3140,7 @@ a:hover {
 .sim-compass-ribbon {
   position: absolute;
   top: 0;
-  height: 28px;
+  height: 24px;
   display: flex;
   align-items: flex-end;
   font-family: var(--font-mono);
@@ -3160,11 +3161,11 @@ a:hover {
   bottom: 0;
   left: 50%;
   width: 1px;
-  height: 8px;
+  height: 6px;
   background: rgba(0, 229, 255, 0.6);
 }
 .compass-tick.major::after {
-  height: 14px;
+  height: 12px;
   background: #00e5ff;
 }
 
@@ -3184,47 +3185,442 @@ a:hover {
   z-index: 6;
 }
 
-.compass-nav-bugs {
+/* Row 2 at top: 112px - Clickable Teleport Navigation Chips (NO text overlap!) */
+.sim-nav-teleport-bar {
   position: absolute;
-  bottom: 2px;
+  top: 112px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  z-index: 30;
+  pointer-events: auto;
+  white-space: nowrap;
+}
+
+.nav-tp-btn {
+  background: rgba(6, 12, 26, 0.88);
+  border: 1px solid rgba(0, 229, 255, 0.4);
+  color: #fff;
+  border-radius: 6px;
+  padding: 5px 12px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  user-select: none;
+}
+.nav-tp-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 229, 255, 0.4);
+}
+.nav-tp-btn:active {
+  transform: translateY(0);
+}
+.nav-tp-btn.btn-tp-rwy { border-color: #00e5ff; color: #00e5ff; }
+.nav-tp-btn.btn-tp-rwy:hover { background: rgba(0, 229, 255, 0.2); }
+.nav-tp-btn.btn-tp-agro { border-color: #00ff9d; color: #00ff9d; }
+.nav-tp-btn.btn-tp-agro:hover { background: rgba(0, 255, 157, 0.2); }
+.nav-tp-btn.btn-tp-fire { border-color: #ff5500; color: #ff5500; }
+.nav-tp-btn.btn-tp-fire:hover { background: rgba(255, 85, 0, 0.2); }
+.nav-tp-btn.btn-tp-lake { border-color: #3b82f6; color: #60a5fa; }
+.nav-tp-btn.btn-tp-lake:hover { background: rgba(59, 130, 246, 0.2); }
+
+/* Center Screen: FULLY CLEAN & UNOBSTRUCTED (Square PFD & Horizon Removed) */
+.sim-pfd-center {
+  display: none !important;
+}
+
+#sim-horizon-canvas, #earth-horizon-canvas {
+  display: none !important;
+}
+
+.sim-tape-wrap {
+  display: none !important;
+}
+
+.sim-eicas-panel {
+  display: none !important;
+}
+
+/* Minimal Flight Path Vector (FPV) Reticle Center (Unobtrusive) */
+.sim-fpv-center-wrap {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 22;
+}
+
+/* ==========================================================================
+   MSFS 2024 EXTERNAL VIEW HUD — CORNER GAUGES & SYSTEMS
+   ========================================================================== */
+.msfs-hud-panel {
+  position: absolute;
+  background: rgba(6, 12, 26, 0.82);
+  border: 1px solid rgba(0, 229, 255, 0.35);
+  border-radius: 10px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
+  pointer-events: auto;
+  z-index: 25;
+  color: #fff;
+  transition: opacity 0.2s ease;
+}
+
+/* Bottom-Left: Engine & Speed Panel */
+.msfs-panel-left {
+  bottom: 1.25rem;
+  left: 1.25rem;
+  width: clamp(260px, 24vw, 320px);
+  padding: 0.75rem;
+}
+
+.msfs-panel-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 0.35rem;
+  margin-bottom: 0.5rem;
+  font-family: var(--font-tech);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #00e5ff;
+}
+
+.msfs-speed-throttle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.msfs-speed-box {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(0, 229, 255, 0.3);
+  border-radius: 6px;
+  padding: 6px;
+  text-align: center;
+}
+.msfs-speed-val {
+  font-family: var(--font-mono);
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #00e5ff;
+  line-height: 1;
+  text-shadow: 0 0 10px rgba(0, 229, 255, 0.6);
+}
+.msfs-speed-lbl {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: #8b9bb4;
+  margin-top: 2px;
+}
+
+.msfs-throttle-circle {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 255, 157, 0.4);
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+.msfs-throttle-fill-bg {
+  position: absolute;
+  bottom: 0;
   left: 0;
   right: 0;
+  background: linear-gradient(to top, rgba(0, 255, 157, 0.6), rgba(0, 229, 255, 0.2));
+  transition: height 0.1s ease;
+  z-index: 1;
+}
+.msfs-throttle-num {
+  position: relative;
+  z-index: 2;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #00ff9d;
+}
+.msfs-throttle-sub {
+  position: relative;
+  z-index: 2;
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  color: #8b9bb4;
+}
+
+.msfs-motors-row {
   display: flex;
-  justify-content: center;
-  gap: 0.8rem;
+  gap: 3px;
+  height: 28px;
+  align-items: flex-end;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 2px;
+  border-radius: 4px;
+  margin-bottom: 0.4rem;
+}
+.msfs-motor-col {
+  flex: 1;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  position: relative;
+}
+.msfs-m-fill {
+  width: 100%;
+  background: #00ff9d;
+  height: 50%;
+  transition: height 0.1s ease;
+}
+.msfs-motor-col span {
+  position: absolute;
+  bottom: 1px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 0.5rem;
+  font-family: var(--font-mono);
+  color: #fff;
+}
+
+.msfs-engine-specs {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: #8b9bb4;
+  margin-bottom: 0.45rem;
+}
+.msfs-engine-specs b { color: #fff; }
+
+.msfs-bar-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-family: var(--font-mono);
   font-size: 0.6rem;
-  font-weight: 700;
+  margin-top: 3px;
 }
-
-.nav-bug {
-  padding: 1px 4px;
+.msfs-bar-lbl { width: 52px; color: #8b9bb4; }
+.msfs-bar-track {
+  flex: 1;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
   border-radius: 3px;
+  overflow: hidden;
 }
-.bug-rwy { background: rgba(0, 229, 255, 0.2); color: #00e5ff; border: 1px solid #00e5ff; }
-.bug-agro { background: rgba(0, 255, 157, 0.2); color: #00ff9d; border: 1px solid #00ff9d; }
-.bug-fire { background: rgba(255, 77, 0, 0.2); color: #ff5500; border: 1px solid #ff5500; }
-.bug-lake { background: rgba(37, 99, 235, 0.2); color: #3b82f6; border: 1px solid #3b82f6; }
+.msfs-bar-prog {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.2s ease;
+}
+.msfs-bar-prog.cyan { background: #00e5ff; }
+.msfs-bar-prog.amber { background: #ff5500; }
+.msfs-bar-val { min-width: 60px; text-align: right; color: #fff; }
 
-/* Primary Flight Display (PFD) Center - Pinned to bottom, unobstructed panoramic view */
-.sim-pfd-center {
+/* Bottom-Right: Altimeter & Flaps/Gear Panel */
+.msfs-panel-right {
+  bottom: 1.25rem;
+  right: 1.25rem;
+  width: clamp(230px, 22vw, 290px);
+  padding: 0.75rem;
+}
+
+.msfs-alt-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.msfs-alt-box {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(0, 229, 255, 0.3);
+  border-radius: 6px;
+  padding: 6px;
+  text-align: center;
+}
+.msfs-alt-val {
+  font-family: var(--font-mono);
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #00ff9d;
+  line-height: 1;
+  text-shadow: 0 0 10px rgba(0, 255, 157, 0.6);
+}
+.msfs-alt-lbl {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: #8b9bb4;
+  margin-top: 2px;
+}
+
+.msfs-vsi-box {
+  width: 72px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(0, 229, 255, 0.3);
+  border-radius: 6px;
+  padding: 6px 4px;
+  text-align: center;
+}
+.msfs-vsi-val {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #00e5ff;
+}
+.msfs-vsi-lbl {
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  color: #8b9bb4;
+}
+
+.msfs-agl-row {
+  display: flex;
+  justify-content: space-between;
+  background: rgba(0, 229, 255, 0.08);
+  border: 1px solid rgba(0, 229, 255, 0.2);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: #8b9bb4;
+  margin-bottom: 0.5rem;
+}
+.msfs-agl-row b { color: #00ff9d; }
+
+.msfs-config-pills {
+  display: flex;
+  gap: 6px;
+  justify-content: space-between;
+}
+.msfs-pill {
+  flex: 1;
+  text-align: center;
+  padding: 4px 6px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #8b9bb4;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.msfs-pill.active {
+  background: rgba(0, 255, 157, 0.2);
+  border-color: #00ff9d;
+  color: #00ff9d;
+}
+
+/* Bottom Center Action & Flight State Bar */
+.sim-flight-actions-bar {
   position: absolute;
   bottom: 1.25rem;
   left: 50%;
   transform: translateX(-50%);
-  width: clamp(260px, 30vw, 380px);
-  height: clamp(260px, 30vw, 380px);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  z-index: 26;
+  pointer-events: auto;
+  white-space: nowrap;
+}
+
+.flight-act-btn {
+  background: rgba(6, 12, 26, 0.88);
+  border: 1px solid rgba(0, 229, 255, 0.4);
+  color: #fff;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.flight-act-btn:hover {
+  transform: translateY(-2px);
+  border-color: #00ff9d;
+  color: #00ff9d;
+  box-shadow: 0 6px 18px rgba(0, 255, 157, 0.4);
+}
+.flight-act-btn.active {
+  background: rgba(0, 255, 157, 0.25);
+  border-color: #00ff9d;
+  color: #00ff9d;
+}
+.flight-act-btn.btn-action-salvo {
+  background: rgba(0, 102, 255, 0.3);
+  border-color: #00e5ff;
+}
+.flight-act-btn.btn-action-salvo:hover {
+  background: rgba(0, 102, 255, 0.5);
+  box-shadow: 0 6px 20px rgba(0, 229, 255, 0.5);
+}
+
+/* Quick Control Guide Banner */
+.sim-controls-guide-tooltip {
+  position: absolute;
+  bottom: 4.8rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(6, 12, 26, 0.92);
+  border: 1px solid rgba(0, 229, 255, 0.4);
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: #e0f2fe;
+  z-index: 26;
   pointer-events: none;
-  z-index: 25;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  white-space: nowrap;
+}
+.sim-controls-guide-tooltip kbd {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 0.65rem;
+  color: #00ff9d;
 }
 
-#sim-horizon-canvas, #earth-horizon-canvas {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-
-/* Flight Path Vector (FPV) marker */
 .sim-fpv-marker {
   position: absolute;
   top: 50%;
