@@ -114,9 +114,9 @@
       thrustMax: 8400.0,
       fluidCapacity: 800,
       h2Capacity: 28.5,
-      pitchAuth: 2.8,
-      rollAuth: 3.5,
-      yawAuth: 1.8
+      pitchAuth: 1.2,
+      rollAuth: 1.6,
+      yawAuth: 1.4
     },
     rc: {
       name: 'AeroTerra H2 — RC Prototype 1:5',
@@ -127,9 +127,9 @@
       thrustMax: 240.0,
       fluidCapacity: 10,
       h2Capacity: 1.5,
-      pitchAuth: 5.2,
-      rollAuth: 6.8,
-      yawAuth: 3.5
+      pitchAuth: 2.2,
+      rollAuth: 2.8,
+      yawAuth: 2.0
     },
     agro: {
       name: 'AeroTerra Agro-Sprayer',
@@ -140,9 +140,9 @@
       thrustMax: 8400.0,
       fluidCapacity: 800,
       h2Capacity: 28.5,
-      pitchAuth: 2.6,
-      rollAuth: 3.2,
-      yawAuth: 1.7
+      pitchAuth: 1.1,
+      rollAuth: 1.5,
+      yawAuth: 1.3
     },
     fire: {
       name: 'AeroTerra Fire-Bomber',
@@ -153,9 +153,9 @@
       thrustMax: 9200.0,
       fluidCapacity: 800,
       h2Capacity: 28.5,
-      pitchAuth: 2.5,
-      rollAuth: 3.0,
-      yawAuth: 1.6
+      pitchAuth: 1.0,
+      rollAuth: 1.4,
+      yawAuth: 1.2
     }
   };
 
@@ -1071,44 +1071,66 @@
       flight.rollInput = THREE.MathUtils.clamp((flight.rot.z - targetRoll) * 2.5, -1.0, 1.0);
     }
 
-    // 4. Pilot Angular Accelerations
-    // Aviation convention:
-    // pitchInput > 0 (S / stick back / touch down) -> nose UP (rot.x decreases)
-    // pitchInput < 0 (W / stick fwd / touch up) -> nose DOWN (rot.x increases)
-    // rollInput > 0 (D / stick right / touch right) -> bank RIGHT (rot.z decreases)
-    // rollInput < 0 (A / stick left / touch left) -> bank LEFT (rot.z increases)
+    // 4. Pilot Angular Accelerations & Coordinated Controls
     const sens = SIM.sensitivity;
-    const pitchRate = -flight.pitchInput * cfg.pitchAuth * sens;
-    const rollRate = -flight.rollInput * cfg.rollAuth * sens;
-    const yawRate = -flight.yawInput * cfg.yawAuth * sens;
 
-    flight.rot.x += pitchRate * dt;
-    flight.rot.y += yawRate * dt;
-    flight.rot.z += rollRate * dt;
-
-    // Natural longitudinal stability (tail pitch trim restored towards equilibrium AoA)
-    if (Math.abs(flight.pitchInput) < 0.05) {
-      flight.rot.x += (-flight.aoa * (Math.PI / 180) * 0.75 - flight.rot.x * 0.2) * dt;
-    }
-    // Lateral stability / Roll auto-stabilization (smooth return to 0° at 1.5 rad/s)
-    if (Math.abs(flight.rollInput) < 0.05 && !SIM.apMode.level) {
-      if (flight.rot.z > 0) {
-        flight.rot.z = Math.max(0, flight.rot.z - 1.5 * dt);
-      } else if (flight.rot.z < 0) {
-        flight.rot.z = Math.min(0, flight.rot.z + 1.5 * dt);
+    // Pitch Control (Attitude & Rate command with realistic stick-holding capability):
+    // flight.pitchInput: -1.0 (stick forward / dive) to +1.0 (stick back / climb)
+    // Full stick back (+1.0) commands ~ +24° climb (-0.42 rad in Three.js rot.x)
+    // Full stick forward (-1.0) commands ~ -28° dive (+0.49 rad in Three.js rot.x)
+    // When holding stick forward or backward, pitch attitude is firmly held!
+    let targetPitch = -0.015; // Natural 1° nose-up level flight cruise trim
+    if (Math.abs(flight.pitchInput) > 0.05) {
+      if (flight.pitchInput > 0) {
+        targetPitch = -flight.pitchInput * (24 * Math.PI / 180);
+      } else {
+        targetPitch = -flight.pitchInput * (28 * Math.PI / 180);
       }
+      const pitchResponse = 2.8 * cfg.pitchAuth * sens;
+      flight.rot.x += (targetPitch - flight.rot.x) * pitchResponse * dt;
+    } else {
+      // Natural longitudinal stability (restores gently towards trimmed level flight)
+      flight.rot.x += (targetPitch - flight.rot.x) * (1.2 * sens) * dt;
     }
-    // Stall recovery physics: when AoA exceeds 18°, force nose down to recover airflow
-    if (flight.aoa > 18.0) {
-      flight.rot.x += 1.8 * dt; // pitch down
+
+    // Stall recovery physics: only force nose down if stalled at critically low airspeed (< 65 km/h)
+    if (flight.aoa > 18.0 && flight.ias < 65.0) {
+      flight.rot.x += 1.2 * dt; // pitch down
     }
-    // Turn coordination: banking turns heading smoothly
-    flight.rot.y += (flight.rot.z * 0.55) * dt;
+
+    // Roll Control (Coordinated Bank & Rate command):
+    // flight.rollInput: -1.0 (turn left) to +1.0 (turn right)
+    // In Three.js rot.z:
+    // Bank right is rot.z < 0 (-0.68 rad / -39°)
+    // Bank left is rot.z > 0 (+0.68 rad / +39°)
+    let targetRoll = 0.0;
+    if (Math.abs(flight.rollInput) > 0.05) {
+      targetRoll = -flight.rollInput * (39 * Math.PI / 180);
+      const rollResponse = 3.6 * cfg.rollAuth * sens;
+      flight.rot.z += (targetRoll - flight.rot.z) * rollResponse * dt;
+    } else if (!SIM.apMode.level) {
+      // Lateral stability / Roll damping (smooth gentle return to level wings when roll stick is centered)
+      flight.rot.z *= Math.max(0, 1.0 - 2.5 * dt);
+    }
+
+    // Coordinated Turn (Aileron + Rudder Heading turn):
+    // In Three.js 'YXZ', rot.z < 0 is bank right -> totalYawRate > 0 turns heading to the right (+X)
+    // rot.z > 0 is bank left -> totalYawRate < 0 turns heading to the left (-X)
+    const turnFromBank = -flight.rot.z * 1.6;
+    const turnFromRudder = (flight.yawInput || flight.rollInput * 0.75) * cfg.yawAuth * sens;
+    const totalYawRate = turnFromBank + turnFromRudder;
+    flight.rot.y += totalYawRate * dt;
+
+    // Coordinated aerodynamic velocity vector turn:
+    // Rotates the flight velocity vector horizontally to follow the heading turn
+    if (Math.abs(totalYawRate) > 0.0001) {
+      flight.vel.applyAxisAngle(new THREE.Vector3(0, 1, 0), totalYawRate * dt);
+    }
 
     // Sanitize and clamp attitudes to safe flight envelope: [-60°, +60°]
     flight.rot.x = sanitize(flight.rot.x, 0.0, -1.05, 1.05);
     flight.rot.y = sanitize(flight.rot.y, 0.0, -100000, 100000);
-    flight.rot.z = sanitize(flight.rot.z, 0.0, -1.5, 1.5);
+    flight.rot.z = sanitize(flight.rot.z, 0.0, -1.2, 1.2);
 
     flight.quat.setFromEuler(flight.rot);
 
@@ -1136,7 +1158,7 @@
     const qEff = 0.5 * rho * Math.pow(effectiveAirspeed, 2);
 
     // Lift coefficient: Base camber + Flaps + Linear slope with stall curve
-    const baseCL = 0.38 + flight.flapsStage * 0.38;
+    const baseCL = 0.88 + flight.flapsStage * 0.45;
     const clSlope = 4.8;
     let cl = baseCL + clSlope * (flight.aoa * Math.PI / 180);
     // Stall drop-off beyond ±16°
@@ -1182,9 +1204,9 @@
     // Gravity
     const gravAcc = new THREE.Vector3(0, -9.80665, 0);
 
-    // Weathercock velocity alignment & sideslip damping
-    const vSide = flight.vel.dot(right);
-    const sideDampingAcc = right.clone().multiplyScalar(-vSide * 2.8);
+    // Weathercock velocity alignment: aircraft velocity vector smoothly aligns with forward direction
+    const currentSpeed = Math.max(0.1, flight.vel.length());
+    flight.vel.lerp(fwd.clone().multiplyScalar(currentSpeed), Math.min(1.0, 5.0 * dt));
 
     // Total Acceleration
     const acc = new THREE.Vector3();
@@ -1192,7 +1214,6 @@
     acc.add(liftAcc);
     acc.add(dragAcc);
     acc.add(gravAcc);
-    acc.add(sideDampingAcc);
 
     // Integrate velocity
     flight.vel.addScaledVector(acc, dt);
@@ -1200,7 +1221,7 @@
     // Aerodynamic Safety Clamps: Velocity components & VSI (-45 to +35 m/s)
     flight.vel.x = sanitize(flight.vel.x, 0, -110, 110);
     flight.vel.y = sanitize(flight.vel.y, 0, -45.0, 35.0);
-    flight.vel.z = sanitize(flight.vel.z, 38.89, -110, 110);
+    flight.vel.z = sanitize(flight.vel.z, 0, -110, 110);
 
     // Update speeds with strictly enforced safety bounds (IAS: 0 to 380 km/h)
     flight.tas = Math.max(0.1, flight.vel.length());
@@ -1699,6 +1720,9 @@
     flight.pitchInput = 0;
     flight.rollInput = 0;
     flight.yawInput = 0;
+    for (const k in keysPressed) delete keysPressed[k];
+    SIM.isJoyDragging = false;
+    SIM.isMouseFlightActive = false;
     flight.gearTarget = 0.0;
     flight.gearPos = 0.0;
     flight.flapsStage = 0;
@@ -1860,9 +1884,11 @@
         joyActive = false;
         joyPointerId = null;
         joyTouchId = null;
+        SIM.isJoyDragging = false;
         joyKnob.style.transform = 'translate(-50%, -50%)';
         flight.pitchInput = 0;
         flight.rollInput = 0;
+        flight.yawInput = 0;
       };
 
       const updateJoyCoords = (clientX, clientY) => {
@@ -1878,29 +1904,30 @@
         }
         joyKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
 
-        // Aviation convention:
-        // dx > 0 -> drag right -> roll right (+rollInput)
-        // dy > 0 -> drag down -> stick back -> pitch up (+pitchInput)
+        // dx > 0 -> drag right -> turn right
+        // dy > 0 -> drag down -> stick back -> pitch up
         flight.rollInput = THREE.MathUtils.clamp(dx / maxR, -1.0, 1.0);
+        flight.yawInput = flight.rollInput;
         flight.pitchInput = THREE.MathUtils.clamp(dy / maxR, -1.0, 1.0);
       };
 
-      // Pointer Events
+      // Pointer Events (supports stylus, mouse, and multi-touch)
       joyZone.addEventListener('pointerdown', (e) => {
         e.preventDefault();
         joyActive = true;
+        SIM.isJoyDragging = true;
         joyPointerId = e.pointerId;
         try { joyZone.setPointerCapture(e.pointerId); } catch (_) {}
         updateJoyCoords(e.clientX, e.clientY);
         initAudioEngine();
       });
 
-      joyZone.addEventListener('pointermove', (e) => {
+      const onJoyPointerMove = (e) => {
         if (joyActive && e.pointerId === joyPointerId) {
           e.preventDefault();
           updateJoyCoords(e.clientX, e.clientY);
         }
-      });
+      };
 
       const onJoyPointerEnd = (e) => {
         if (e.pointerId === joyPointerId) {
@@ -1910,26 +1937,28 @@
         }
       };
 
-      joyZone.addEventListener('pointerup', onJoyPointerEnd);
-      joyZone.addEventListener('pointercancel', onJoyPointerEnd);
+      window.addEventListener('pointermove', onJoyPointerMove);
+      window.addEventListener('pointerup', onJoyPointerEnd);
+      window.addEventListener('pointercancel', onJoyPointerEnd);
 
-      // Native Touch Events Fallback (prevents mobile page drag / zoom)
+      // Native Touch Events Fallback
       joyZone.addEventListener('touchstart', (e) => {
         e.preventDefault();
         if (joyTouchId === null && e.changedTouches.length > 0) {
           const t = e.changedTouches[0];
           joyTouchId = t.identifier;
           joyActive = true;
+          SIM.isJoyDragging = true;
           updateJoyCoords(t.clientX, t.clientY);
           initAudioEngine();
         }
       }, { passive: false });
 
-      joyZone.addEventListener('touchmove', (e) => {
-        e.preventDefault();
+      window.addEventListener('touchmove', (e) => {
         if (joyTouchId !== null) {
           for (let i = 0; i < e.changedTouches.length; i++) {
             if (e.changedTouches[i].identifier === joyTouchId) {
+              e.preventDefault();
               updateJoyCoords(e.changedTouches[i].clientX, e.changedTouches[i].clientY);
               break;
             }
@@ -1949,8 +1978,8 @@
         }
       };
 
-      joyZone.addEventListener('touchend', onJoyTouchEnd, { passive: false });
-      joyZone.addEventListener('touchcancel', onJoyTouchEnd, { passive: false });
+      window.addEventListener('touchend', onJoyTouchEnd, { passive: false });
+      window.addEventListener('touchcancel', onJoyTouchEnd, { passive: false });
     }
 
     // 2. Touch Throttle Slider with Independent Multi-Hand Tracking
@@ -1978,12 +2007,12 @@
         updateThrCoords(e.clientY);
       });
 
-      thrTrack.addEventListener('pointermove', (e) => {
+      const onThrPointerMove = (e) => {
         if (thrActive && e.pointerId === thrPointerId) {
           e.preventDefault();
           updateThrCoords(e.clientY);
         }
-      });
+      };
 
       const onThrPointerEnd = (e) => {
         if (e.pointerId === thrPointerId) {
@@ -1994,8 +2023,9 @@
         }
       };
 
-      thrTrack.addEventListener('pointerup', onThrPointerEnd);
-      thrTrack.addEventListener('pointercancel', onThrPointerEnd);
+      window.addEventListener('pointermove', onThrPointerMove);
+      window.addEventListener('pointerup', onThrPointerEnd);
+      window.addEventListener('pointercancel', onThrPointerEnd);
 
       // Touch fallback
       thrTrack.addEventListener('touchstart', (e) => {
@@ -2009,11 +2039,11 @@
         }
       }, { passive: false });
 
-      thrTrack.addEventListener('touchmove', (e) => {
-        e.preventDefault();
+      window.addEventListener('touchmove', (e) => {
         if (thrTouchId !== null) {
           for (let i = 0; i < e.changedTouches.length; i++) {
             if (e.changedTouches[i].identifier === thrTouchId) {
+              e.preventDefault();
               updateThrCoords(e.changedTouches[i].clientY);
               break;
             }
@@ -2034,8 +2064,8 @@
         }
       };
 
-      thrTrack.addEventListener('touchend', onThrTouchEnd, { passive: false });
-      thrTrack.addEventListener('touchcancel', onThrTouchEnd, { passive: false });
+      window.addEventListener('touchend', onThrTouchEnd, { passive: false });
+      window.addEventListener('touchcancel', onThrTouchEnd, { passive: false });
     }
 
     // Touch Rudder Buttons
@@ -2417,17 +2447,35 @@
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
 
-    // 8. Mouse Orbit Dragging
+    // 8. Mouse Flight (Virtual Yoke) & Orbit Dragging
+    let isMouseDown = false;
+    let mouseStartX = 0;
+    let mouseStartY = 0;
+
     if (simCanvas) {
       simCanvas.addEventListener('mousedown', (e) => {
-        if (e.button === 0) {
+        if (e.button === 0) { // Left click: Flight Yoke Control
+          isMouseDown = true;
+          SIM.isMouseFlightActive = true;
+          mouseStartX = e.clientX;
+          mouseStartY = e.clientY;
+          initAudioEngine();
+        } else if (e.button === 2) { // Right click: Camera Orbit
           isMouseDragging = true;
           mousePrevX = e.clientX;
           mousePrevY = e.clientY;
         }
       });
+
       window.addEventListener('mousemove', (e) => {
-        if (isMouseDragging && SIM.cameraMode === 'orbit') {
+        if (isMouseDown && (SIM.cameraMode === 'chase' || SIM.cameraMode === 'cockpit')) {
+          const maxDist = 120;
+          let dx = e.clientX - mouseStartX;
+          let dy = e.clientY - mouseStartY;
+          flight.rollInput = THREE.MathUtils.clamp(dx / maxDist, -1.0, 1.0);
+          flight.yawInput = flight.rollInput;
+          flight.pitchInput = THREE.MathUtils.clamp(dy / maxDist, -1.0, 1.0);
+        } else if (isMouseDragging && SIM.cameraMode === 'orbit') {
           const dx = e.clientX - mousePrevX;
           const dy = e.clientY - mousePrevY;
           orbitYaw -= dx * 0.008;
@@ -2436,9 +2484,53 @@
           mousePrevY = e.clientY;
         }
       });
+
       window.addEventListener('mouseup', () => {
+        if (isMouseDown) {
+          isMouseDown = false;
+          SIM.isMouseFlightActive = false;
+          flight.rollInput = 0;
+          flight.yawInput = 0;
+          flight.pitchInput = 0;
+        }
         isMouseDragging = false;
       });
+
+      simCanvas.addEventListener('contextmenu', (e) => e.preventDefault());
+    }
+  }
+
+  // Active keyboard state table (supports Russian & English layouts and holding keys)
+  const keysPressed = {};
+
+  function updateFlightInputsFromKeys() {
+    if (SIM.isJoyDragging || SIM.isMouseFlightActive) return;
+
+    // Pitch: W / Up / Ц (forward -> pitch down), S / Down / Ы (backward -> pitch up)
+    const isForward = keysPressed['KeyW'] || keysPressed['w'] || keysPressed['ц'] || keysPressed['ArrowUp'];
+    const isBack = keysPressed['KeyS'] || keysPressed['s'] || keysPressed['ы'] || keysPressed['ArrowDown'];
+
+    if (isForward && !isBack) {
+      flight.pitchInput = -1.0;
+    } else if (isBack && !isForward) {
+      flight.pitchInput = 1.0;
+    } else {
+      flight.pitchInput = 0;
+    }
+
+    // Roll & Yaw: A / Left / Ф (turn left), D / Right / В (turn right)
+    const isLeft = keysPressed['KeyA'] || keysPressed['a'] || keysPressed['ф'] || keysPressed['ArrowLeft'];
+    const isRight = keysPressed['KeyD'] || keysPressed['d'] || keysPressed['в'] || keysPressed['ArrowRight'];
+
+    if (isLeft && !isRight) {
+      flight.rollInput = -1.0;
+      flight.yawInput = -1.0;
+    } else if (isRight && !isLeft) {
+      flight.rollInput = 1.0;
+      flight.yawInput = 1.0;
+    } else {
+      flight.rollInput = 0;
+      flight.yawInput = 0;
     }
   }
 
@@ -2447,107 +2539,54 @@
       return;
     }
     const simSection = document.getElementById('simulator-section');
-    if (simSection && !simSection.classList.contains('active')) {
+    if (simSection && !simSection.classList.contains('active') && SIM.paused) {
       return;
     }
 
     initAudioEngine();
 
-    switch (e.key.toLowerCase()) {
-      // Pitch (Elevator)
-      case 'w':
-      case 'arrowup':
-        flight.pitchInput = -1.0;
-        break;
-      case 's':
-      case 'arrowdown':
-        flight.pitchInput = 1.0;
-        break;
+    const code = e.code;
+    const key = (e.key || '').toLowerCase();
 
-      // Roll (Ailerons)
-      case 'a':
-      case 'arrowleft':
-        flight.rollInput = -1.0;
-        break;
-      case 'd':
-      case 'arrowright':
-        flight.rollInput = 1.0;
-        break;
+    keysPressed[code] = true;
+    keysPressed[key] = true;
+    updateFlightInputsFromKeys();
 
-      // Throttle & Rudder
-      case 'shift':
-      case 'q':
-        flight.throttle = Math.min(1.0, flight.throttle + 0.05);
-        break;
-      case 'control':
-      case 'e':
-        flight.throttle = Math.max(0.0, flight.throttle - 0.05);
-        break;
-
-      // Gear (G)
-      case 'g':
-        const btnGear = document.getElementById('btn-act-gear');
-        if (btnGear) btnGear.click();
-        break;
-
-      // Flaps (F)
-      case 'f':
-        const btnFlaps = document.getElementById('btn-act-flaps');
-        if (btnFlaps) btnFlaps.click();
-        break;
-
-      // Spoilers (B)
-      case 'b':
-        const btnSpoilers = document.getElementById('btn-act-spoilers');
-        if (btnSpoilers) btnSpoilers.click();
-        break;
-
-      // Water Drop (Space)
-      case ' ':
-        e.preventDefault();
-        const btnWater = document.getElementById('btn-act-water');
-        if (btnWater) btnWater.click();
-        break;
-
-      // Agro Spray (X)
-      case 'x':
-        const btnSpray = document.getElementById('btn-act-spray');
-        if (btnSpray) btnSpray.click();
-        break;
-
-      // Aero Vectors (V)
-      case 'v':
-        const btnAero = document.getElementById('btn-act-aero');
-        if (btnAero) btnAero.click();
-        break;
-
-      // Camera Mode (C)
-      case 'c':
-        const modes = ['chase', 'cockpit', 'satellite', 'orbit'];
-        const curIdx = modes.indexOf(SIM.cameraMode);
-        const nextMode = modes[(curIdx + 1) % modes.length];
-        const btnCam = document.getElementById(`btn-cam-${nextMode === 'cockpit' ? 'fpv' : (nextMode === 'satellite' ? 'sat' : nextMode)}`);
-        if (btnCam) btnCam.click();
-        break;
-
-      // Autopilot Keys 1, 2, 3
-      case '1':
-        const b1 = document.getElementById('btn-ap-level');
-        if (b1) b1.click();
-        break;
-      case '2':
-        const b2 = document.getElementById('btn-ap-alt');
-        if (b2) b2.click();
-        break;
-      case '3':
-        const b3 = document.getElementById('btn-ap-hdg');
-        if (b3) b3.click();
-        break;
-
-      // Reset (R)
-      case 'r':
-        teleportToLocation(SIM.locationId, 700);
-        break;
+    // Throttle & Special Operations
+    if (code === 'KeyQ' || key === 'q' || key === 'й' || code === 'ShiftLeft' || code === 'ShiftRight' || key === 'shift') {
+      flight.throttle = Math.min(1.0, flight.throttle + 0.05);
+      const thrSlider = document.getElementById('sim-slider-throttle');
+      if (thrSlider) thrSlider.value = Math.round(flight.throttle * 100);
+    } else if (code === 'KeyE' || key === 'e' || key === 'у' || code === 'ControlLeft' || code === 'ControlRight' || key === 'control') {
+      flight.throttle = Math.max(0.0, flight.throttle - 0.05);
+      const thrSlider = document.getElementById('sim-slider-throttle');
+      if (thrSlider) thrSlider.value = Math.round(flight.throttle * 100);
+    } else if (code === 'KeyG' || key === 'g' || key === 'п') {
+      document.getElementById('btn-act-gear')?.click();
+    } else if (code === 'KeyF' || key === 'f' || key === 'а') {
+      document.getElementById('btn-act-flaps')?.click();
+    } else if (code === 'KeyB' || key === 'b' || key === 'и') {
+      document.getElementById('btn-act-spoilers')?.click();
+    } else if (code === 'Space' || key === ' ') {
+      e.preventDefault();
+      document.getElementById('btn-act-water')?.click();
+    } else if (code === 'KeyX' || key === 'x' || key === 'ч') {
+      document.getElementById('btn-act-spray')?.click();
+    } else if (code === 'KeyV' || key === 'v' || key === 'м') {
+      document.getElementById('btn-act-aero')?.click();
+    } else if (code === 'KeyC' || key === 'c' || key === 'с') {
+      const modes = ['chase', 'cockpit', 'satellite', 'orbit'];
+      const curIdx = modes.indexOf(SIM.cameraMode);
+      const nextMode = modes[(curIdx + 1) % modes.length];
+      document.getElementById(`btn-cam-${nextMode === 'cockpit' ? 'fpv' : (nextMode === 'satellite' ? 'sat' : nextMode)}`)?.click();
+    } else if (key === '1') {
+      document.getElementById('btn-ap-level')?.click();
+    } else if (key === '2') {
+      document.getElementById('btn-ap-alt')?.click();
+    } else if (key === '3') {
+      document.getElementById('btn-ap-hdg')?.click();
+    } else if (code === 'KeyR' || key === 'r' || key === 'к') {
+      resetToAirFlight700();
     }
   }
 
@@ -2555,26 +2594,21 @@
     if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT')) {
       return;
     }
-    const simSection = document.getElementById('simulator-section');
-    if (simSection && !simSection.classList.contains('active')) {
-      return;
-    }
-
-    switch (e.key.toLowerCase()) {
-      case 'w':
-      case 's':
-      case 'arrowup':
-      case 'arrowdown':
-        flight.pitchInput = 0;
-        break;
-      case 'a':
-      case 'd':
-      case 'arrowleft':
-      case 'arrowright':
-        flight.rollInput = 0;
-        break;
-    }
+    const code = e.code;
+    const key = (e.key || '').toLowerCase();
+    delete keysPressed[code];
+    delete keysPressed[key];
+    updateFlightInputsFromKeys();
   }
+
+  window.addEventListener('blur', () => {
+    for (const k in keysPressed) delete keysPressed[k];
+    if (!SIM.isJoyDragging && !SIM.isMouseFlightActive) {
+      flight.pitchInput = 0;
+      flight.rollInput = 0;
+      flight.yawInput = 0;
+    }
+  });
 
   // ----------------------------------------------------------------------------
   // 16. GUARANTEED RESIZE LOGIC
@@ -2684,6 +2718,9 @@
 
     const rawDelta = clock.getDelta();
     const dt = Math.min(Math.max(rawDelta, 0.001), 0.033); // Strict delta time clamping (<= 33ms) to prevent physics explosion
+
+    // 0. Update Keyboard Continuous Input (holding keys & Russian layout)
+    updateFlightInputsFromKeys();
 
     // 1. Aerodynamic Physics
     updatePhysics(dt);
