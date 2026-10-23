@@ -602,6 +602,7 @@
   // 5. THREE.JS 3D HANGAR ENGINE (Airbus / Pininfarina Aerospace Expo Pavilion)
   // --------------------------------------------------------------------------
   let scene, camera, renderer, controls;
+  let isZoomedToNode = false;
   let aircraftGroup, explodedGroups = {};
   let propBlades = [];
   let raycaster, mouse;
@@ -761,9 +762,15 @@
     carbonTexture = createCarbonTexture();
     propBlurTexture = createPropBlurTexture();
 
-    // Camera
-    camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
-    camera.position.set(11, 6.5, 13);
+    // Camera with Mobile Portrait Adaptive Zoom & FOV
+    const aspect = container.clientWidth / container.clientHeight;
+    const isPortrait = aspect < 0.85;
+    camera = new THREE.PerspectiveCamera(isPortrait ? 68 : 45, aspect, 0.1, 1000);
+    if (isPortrait) {
+      camera.position.set(14, 11, 18);
+    } else {
+      camera.position.set(11, 6.5, 13);
+    }
 
     // OrbitControls
     controls = new THREE.OrbitControls(camera, renderer.domElement);
@@ -771,7 +778,7 @@
     controls.dampingFactor = 0.06;
     controls.maxPolarAngle = Math.PI / 2 + 0.05; // don't go below floor
     controls.minDistance = 3;
-    controls.maxDistance = 35;
+    controls.maxDistance = 45;
     controls.target.set(0, 0.5, 0);
 
     // Raycasting & Mouse
@@ -796,8 +803,15 @@
     // 4-Shader Switcher Engine (PBR Clearcoat, CATIA Zebra, Cp Heatmap, X-Ray)
     initAircraftShaders();
 
-    // Select Node #1 (Wing) by default so the inspector panel is open on load
-    selectHotspot('wing');
+    // Select Node #1 (Wing) by default
+    // On vertical screen of mobile, keep full overview (14, 11, 18) and do not block view with flyout
+    if (isPortrait) {
+      updateFlyoutPanel(HOTSPOTS_DATA['wing']);
+      const flyout = document.getElementById('engineering-flyout');
+      if (flyout) flyout.classList.remove('open');
+    } else {
+      selectHotspot('wing');
+    }
 
     // Events
     window.addEventListener('resize', onWindowResize);
@@ -1848,6 +1862,7 @@
     if (key === 'tail') key = 'avionics';
     if (!HOTSPOTS_DATA[key]) return;
     STATE.activeHotspot = key;
+    isZoomedToNode = true;
     audio.playHotspotChime();
 
     const data = HOTSPOTS_DATA[key];
@@ -1857,6 +1872,10 @@
 
     // Update Flyout Panel contents
     updateFlyoutPanel(data);
+
+    // Open Flyout Panel on node selection
+    const flyout = document.getElementById('engineering-flyout');
+    if (flyout) flyout.classList.add('open');
 
     // Highlight chips in quick bar
     document.querySelectorAll('.hotspot-chip').forEach(chip => {
@@ -2531,7 +2550,19 @@
   function onWindowResize() {
     const container = document.getElementById('hangar-section');
     if (!container || !renderer || !camera) return;
-    camera.aspect = container.clientWidth / container.clientHeight;
+    const aspect = container.clientWidth / container.clientHeight;
+    camera.aspect = aspect;
+    if (aspect < 0.85) {
+      // На вертикальном экране смартфона увеличиваем угол обзора и отодвигаем камеру дальше,
+      // чтобы весь размах крыла 12.4 м и круглый подиум помещались в экран целиком!
+      camera.fov = 68;
+      if (!isZoomedToNode) {
+        camera.position.set(14, 11, 18);
+        if (controls) controls.target.set(0, 0.5, 0);
+      }
+    } else {
+      camera.fov = 45;
+    }
     camera.updateProjectionMatrix();
     renderer.setSize(container.clientWidth, container.clientHeight);
   }
@@ -3318,6 +3349,13 @@
     document.getElementById('btn-close-flyout').addEventListener('click', () => {
       document.getElementById('engineering-flyout').classList.remove('open');
       audio.playClick();
+      isZoomedToNode = false;
+      const aspect = camera ? camera.aspect : (window.innerWidth / window.innerHeight);
+      if (aspect < 0.85) {
+        camera.fov = 68;
+        camera.updateProjectionMatrix();
+        smoothMoveCamera({ x: 14, y: 11, z: 18 }, { x: 0, y: 0.5, z: 0 });
+      }
     });
 
     // Fly To Node in 3D (Focus Camera on Selected Node)
@@ -3436,14 +3474,36 @@
 
   function setCameraViewPreset(view) {
     audio.playClick();
+    isZoomedToNode = false;
+    const aspect = camera ? camera.aspect : (window.innerWidth / window.innerHeight);
     if (view === 'iso') {
-      smoothMoveCamera({ x: 11, y: 6.5, z: 13 }, { x: 0, y: 0.5, z: 0 });
+      if (aspect < 0.85) {
+        camera.fov = 68;
+        camera.updateProjectionMatrix();
+        smoothMoveCamera({ x: 14, y: 11, z: 18 }, { x: 0, y: 0.5, z: 0 });
+      } else {
+        camera.fov = 45;
+        camera.updateProjectionMatrix();
+        smoothMoveCamera({ x: 11, y: 6.5, z: 13 }, { x: 0, y: 0.5, z: 0 });
+      }
     } else if (view === 'front') {
-      smoothMoveCamera({ x: 0, y: 1.2, z: 12 }, { x: 0, y: 0.8, z: 0 });
+      if (aspect < 0.85) {
+        camera.fov = 68;
+        camera.updateProjectionMatrix();
+        smoothMoveCamera({ x: 0, y: 1.8, z: 17 }, { x: 0, y: 0.8, z: 0 });
+      } else {
+        camera.fov = 45;
+        camera.updateProjectionMatrix();
+        smoothMoveCamera({ x: 0, y: 1.2, z: 12 }, { x: 0, y: 0.8, z: 0 });
+      }
     } else if (view === 'top') {
-      smoothMoveCamera({ x: 0, y: 19, z: 0.1 }, { x: 0, y: 0, z: 0 });
+      smoothMoveCamera({ x: 0, y: aspect < 0.85 ? 24 : 19, z: 0.1 }, { x: 0, y: 0, z: 0 });
     } else if (view === 'side') {
-      smoothMoveCamera({ x: 16, y: 1.5, z: 0 }, { x: 0, y: 0.5, z: 0 });
+      if (aspect < 0.85) {
+        smoothMoveCamera({ x: 20, y: 2.2, z: 0 }, { x: 0, y: 0.5, z: 0 });
+      } else {
+        smoothMoveCamera({ x: 16, y: 1.5, z: 0 }, { x: 0, y: 0.5, z: 0 });
+      }
     } else if (view === 'pilot') {
       smoothMoveCamera({ x: 0, y: 0.8, z: 2.1 }, { x: 0, y: 0.8, z: 10 });
     }
@@ -5175,9 +5235,17 @@
     setupAdminCms();
     setupDevConsole();
 
-    // Open Node #1 (Wing) in Inspector Panel by default
+    // Open Node #1 (Wing) in Inspector Panel by default (on desktop)
     setTimeout(() => {
-      selectHotspot('wing');
+      const container = document.getElementById('hangar-section');
+      const aspect = container ? (container.clientWidth / container.clientHeight) : (window.innerWidth / window.innerHeight);
+      if (aspect >= 0.85 && window.innerWidth >= 860) {
+        selectHotspot('wing');
+      } else {
+        updateFlyoutPanel(HOTSPOTS_DATA['wing']);
+        const flyout = document.getElementById('engineering-flyout');
+        if (flyout) flyout.classList.remove('open');
+      }
     }, 150);
 
     // Initial hash check

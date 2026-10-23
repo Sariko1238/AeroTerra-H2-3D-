@@ -6116,25 +6116,33 @@ body.in-simulator-mode .hangar-hud-overlay {
    ========================================================================== */
 @media (max-width: 860px) {
   :root {
-    --header-height: 84px !important;
+    --header-height: 94px !important;
   }
 
   /* ------------------------------------------------------------------------
-     1. COMPACT HEADER IN 2 THIN ROWS (MAX 88PX)
+     1. COMPACT FIXED HEADER IN 2 ROWS (MIN-HEIGHT 92PX, FULLY VISIBLE)
      ------------------------------------------------------------------------ */
   .site-header {
+    height: auto !important;
+    min-height: 92px !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 1000 !important;
     display: flex !important;
     flex-direction: row !important;
     flex-wrap: wrap !important;
     align-items: center !important;
     justify-content: space-between !important;
-    padding: 4px 8px 3px 8px !important;
-    height: 84px !important;
-    max-height: 88px !important;
-    overflow: hidden !important;
-    gap: 2px !important;
+    padding: 4px 8px 6px 8px !important;
+    gap: 4px 6px !important;
     background: rgba(6, 11, 22, 0.96) !important;
+    backdrop-filter: blur(24px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
     border-bottom: 1px solid rgba(0, 229, 255, 0.25) !important;
+    overflow: visible !important;
+    box-sizing: border-box !important;
   }
 
   /* Row 1: Brand (left) and Action Buttons (right) */
@@ -6143,7 +6151,7 @@ body.in-simulator-mode .hangar-hud-overlay {
     display: flex !important;
     align-items: center !important;
     gap: 6px !important;
-    flex-shrink: 0 !important;
+    flex: 0 0 auto !important;
     height: 32px !important;
   }
   .logo-badge {
@@ -6153,9 +6161,10 @@ body.in-simulator-mode .hangar-hud-overlay {
     border-radius: 6px !important;
   }
   .brand-title h1 {
-    font-size: 0.9rem !important;
+    font-size: 0.88rem !important;
     line-height: 1 !important;
     margin: 0 !important;
+    white-space: nowrap !important;
   }
   .brand-title .badge-tag,
   .brand-subtitle {
@@ -6170,7 +6179,7 @@ body.in-simulator-mode .hangar-hud-overlay {
     flex-wrap: nowrap !important;
     gap: 3px !important;
     margin-left: auto !important;
-    flex-shrink: 0 !important;
+    flex: 1 1 auto !important;
     height: 32px !important;
   }
 
@@ -6211,24 +6220,26 @@ body.in-simulator-mode .hangar-hud-overlay {
   .btn-dev-console-trigger span { display: none !important; }
   .btn-dev-console-trigger::after { content: "🛠️ ~"; font-size: 10.5px; font-weight: 700; }
 
-  /* Row 2: Nav horizontally scrollable tabs in one thin line */
+  /* Row 2: Nav horizontally scrollable tabs in one thin line (always visible!) */
   nav {
     order: 3 !important;
     width: 100% !important;
-    flex-basis: 100% !important;
-    margin: 0 !important;
+    flex: 0 0 100% !important;
+    margin: 2px 0 0 0 !important;
     padding: 0 !important;
-    height: 36px !important;
   }
   .nav-links {
     display: flex !important;
-    flex-wrap: nowrap !important;
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch !important;
+    white-space: nowrap !important;
+    flex-wrap: nowrap !important;
     gap: 6px !important;
-    padding: 2px 2px 4px 2px !important;
-    scrollbar-width: none !important;
+    padding: 4px 6px !important;
     width: 100% !important;
+    scrollbar-width: none !important;
+    list-style: none !important;
+    margin: 0 !important;
   }
   .nav-links::-webkit-scrollbar {
     display: none !important;
@@ -6240,28 +6251,190 @@ body.in-simulator-mode .hangar-hud-overlay {
     white-space: nowrap !important;
     flex-shrink: 0 !important;
     font-size: 12px !important;
-    padding: 5px 9px !important;
-    height: 30px !important;
-    min-height: 30px !important;
+    padding: 6px 10px !important;
+    height: 32px !important;
+    min-height: 32px !important;
     border-radius: 6px !important;
     display: inline-flex !important;
     align-items: center !important;
-    gap: 4px !important;
+    gap: 5px !important;
+    background: rgba(14, 26, 52, 0.7) !important;
+    border: 1px solid rgba(0, 229, 255, 0.22) !important;
+    color: #e2e8f0 !important;
+    text-decoration: none !important;
+    font-weight: 600 !important;
+  }
+  .nav-item a.active {
+    background: linear-gradient(135deg, rgba(0, 229, 255, 0.28), rgba(0, 255, 157, 0.2)) !important;
+    border-color: var(--accent-cyan) !important;
+    color: #fff !important;
+    box-shadow: 0 0 12px rgba(0, 229, 255, 0.4) !important;
+  }
+
+  /* Offset content below 2-row fixed header (94px) */
+  body {
+    padding-top: 94px !important;
+  }
+  .hangar-viewport-section {
+    margin-top: 0 !important;
+    height: calc(100vh - 94px) !important;
+    min-height: 520px !important;
+  }
+  .simulator-viewport-section,
+  .earth-viewport-section {
+    top: 94px !important;
+    height: calc(100vh - 94px) !important;
+  }
+  section[id],
+  .master-blueprint-section,
+  .math-calculator-section,
+  .mission-section,
+  .club-suite-section {
+    scroll-margin-top: 98px !important;
   }
 
   /* ------------------------------------------------------------------------
      2. STRICT LAYER ISOLATION IN FLIGHT SIMULATOR (CLEAN MOBILE HUD)
      ------------------------------------------------------------------------ */
-  /* Forcibly hide huge desktop HUD cards and 3D hangar dock */
+  /* Forcibly hide huge desktop HUD cards only in simulator */
   .sim-bottom-hud-layout,
   #sim-panel-left,
   #sim-panel-center,
-  #sim-panel-right,
-  .hangar-unified-dock,
-  .hangar-nodes-ribbon,
-  #hangar-section .hud-bottom-bar,
-  .hud-top-bar {
+  #sim-panel-right {
     display: none !important;
+  }
+
+  body.in-simulator-mode #hangar-section,
+  body.in-simulator-mode .hangar-unified-dock,
+  body.in-simulator-mode .hangar-nodes-ribbon,
+  body.in-simulator-mode .hangar-hud-overlay,
+  body.in-simulator-mode .hud-top-bar,
+  body.in-simulator-mode #hangar-section .hud-bottom-bar {
+    display: none !important;
+  }
+
+  /* ------------------------------------------------------------------------
+     2B. CLEAN MOBILE 3D HANGAR UI (PORTRAIT OPTIMIZED)
+     ------------------------------------------------------------------------ */
+  #hangar-section .hangar-unified-dock {
+    display: flex !important;
+    position: absolute !important;
+    bottom: 8px !important;
+    left: 4px !important;
+    right: 4px !important;
+    transform: none !important;
+    width: calc(100% - 8px) !important;
+    max-width: calc(100% - 8px) !important;
+    z-index: 95 !important;
+    gap: 4px !important;
+  }
+  #hangar-section .hangar-nodes-ribbon {
+    display: flex !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    white-space: nowrap !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    scrollbar-width: none !important;
+    padding: 3px 6px !important;
+    border-radius: 14px !important;
+    gap: 4px !important;
+  }
+  #hangar-section .node-ribbon-btn {
+    padding: 3px 8px !important;
+    font-size: 11px !important;
+    height: 26px !important;
+    flex-shrink: 0 !important;
+  }
+  #hangar-section .hud-bottom-bar {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 4px !important;
+  }
+  #hangar-section .view-presets {
+    display: flex !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    white-space: nowrap !important;
+    width: 100% !important;
+    justify-content: center !important;
+    gap: 4px !important;
+    padding: 2px 4px !important;
+  }
+  #hangar-section .preset-btn {
+    padding: 2px 7px !important;
+    font-size: 10px !important;
+    height: 24px !important;
+    flex-shrink: 0 !important;
+  }
+  #hangar-section .hangar-tools-floating {
+    display: flex !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    white-space: nowrap !important;
+    width: 100% !important;
+    gap: 4px !important;
+    padding: 2px 4px !important;
+    scrollbar-width: none !important;
+  }
+  #hangar-section .hangar-tools-floating::-webkit-scrollbar {
+    display: none !important;
+  }
+  #hangar-section .hangar-tool-btn {
+    padding: 2px 6px !important;
+    font-size: 10px !important;
+    height: 24px !important;
+    flex-shrink: 0 !important;
+  }
+  #hangar-section .hud-top-bar {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    gap: 6px !important;
+    padding: 0 !important;
+    position: absolute !important;
+    top: 6px !important;
+    left: 6px !important;
+    right: 6px !important;
+    z-index: 20 !important;
+    pointer-events: auto !important;
+  }
+  #hangar-section .aircraft-telemetry-badge {
+    padding: 3px 8px !important;
+    font-size: 10.5px !important;
+    border-radius: 8px !important;
+    max-width: 55% !important;
+  }
+  #hangar-section .aircraft-telemetry-badge .telemetry-row:not(:first-child) {
+    display: none !important;
+  }
+  #hangar-section .mission-mode-pill {
+    display: flex !important;
+    gap: 3px !important;
+    padding: 2px 4px !important;
+  }
+  #hangar-section .mode-btn {
+    padding: 2px 6px !important;
+    font-size: 10px !important;
+    height: 22px !important;
+  }
+  .engineering-flyout {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: auto !important;
+    width: 100% !important;
+    max-height: 70vh !important;
+    border-radius: 18px 18px 0 0 !important;
+    z-index: 2000 !important;
+    padding: 1rem 1rem 1.8rem 1rem !important;
+    transform: translateY(105%) !important;
+  }
+  .engineering-flyout.open {
+    transform: translateY(0) !important;
   }
 
   /* Desktop top bar hidden by default; opens as a clean drawer on tap */
