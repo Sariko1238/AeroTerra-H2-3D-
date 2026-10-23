@@ -2481,30 +2481,6 @@ a:hover {
 }
 
 @media (max-width: 768px) {
-  :root {
-    --header-height: 138px;
-  }
-  .site-header {
-    flex-direction: column;
-    align-items: stretch;
-    padding: 0.6rem 0.75rem;
-  }
-  .brand-section {
-    justify-content: space-between;
-    width: 100%;
-  }
-  .brand-title h1 {
-    font-size: 1.05rem;
-  }
-  .header-actions {
-    width: 100%;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 0.4rem;
-  }
-  .scale-toggle-group button span {
-    display: none;
-  }
   .hangar-viewport-section {
     height: 65vh;
   }
@@ -6096,102 +6072,568 @@ a:hover {
   }
 }
 
-@media (max-width: 960px) {
-  /* Apple HIG Touch-Friendly Navigation Bar */
+/* ==========================================================================
+   GLOBAL LAYER ISOLATION & UNIT NO-WRAP (DESKTOP + MOBILE)
+   ========================================================================== */
+body.in-simulator-mode #hangar-section,
+body.in-simulator-mode .hangar-unified-dock,
+body.in-simulator-mode .hangar-hud-overlay {
+  display: none !important;
+}
+
+.simulator-viewport-section {
+  z-index: 500 !important;
+}
+
+/* Strict No-Wrap for Velocity (км/ч), Volume (л), and Key Telemetry */
+.telem-main,
+.telem-val-group,
+.sim-telem-item,
+.tank-info b,
+.ribbon-item,
+.ribbon-item b,
+.flight-data-val,
+.telemetry-val,
+.spec-value,
+.passport-val,
+.radar-metric-row b,
+#sim-spd-kmh,
+#mob-ribbon-spd,
+#mob-ribbon-fluid,
+#sim-fluid-val,
+#sim-h2-val,
+#sim-alt-m,
+#hud-val-mtow,
+#hud-val-wingspan,
+.slide-counter-display {
+  white-space: nowrap !important;
+  word-break: keep-all !important;
+  hyphens: none !important;
+}
+
+/* ==========================================================================
+   MOBILE ADAPTATION & CLEAN HUD (< 860px)
+   ========================================================================== */
+@media (max-width: 860px) {
+  :root {
+    --header-height: 84px !important;
+  }
+
+  /* ------------------------------------------------------------------------
+     1. COMPACT HEADER IN 2 THIN ROWS (MAX 88PX)
+     ------------------------------------------------------------------------ */
+  .site-header {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 4px 8px 3px 8px !important;
+    height: 84px !important;
+    max-height: 88px !important;
+    overflow: hidden !important;
+    gap: 2px !important;
+    background: rgba(6, 11, 22, 0.96) !important;
+    border-bottom: 1px solid rgba(0, 229, 255, 0.25) !important;
+  }
+
+  /* Row 1: Brand (left) and Action Buttons (right) */
+  .brand-section {
+    order: 1 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    flex-shrink: 0 !important;
+    height: 32px !important;
+  }
+  .logo-badge {
+    width: 26px !important;
+    height: 26px !important;
+    font-size: 0.85rem !important;
+    border-radius: 6px !important;
+  }
+  .brand-title h1 {
+    font-size: 0.9rem !important;
+    line-height: 1 !important;
+    margin: 0 !important;
+  }
+  .brand-title .badge-tag,
+  .brand-subtitle {
+    display: none !important;
+  }
+
+  .header-actions {
+    order: 2 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    flex-wrap: nowrap !important;
+    gap: 3px !important;
+    margin-left: auto !important;
+    flex-shrink: 0 !important;
+    height: 32px !important;
+  }
+
+  /* Hide bulky items from Row 1 on mobile */
+  .scale-toggle-group,
+  .lang-btn,
+  .sound-btn {
+    display: none !important;
+  }
+
+  /* Compact button styling on mobile row 1 */
+  .btn-presentation-link,
+  .btn-pdf-export,
+  .btn-auth-trigger,
+  .btn-admin-trigger,
+  .btn-dev-console-trigger {
+    padding: 3px 6px !important;
+    font-size: 11px !important;
+    border-radius: 5px !important;
+    height: 26px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 3px !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* Compact labels on mobile row 1 */
+  .btn-presentation-link span { display: none !important; }
+  .btn-presentation-link::after { content: "🚀 През"; font-size: 10.5px; font-weight: 700; }
+  .btn-pdf-export span { display: none !important; }
+  .btn-pdf-export::after { content: "📄 PDF"; font-size: 10.5px; font-weight: 700; }
+  .btn-auth-trigger span { display: none !important; }
+  .btn-auth-trigger::after { content: "👤 Вход"; font-size: 10.5px; font-weight: 700; }
+  .btn-admin-trigger span { display: none !important; }
+  .btn-admin-trigger::after { content: "👑 Админ"; font-size: 10.5px; font-weight: 700; }
+  .btn-dev-console-trigger span { display: none !important; }
+  .btn-dev-console-trigger::after { content: "🛠️ ~"; font-size: 10.5px; font-weight: 700; }
+
+  /* Row 2: Nav horizontally scrollable tabs in one thin line */
+  nav {
+    order: 3 !important;
+    width: 100% !important;
+    flex-basis: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    height: 36px !important;
+  }
   .nav-links {
     display: flex !important;
+    flex-wrap: nowrap !important;
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch !important;
-    gap: 8px !important;
-    padding: 6px 8px !important;
+    gap: 6px !important;
+    padding: 2px 2px 4px 2px !important;
     scrollbar-width: none !important;
+    width: 100% !important;
   }
   .nav-links::-webkit-scrollbar {
     display: none !important;
   }
+  .nav-item {
+    flex-shrink: 0 !important;
+  }
   .nav-item a {
-    min-height: 44px !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    font-size: 12px !important;
+    padding: 5px 9px !important;
+    height: 30px !important;
+    min-height: 30px !important;
+    border-radius: 6px !important;
     display: inline-flex !important;
     align-items: center !important;
-    padding: 0.6rem 0.95rem !important;
-    font-size: 0.85rem !important;
-    white-space: nowrap !important;
-    border-radius: 8px !important;
+    gap: 4px !important;
   }
 
+  /* ------------------------------------------------------------------------
+     2. STRICT LAYER ISOLATION IN FLIGHT SIMULATOR (CLEAN MOBILE HUD)
+     ------------------------------------------------------------------------ */
+  /* Forcibly hide huge desktop HUD cards and 3D hangar dock */
+  .sim-bottom-hud-layout,
+  #sim-panel-left,
+  #sim-panel-center,
+  #sim-panel-right,
+  .hangar-unified-dock,
+  .hangar-nodes-ribbon,
+  #hangar-section .hud-bottom-bar,
+  .hud-top-bar {
+    display: none !important;
+  }
+
+  /* Desktop top bar hidden by default; opens as a clean drawer on tap */
   .sim-top-control-bar {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 6px;
-    padding: 0.4rem;
+    display: none !important;
   }
-  .sim-top-selects-group {
-    flex-wrap: wrap;
-    gap: 4px;
+  .sim-top-control-bar.mobile-menu-open {
+    display: flex !important;
+    position: fixed !important;
+    top: 90px !important;
+    left: 12px !important;
+    right: 12px !important;
+    z-index: 99999 !important;
+    background: rgba(6, 12, 26, 0.97) !important;
+    backdrop-filter: blur(24px) !important;
+    -webkit-backdrop-filter: blur(24px) !important;
+    border: 1px solid var(--accent-cyan) !important;
+    border-radius: 14px !important;
+    padding: 14px !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.9), 0 0 30px rgba(0, 229, 255, 0.3) !important;
+    max-height: calc(85vh - 90px) !important;
+    overflow-y: auto !important;
   }
-  .sim-select-wrap {
-    flex: 1 1 calc(50% - 4px);
-    min-width: 140px;
+  .sim-top-control-bar.mobile-menu-open .sim-brand-chip {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    width: 100% !important;
   }
-  .sim-top-actions-group {
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 4px;
+  .sim-mob-menu-close {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 28px !important;
+    height: 28px !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    color: #fff !important;
+    border-radius: 6px !important;
+    cursor: pointer !important;
+  }
+  .sim-top-control-bar.mobile-menu-open .sim-top-selects-group {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+  .sim-top-control-bar.mobile-menu-open .sim-select-wrap {
+    width: 100% !important;
+  }
+  .sim-top-control-bar.mobile-menu-open .sim-select {
+    width: 100% !important;
+    font-size: 13px !important;
+    padding: 8px !important;
+  }
+  .sim-top-control-bar.mobile-menu-open .sim-top-actions-group {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+  .sim-top-control-bar.mobile-menu-open .sim-top-btn {
+    padding: 8px !important;
+    font-size: 11.5px !important;
+    justify-content: center !important;
   }
 
-  /* Keep Telemetry & Radar visible and compact */
-  .sim-bottom-hud-layout {
-    flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    align-items: flex-end;
-    gap: 6px;
-    left: 0.35rem;
-    right: 0.35rem;
-    bottom: 4px;
-    pointer-events: none;
+  /* Single Clean Telemetry Capsule in 1 Row (Under Header) */
+  .sim-mobile-telem-ribbon {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    position: absolute !important;
+    top: 8px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    z-index: 600 !important;
+    background: rgba(6, 14, 30, 0.8) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+    border: 1px solid rgba(0, 229, 255, 0.4) !important;
+    border-radius: 24px !important;
+    padding: 4px 10px !important;
+    gap: 7px !important;
+    white-space: nowrap !important;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5), 0 0 15px rgba(0, 229, 255, 0.2) !important;
+    max-width: 96vw !important;
   }
-  .sim-panel-left {
-    width: calc(50% - 4px);
-    max-width: none;
-    padding: 0.5rem;
-    transform: scale(0.92);
-    transform-origin: bottom left;
+  .sim-mobile-telem-ribbon .ribbon-item {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 3px !important;
+    font-size: 11px !important;
+    color: #ccd6e6 !important;
+    white-space: nowrap !important;
   }
-  .sim-panel-right {
-    width: calc(50% - 4px);
-    max-width: none;
-    padding: 0.5rem;
-    transform: scale(0.92);
-    transform-origin: bottom right;
+  .sim-mobile-telem-ribbon .ribbon-item b {
+    color: #fff !important;
+    font-family: var(--font-mono) !important;
+    white-space: nowrap !important;
   }
-  .sim-panel-center {
-    width: 100%;
-    order: 3;
-    padding: 0.4rem 0.5rem;
-    gap: 4px;
+  .btn-mob-sim-menu {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    background: linear-gradient(135deg, rgba(0, 229, 255, 0.3), rgba(0, 255, 157, 0.25)) !important;
+    border: 1px solid var(--accent-cyan) !important;
+    color: #fff !important;
+    border-radius: 14px !important;
+    padding: 3px 8px !important;
+    font-size: 11px !important;
+    font-family: var(--font-tech) !important;
+    font-weight: 700 !important;
+    cursor: pointer !important;
+    margin-left: 3px !important;
+    white-space: nowrap !important;
   }
 
+  /* ------------------------------------------------------------------------
+     3. BOTTOM TOUCH CONTROLS (SAFARI SAFE-AREA COMPLIANT)
+     ------------------------------------------------------------------------ */
   .sim-touch-controls {
     display: flex !important;
-    bottom: 5.5rem;
+    position: absolute !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    pointer-events: none !important;
+    z-index: 500 !important;
   }
-}
+  .touch-throttle-block,
+  .touch-action-bar,
+  .touch-joystick-block {
+    pointer-events: auto !important;
+  }
 
-@media (max-width: 600px) {
-  .sim-panel-left {
-    transform: scale(0.85);
+  /* Left: Vertical Throttle & Compact Rudder */
+  .touch-throttle-block {
+    position: absolute !important;
+    left: 14px !important;
+    bottom: calc(65px + env(safe-area-inset-bottom, 0px)) !important;
+    width: 60px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
   }
-  .sim-panel-right {
-    transform: scale(0.85);
+  .touch-throttle-step-row {
+    display: none !important;
+  }
+  .touch-throttle-track {
+    width: 44px !important;
+    height: 125px !important;
+    border-radius: 22px !important;
+  }
+  .touch-throttle-handle {
+    height: 36px !important;
+    border-radius: 18px !important;
+    font-size: 0.6rem !important;
+  }
+  .touch-rudder-row {
+    display: flex !important;
+    gap: 4px !important;
+    margin-top: 6px !important;
+  }
+  .touch-rudder-btn {
+    padding: 4px 6px !important;
+    font-size: 9.5px !important;
+    border-radius: 5px !important;
+    font-weight: 700 !important;
+  }
+
+  /* Right: Round Virtual 3D Joystick (120px x 120px) */
+  .touch-joystick-block {
+    position: absolute !important;
+    right: 14px !important;
+    bottom: calc(65px + env(safe-area-inset-bottom, 0px)) !important;
+    width: 120px !important;
+    height: auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
   }
   .virtual-joystick-zone {
-    width: 130px;
-    height: 130px;
+    width: 120px !important;
+    height: 120px !important;
+    border-radius: 50% !important;
   }
   .virtual-joystick-knob {
-    width: 52px;
-    height: 52px;
+    width: 46px !important;
+    height: 46px !important;
+  }
+  .joystick-label {
+    font-size: 9px !important;
+    margin-top: 4px !important;
+  }
+
+  /* Center: Quick Action Buttons (2 Rows x 3 Cols Grid) */
+  .touch-action-bar {
+    position: absolute !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    bottom: calc(65px + env(safe-area-inset-bottom, 0px)) !important;
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 5px !important;
+    width: 175px !important;
+    max-width: 48vw !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  .touch-act-btn {
+    padding: 5px 3px !important;
+    font-size: 10px !important;
+    border-radius: 6px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 2px !important;
+    white-space: nowrap !important;
+    background: rgba(10, 20, 42, 0.88) !important;
+    border: 1px solid rgba(0, 229, 255, 0.35) !important;
+    color: #fff !important;
+    height: 42px !important;
+  }
+  .touch-act-btn i {
+    font-size: 11px !important;
+  }
+  .touch-act-btn span {
+    font-size: 9.5px !important;
+    font-weight: 700 !important;
+  }
+  .touch-act-btn.spray-btn { border-color: #00ff9d !important; color: #00ff9d !important; }
+  .touch-act-btn.salvo-btn { border-color: #ff5500 !important; color: #ff5500 !important; }
+  .touch-act-btn.ap-btn { border-color: #e0aaff !important; color: #e0aaff !important; }
+  .touch-act-btn.reset-btn { border-color: var(--accent-cyan) !important; color: var(--accent-cyan) !important; }
+
+  /* ------------------------------------------------------------------------
+     4. PRESENTATION MODAL PITCH DECK ON MOBILE
+     ------------------------------------------------------------------------ */
+  .presentation-modal-overlay {
+    padding: 0 !important;
+    justify-content: center !important;
+    align-items: center !important;
+  }
+  .presentation-modal-container {
+    width: 96vw !important;
+    max-width: 96vw !important;
+    height: 88vh !important;
+    margin: 2vh auto !important;
+    padding: 0 !important;
+    border-radius: 12px !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+  }
+  .presentation-modal-bar {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 6px !important;
+    padding: 8px 10px !important;
+  }
+  .presentation-modal-title {
+    font-size: 13.5px !important;
+    line-height: 1.2 !important;
+    flex: 1 1 100% !important;
+    white-space: normal !important;
+    gap: 6px !important;
+  }
+  .presentation-modal-title .badge-tag {
+    display: none !important;
+  }
+  .presentation-modal-actions {
+    margin-left: auto !important;
+    gap: 6px !important;
+  }
+  .btn-pres-action {
+    padding: 4px 8px !important;
+    font-size: 11px !important;
+    height: 28px !important;
+  }
+  .btn-pres-close {
+    width: 28px !important;
+    height: 28px !important;
+    font-size: 0.9rem !important;
+  }
+
+  .presentation-slides-viewport {
+    padding: 12px 14px !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    gap: 10px !important;
+  }
+  .slide-heading {
+    font-size: clamp(18px, 5vw, 24px) !important;
+    line-height: 1.2 !important;
+    word-break: break-word !important;
+  }
+  .slide-subtitle {
+    font-size: 0.85rem !important;
+    line-height: 1.35 !important;
+    margin-bottom: 0.2rem !important;
+  }
+  .slide-badge {
+    font-size: 0.65rem !important;
+    padding: 2px 8px !important;
+  }
+
+  /* Single Column on Mobile for Cards and Metrics */
+  .slide-grid-2col {
+    grid-template-columns: 1fr !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    width: 100% !important;
+  }
+  .slide-metrics-strip {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+  .slide-card-glass {
+    padding: 12px !important;
+    gap: 8px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  .slide-card-glass h3 {
+    font-size: 0.95rem !important;
+  }
+  .slide-list li {
+    font-size: 0.82rem !important;
+    line-height: 1.35 !important;
+  }
+  .slide-formula-box {
+    font-size: 0.75rem !important;
+    padding: 6px 8px !important;
+  }
+
+  .presentation-bottom-nav {
+    padding: 6px 10px !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    gap: 6px !important;
+  }
+  .btn-slide-nav {
+    padding: 4px 8px !important;
+    font-size: 11.5px !important;
+    height: 30px !important;
+    gap: 4px !important;
+  }
+  .slide-dots-container {
+    gap: 5px !important;
+  }
+  .slide-dot {
+    width: 7px !important;
+    height: 7px !important;
+  }
+  .slide-dot.active {
+    width: 18px !important;
+  }
+  .slide-counter-display {
+    font-size: 11px !important;
+    white-space: nowrap !important;
   }
 }
 

@@ -1796,10 +1796,10 @@
     const vsiEl = document.getElementById('sim-vsi-val');
     const altVal = safeClamp(flight.altMSL, 0, 6500, 700);
     const vsiVal = safeClamp(flight.vsi, -35.0, 28.0, 0);
-    if (altEl) altEl.textContent = `${Math.round(altVal)} м`;
-    if (altFtEl) altFtEl.textContent = `(${Math.round(altVal * 3.28084)} ft)`;
+    if (altEl) altEl.textContent = `${Math.round(altVal)}\u00A0м`;
+    if (altFtEl) altFtEl.textContent = `(${Math.round(altVal * 3.28084)}\u00A0ft)`;
     if (vsiEl) {
-      vsiEl.textContent = `VSI: ${vsiVal >= 0 ? '+' : ''}${vsiVal.toFixed(1)} м/с`;
+      vsiEl.textContent = `VSI: ${vsiVal >= 0 ? '+' : ''}${vsiVal.toFixed(1)}\u00A0м/с`;
     }
 
     // 2. Speed
@@ -1807,8 +1807,8 @@
     const spdKtsEl = document.getElementById('sim-spd-kts');
     const modeBadge = document.getElementById('sim-mode-badge');
     const iasVal = safeClamp(flight.ias, 0, 340, 140);
-    if (spdKmhEl) spdKmhEl.textContent = `${Math.round(iasVal)} км/ч`;
-    if (spdKtsEl) spdKtsEl.textContent = `(${Math.round(iasVal * 0.539957)} kts)`;
+    if (spdKmhEl) spdKmhEl.textContent = `${Math.round(iasVal)}\u00A0км/ч`;
+    if (spdKtsEl) spdKtsEl.textContent = `(${Math.round(iasVal * 0.539957)}\u00A0kts)`;
     if (modeBadge) {
       if (iasVal < 60) modeBadge.textContent = 'STOL APPROACH';
       else if (vsiVal > 3.0) modeBadge.textContent = 'STOL CLIMB';
@@ -1849,9 +1849,9 @@
     const fluidPct = Math.max(0, Math.min(100, (flight.fluidRemaining / cfg.fluidCapacity) * 100));
 
     if (h2Fill) h2Fill.style.width = `${h2Pct}%`;
-    if (h2Val) h2Val.textContent = `${flight.h2MassRemaining.toFixed(1)} кг (${Math.round(h2Pct)}%)`;
+    if (h2Val) h2Val.textContent = `${flight.h2MassRemaining.toFixed(1)}\u00A0кг (${Math.round(h2Pct)}%)`;
     if (fluidFill) fluidFill.style.width = `${fluidPct}%`;
-    if (fluidVal) fluidVal.textContent = `${Math.round(flight.fluidRemaining)} л (${Math.round(fluidPct)}%)`;
+    if (fluidVal) fluidVal.textContent = `${Math.round(flight.fluidRemaining)}\u00A0л (${Math.round(fluidPct)}%)`;
 
     // 6. Right Radar Metrics
     const radarHdg = document.getElementById('sim-radar-hdg');
@@ -1861,8 +1861,8 @@
 
     const hdgDeg = Math.round(((-flight.rot.y * 180 / Math.PI) % 360 + 360) % 360);
     if (radarHdg) radarHdg.textContent = `${String(hdgDeg).padStart(3, '0')}°`;
-    if (radarSpd) radarSpd.textContent = `${Math.round(iasVal)} км/ч`;
-    if (radarAgl) radarAgl.textContent = `${Math.round(safeClamp(flight.altAGL, 0, 6500, 700))} м`;
+    if (radarSpd) radarSpd.textContent = `${Math.round(iasVal)}\u00A0км/ч`;
+    if (radarAgl) radarAgl.textContent = `${Math.round(safeClamp(flight.altAGL, 0, 6500, 700))}\u00A0м`;
 
     if (radarCoords) {
       const deltaZ = safeClamp(flight.pos.z, -200000, 200000, 0);
@@ -1906,12 +1906,12 @@
     const mobSpd = document.getElementById('mob-ribbon-spd');
     const mobAoa = document.getElementById('mob-ribbon-aoa');
     const mobH2 = document.getElementById('mob-ribbon-h2');
-    const mobWater = document.getElementById('mob-ribbon-water');
-    if (mobAlt) mobAlt.textContent = `${Math.round(altVal)}м`;
-    if (mobSpd) mobSpd.textContent = `${Math.round(iasVal)}км/ч`;
+    const mobWater = document.getElementById('mob-ribbon-water') || document.getElementById('mob-ribbon-fluid');
+    if (mobAlt) mobAlt.textContent = `${Math.round(altVal)}\u00A0м`;
+    if (mobSpd) mobSpd.textContent = `${Math.round(iasVal)}\u00A0км/ч`;
     if (mobAoa) mobAoa.textContent = `${aoaVal >= 0 ? '+' : ''}${aoaVal.toFixed(1)}°`;
     if (mobH2) mobH2.textContent = `${Math.round(h2Pct)}%`;
-    if (mobWater) mobWater.textContent = `${Math.round(flight.fluidRemaining)}л`;
+    if (mobWater) mobWater.textContent = `${Math.round(flight.fluidRemaining)}\u00A0л`;
   }
 
   // Live Professor Aerodynamics Formulas & Telemetry Overlay
@@ -2536,6 +2536,49 @@
         if (btn) btn.click();
       });
     }
+
+    // Touch Reset 700m button (Mobile action bar)
+    const btnTouchReset700 = document.getElementById('btn-touch-reset-700');
+    if (btnTouchReset700) {
+      btnTouchReset700.addEventListener('click', () => {
+        resetToAirFlight700();
+        showToast('🔄 СБРОС НА 700 М ВЫПОЛНЕН');
+      });
+    }
+
+    // Mobile Flight Menu Toggle Button
+    const btnMobSimMenu = document.getElementById('btn-mob-sim-menu');
+    const simTopControlBar = document.querySelector('.sim-top-control-bar');
+    const btnCloseMobMenu = document.getElementById('btn-close-mob-menu');
+
+    if (btnMobSimMenu && simTopControlBar) {
+      btnMobSimMenu.addEventListener('click', (e) => {
+        e.stopPropagation();
+        simTopControlBar.classList.toggle('mobile-menu-open');
+      });
+    }
+
+    if (btnCloseMobMenu && simTopControlBar) {
+      btnCloseMobMenu.addEventListener('click', (e) => {
+        e.stopPropagation();
+        simTopControlBar.classList.remove('mobile-menu-open');
+      });
+    }
+
+    // Auto-close mobile menu on selecting location or plane
+    const selectPlane = document.getElementById('sim-select-plane');
+    const selectLoc = document.getElementById('sim-select-location');
+    const selectMap = document.getElementById('sim-select-map');
+    const selectTime = document.getElementById('sim-select-time');
+    [selectPlane, selectLoc, selectMap, selectTime].forEach(sel => {
+      if (sel) {
+        sel.addEventListener('change', () => {
+          if (simTopControlBar && simTopControlBar.classList.contains('mobile-menu-open')) {
+            setTimeout(() => simTopControlBar.classList.remove('mobile-menu-open'), 400);
+          }
+        });
+      }
+    });
 
     // Gyroscope / Tilt Sensor Mode
     const btnTouchGyro = document.getElementById('btn-touch-gyro');

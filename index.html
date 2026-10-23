@@ -306,6 +306,7 @@
       <div class="sim-brand-chip">
         <span class="pulse-dot-green"></span>
         <span class="sim-brand-title">AEROTERRA SATELLITE 3D</span>
+        <button class="sim-mob-menu-close" id="btn-close-mob-menu" title="Закрыть меню"><i class="fa-solid fa-xmark"></i></button>
       </div>
 
       <!-- Controls & Dropdowns Group -->
@@ -389,11 +390,13 @@
 
     <!-- Minimal Flight Path Vector (FPV) marker center screen (100% clean view of 3D plane) -->
     <div class="sim-mobile-telem-ribbon" id="sim-mobile-telem-ribbon">
-      <span class="ribbon-item"><i class="fa-solid fa-arrows-up-down"></i> <b id="mob-ribbon-alt">700 м</b></span>
-      <span class="ribbon-item"><i class="fa-solid fa-gauge-high"></i> <b id="mob-ribbon-spd">140 км/ч</b></span>
-      <span class="ribbon-item"><i class="fa-solid fa-plane"></i> <b id="mob-ribbon-aoa">2.5° AoA</b></span>
-      <span class="ribbon-item cyan"><i class="fa-solid fa-droplet"></i> <b id="mob-ribbon-h2">28.5 кг</b></span>
-      <span class="ribbon-item emerald"><i class="fa-solid fa-faucet-drip"></i> <b id="mob-ribbon-fluid">800 л</b></span>
+      <span class="ribbon-item"><i class="fa-solid fa-arrows-up-down"></i> <b id="mob-ribbon-alt">696&nbsp;м</b></span>
+      <span class="ribbon-item"><i class="fa-solid fa-gauge-high"></i> <b id="mob-ribbon-spd">252&nbsp;км/ч</b></span>
+      <span class="ribbon-item"><i class="fa-solid fa-plane"></i> <b id="mob-ribbon-aoa">-0.7°</b></span>
+      <span class="ribbon-item emerald"><i class="fa-solid fa-faucet-drip"></i> <b id="mob-ribbon-fluid">800&nbsp;л</b></span>
+      <button class="btn-mob-sim-menu" id="btn-mob-sim-menu" title="Настройки полёта и локации">
+        <i class="fa-solid fa-gear"></i> <span>Меню</span>
+      </button>
     </div>
 
     <div class="sim-fpv-center-wrap">
@@ -655,14 +658,14 @@
         </div>
       </div>
 
-      <!-- Center Touch Action Quick Buttons -->
+      <!-- Center Touch Action Quick Buttons (2 Rows x 3 Cols Grid on Mobile) -->
       <div class="touch-action-bar">
-        <button class="touch-act-btn spray-btn" id="btn-touch-spray" title="Опрыскивание садов (X)"><i class="fa-solid fa-spray-can-sparkles"></i> SPRAY</button>
-        <button class="touch-act-btn salvo-btn" id="btn-touch-salvo" title="Сброс воды (Пробел)"><i class="fa-solid fa-droplet"></i> СБРОС</button>
-        <button class="touch-act-btn" id="btn-touch-flaps" title="Закрылки STOL (F)"><i class="fa-solid fa-angles-down"></i> ЗАКРЫЛКИ</button>
-        <button class="touch-act-btn ap-btn" id="btn-touch-ap" title="Удержание горизонта (1)"><i class="fa-solid fa-scale-balanced"></i> ИИ LEVEL</button>
-        <button class="touch-act-btn gyro-btn" id="btn-touch-gyro" title="Включить управление наклоном телефона (Гироскоп)"><i class="fa-solid fa-mobile-screen"></i> ГИРО</button>
-        <button class="touch-act-btn" id="btn-touch-cam" title="Переключить камеру (C)"><i class="fa-solid fa-camera"></i> КАМЕРА</button>
+        <button class="touch-act-btn spray-btn" id="btn-touch-spray" title="Опрыскивание садов (X)"><i class="fa-solid fa-spray-can-sparkles"></i> <span>🌱 Спрей</span></button>
+        <button class="touch-act-btn salvo-btn" id="btn-touch-salvo" title="Сброс воды (Пробел)"><i class="fa-solid fa-droplet"></i> <span>💧 Сброс</span></button>
+        <button class="touch-act-btn" id="btn-touch-flaps" title="Закрылки STOL (F)"><i class="fa-solid fa-angles-down"></i> <span>📐 Закрылки</span></button>
+        <button class="touch-act-btn ap-btn" id="btn-touch-ap" title="Удержание горизонта (1)"><i class="fa-solid fa-scale-balanced"></i> <span>⚖️ Level</span></button>
+        <button class="touch-act-btn" id="btn-touch-cam" title="Переключить камеру (C)"><i class="fa-solid fa-camera"></i> <span>🎥 Камера</span></button>
+        <button class="touch-act-btn reset-btn" id="btn-touch-reset-700" title="Сбросить самолёт в воздух на 700 м"><i class="fa-solid fa-rotate-right"></i> <span>🔄 700м</span></button>
       </div>
 
       <!-- Right Stick: Virtual 3D Joystick (Pitch & Roll) -->

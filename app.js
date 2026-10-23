@@ -3225,6 +3225,7 @@
             const earthSec = document.getElementById('earth-section');
 
             if (href === '#simulator-section') {
+              document.body.classList.add('in-simulator-mode');
               if (earthSec) {
                 earthSec.classList.remove('active');
                 if (window.AeroTerraEarth && window.AeroTerraEarth.onHide) window.AeroTerraEarth.onHide();
@@ -3241,6 +3242,7 @@
               }
               return;
             } else {
+              document.body.classList.remove('in-simulator-mode');
               if (simSec) {
                 simSec.classList.remove('active');
                 if (window.AeroTerraSim && window.AeroTerraSim.onHide) window.AeroTerraSim.onHide();
@@ -5180,6 +5182,7 @@
 
     // Initial hash check
     if (window.location.hash === '#simulator-section' || window.location.hash === '#earth-section') {
+      document.body.classList.add('in-simulator-mode');
       const simLink = document.getElementById('nav-simulator-tab');
       if (simLink) simLink.click();
     }
