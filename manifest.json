@@ -1,0 +1,26 @@
+{
+  "name": "AeroTerra H2 — 3D Flight Simulator & Aerospace Suite by Musayev Sardor",
+  "short_name": "AeroTerra H2",
+  "description": "Dual-Role Eco UAV Aircraft & 3D Flight Simulator created solely by Musayev Sardor",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#050811",
+  "theme_color": "#00e5ff",
+  "categories": ["simulation", "games", "education", "utilities"],
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='36' fill='%23050811'/><circle cx='96' cy='96' r='75' stroke='%2300e5ff' stroke-width='4' fill='none'/><path d='M96 28 L114 74 L164 96 L114 118 L96 164 L78 118 L28 96 L78 74 Z' fill='%2300e5ff'/><circle cx='96' cy='96' r='18' fill='%23ffffff'/></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='96' fill='%23050811'/><circle cx='256' cy='256' r='200' stroke='%2300e5ff' stroke-width='10' fill='none'/><path d='M256 70 L305 195 L442 256 L305 317 L256 442 L207 317 L70 256 L207 195 Z' fill='%2300e5ff'/><circle cx='256' cy='256' r='48' fill='%23ffffff'/></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

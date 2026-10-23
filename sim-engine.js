@@ -282,6 +282,19 @@
   let waterParticleSystem, sprayParticleSystem, vortexParticleSystem;
   let runwayGroup, terrainGroup, cloudsGroup, sunSprite;
 
+  // 3D World Scenery & Atmosphere
+  let sceneryGroup, atcRadarDish, fireEmbersLight, fireParticlePoints, smokeParticlePoints;
+  let planeShadowMesh;
+
+  // AI Traffic Aircraft in the Sky
+  let aiTrafficGroup;
+  let aiTrafficList = [];
+
+  // Crash Explosion FX & Touchdown Smoke
+  let crashFlashLight, crashExplosionPoints, crashSmokePillarPoints;
+  let crashExplosionActive = false, crashExplosionTimer = 0;
+  let touchdownSmokePoints;
+
   // Slippy Map Tile System
   const mapTiles = new Map();
   const TILE_ZOOM = 15;
@@ -578,6 +591,10 @@
     // Build Subsystems
     buildAircraftModel();
     buildSTOLRunway();
+    build3DWorldScenery();
+    initAITraffic();
+    initDynamicShadow();
+    initCrashEffects();
     if (window.ILSAutopilot) window.ILSAutopilot.initILSGates(scene, terrainGroup, -340);
     if (window.AeroDynamics) window.AeroDynamics.initWingtipVortices(scene, planeGroup);
     buildVolumetricClouds();
@@ -1410,6 +1427,573 @@
     }
   }
 
+
+  // ----------------------------------------------------------------------------
+  // 7B. COMPREHENSIVE 3D WORLD SCENERY: AIRPORT, HANGAR, ATC, TREES, MOUNTAINS, LAKE, FIRE
+  // ----------------------------------------------------------------------------
+  function build3DWorldScenery() {
+    sceneryGroup = new THREE.Group();
+    sceneryGroup.name = 'WorldScenery';
+
+    // 1. Aerospace Hangar: "MUSAYEV SARDOR AEROSPACE"
+    const hangarMat = new THREE.MeshStandardMaterial({
+      color: 0x1e293b,
+      metalness: 0.6,
+      roughness: 0.3
+    });
+    const hangarRoofMat = new THREE.MeshStandardMaterial({
+      color: 0x0f172a,
+      metalness: 0.8,
+      roughness: 0.2
+    });
+
+    const hangarGroup = new THREE.Group();
+    hangarGroup.position.set(75, 0, 0);
+
+    // Hangar Main Structure (80m wide x 45m deep x 20m high)
+    const hangarBox = new THREE.Mesh(new THREE.BoxGeometry(45, 18, 80), hangarMat);
+    hangarBox.position.set(0, 9, 0);
+    hangarGroup.add(hangarBox);
+
+    // Curved Arched Roof
+    const roofGeo = new THREE.CylinderGeometry(26, 26, 80, 24, 1, false, 0, Math.PI);
+    roofGeo.rotateZ(Math.PI / 2);
+    roofGeo.rotateY(Math.PI / 2);
+    const roofMesh = new THREE.Mesh(roofGeo, hangarRoofMat);
+    roofMesh.position.set(0, 18, 0);
+    hangarGroup.add(roofMesh);
+
+    // Glowing 3D Neon Sign: "MUSAYEV SARDOR AEROSPACE"
+    const signCanvas = document.createElement('canvas');
+    signCanvas.width = 1024;
+    signCanvas.height = 256;
+    const sCtx = signCanvas.getContext('2d');
+    sCtx.fillStyle = '#050a18';
+    sCtx.fillRect(0, 0, 1024, 256);
+    sCtx.strokeStyle = '#ffd700';
+    sCtx.lineWidth = 6;
+    sCtx.strokeRect(10, 10, 1004, 236);
+
+    sCtx.fillStyle = '#ffd700';
+    sCtx.font = 'bold 52px "Space Grotesk", sans-serif';
+    sCtx.textAlign = 'center';
+    sCtx.textBaseline = 'middle';
+    sCtx.fillText('👑 MUSAYEV SARDOR AEROSPACE', 512, 90);
+
+    sCtx.fillStyle = '#00e5ff';
+    sCtx.font = 'bold 36px monospace';
+    sCtx.fillText('AEROTERRA H2 HANGAR · PAVILION #1', 512, 165);
+
+    const signTex = new THREE.CanvasTexture(signCanvas);
+    const signMat = new THREE.MeshBasicMaterial({ map: signTex });
+    const signMesh = new THREE.Mesh(new THREE.PlaneGeometry(36, 9), signMat);
+    signMesh.position.set(-22.6, 12, 0);
+    signMesh.rotation.y = -Math.PI / 2;
+    hangarGroup.add(signMesh);
+
+    sceneryGroup.add(hangarGroup);
+
+    // 2. ATC Control Tower with Rotating Radar Scanner
+    const atcGroup = new THREE.Group();
+    atcGroup.position.set(70, 0, -85);
+
+    const towerGeo = new THREE.CylinderGeometry(4.0, 5.5, 30, 8);
+    const towerMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.7 });
+    const towerMesh = new THREE.Mesh(towerGeo, towerMat);
+    towerMesh.position.y = 15;
+    atcGroup.add(towerMesh);
+
+    // Glass Cab on Top
+    const cabGeo = new THREE.CylinderGeometry(7.5, 5.5, 6, 8);
+    const cabMat = new THREE.MeshPhysicalMaterial({
+      color: 0x00e5ff,
+      transparent: true,
+      opacity: 0.65,
+      roughness: 0.1,
+      metalness: 0.9,
+      transmission: 0.6
+    });
+    const cabMesh = new THREE.Mesh(cabGeo, cabMat);
+    cabMesh.position.y = 33;
+    atcGroup.add(cabMesh);
+
+    // Rotating Radar Dish on Tower Roof
+    atcRadarDish = new THREE.Group();
+    atcRadarDish.position.set(0, 36.5, 0);
+
+    const dishMesh = new THREE.Mesh(
+      new THREE.CylinderGeometry(3.5, 0.4, 0.6, 16),
+      new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.9, roughness: 0.1 })
+    );
+    dishMesh.rotation.x = Math.PI / 3;
+    atcRadarDish.add(dishMesh);
+
+    const beaconLight = new THREE.PointLight(0x00ff9d, 3.0, 60);
+    beaconLight.position.set(0, 1.5, 0);
+    atcRadarDish.add(beaconLight);
+
+    atcGroup.add(atcRadarDish);
+    sceneryGroup.add(atcGroup);
+
+    // 3. 3D Trees in Agro-Monitoring Sector (Fruit Orchard & Forestry Rows)
+    const treeTrunkGeo = new THREE.CylinderGeometry(0.3, 0.45, 3.2, 6);
+    const treeTrunkMat = new THREE.MeshStandardMaterial({ color: 0x45220a, roughness: 0.9 });
+    const treeFoliageGeo = new THREE.ConeGeometry(2.6, 5.5, 6);
+    const treeFoliageMat = new THREE.MeshStandardMaterial({ color: 0x1e5c24, roughness: 0.8 });
+    const treeFoliageMat2 = new THREE.MeshStandardMaterial({ color: 0x2e7d32, roughness: 0.8 });
+
+    const treesGroup = new THREE.Group();
+    treesGroup.name = 'AgroTrees';
+
+    for (let row = 0; row < 12; row++) {
+      for (let col = 0; col < 10; col++) {
+        const tx = 380 + col * 26 + (Math.random() - 0.5) * 6;
+        const tz = 160 + row * 32 + (Math.random() - 0.5) * 6;
+
+        const trunk = new THREE.Mesh(treeTrunkGeo, treeTrunkMat);
+        trunk.position.set(tx, 1.6, tz);
+
+        const fol = new THREE.Mesh(treeFoliageGeo, (row + col) % 2 === 0 ? treeFoliageMat : treeFoliageMat2);
+        fol.position.set(0, 3.6, 0);
+        trunk.add(fol);
+
+        treesGroup.add(trunk);
+      }
+    }
+    sceneryGroup.add(treesGroup);
+
+    // 4. 3D Mountain Horizon Perimeter (24 Rugged Peaks)
+    const mountainsGroup = new THREE.Group();
+    mountainsGroup.name = 'HorizonMountains';
+    const mtnRockMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.95 });
+    const mtnSnowMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.4 });
+
+    for (let m = 0; m < 24; m++) {
+      const angle = (m / 24) * Math.PI * 2;
+      const dist = 4200 + Math.sin(m * 3) * 500;
+      const mx = Math.cos(angle) * dist;
+      const mz = Math.sin(angle) * dist;
+      const h = 850 + Math.abs(Math.sin(m * 2.5)) * 1200;
+      const baseR = 400 + Math.random() * 250;
+
+      const mtnMesh = new THREE.Mesh(new THREE.ConeGeometry(baseR, h, 7), mtnRockMat);
+      mtnMesh.position.set(mx, h / 2, mz);
+
+      // Snow Cap
+      const snowCap = new THREE.Mesh(new THREE.ConeGeometry(baseR * 0.35, h * 0.32, 7), mtnSnowMat);
+      snowCap.position.set(0, h * 0.35, 0);
+      mtnMesh.add(snowCap);
+
+      mountainsGroup.add(mtnMesh);
+    }
+    sceneryGroup.add(mountainsGroup);
+
+    // 5. 3D Wildfire Zone with Fire & Rising Smoke (at X = -650, Z = 750)
+    const fireGroup = new THREE.Group();
+    fireGroup.position.set(-650, 0, 750);
+
+    // Fire Embers Core
+    const fireBase = new THREE.Mesh(
+      new THREE.CylinderGeometry(18, 22, 1.5, 12),
+      new THREE.MeshStandardMaterial({ color: 0x1a0500, roughness: 0.95 })
+    );
+    fireGroup.add(fireBase);
+
+    fireEmbersLight = new THREE.PointLight(0xff5500, 5.0, 180);
+    fireEmbersLight.position.set(0, 8, 0);
+    fireGroup.add(fireEmbersLight);
+
+    // Fire Particles
+    const fireCount = 120;
+    const fireGeo = new THREE.BufferGeometry();
+    const firePos = new Float32Array(fireCount * 3);
+    for (let i = 0; i < fireCount; i++) {
+      firePos[i * 3 + 0] = (Math.random() - 0.5) * 24;
+      firePos[i * 3 + 1] = Math.random() * 18;
+      firePos[i * 3 + 2] = (Math.random() - 0.5) * 24;
+    }
+    fireGeo.setAttribute('position', new THREE.BufferAttribute(firePos, 3));
+    const fireMat = new THREE.PointsMaterial({
+      color: 0xff6600,
+      size: 5.5,
+      transparent: true,
+      opacity: 0.9,
+      blending: THREE.AdditiveBlending
+    });
+    fireParticlePoints = new THREE.Points(fireGeo, fireMat);
+    fireGroup.add(fireParticlePoints);
+
+    // Wildfire Smoke Column (Towering 250m)
+    const smokeCount = 180;
+    const smokeGeo = new THREE.BufferGeometry();
+    const smokePos = new Float32Array(smokeCount * 3);
+    for (let i = 0; i < smokeCount; i++) {
+      smokePos[i * 3 + 0] = (Math.random() - 0.5) * 35;
+      smokePos[i * 3 + 1] = 10 + (i / smokeCount) * 240;
+      smokePos[i * 3 + 2] = (Math.random() - 0.5) * 35;
+    }
+    smokeGeo.setAttribute('position', new THREE.BufferAttribute(smokePos, 3));
+    const smokeMat = new THREE.PointsMaterial({
+      color: 0x222226,
+      size: 14.0,
+      transparent: true,
+      opacity: 0.65
+    });
+    smokeParticlePoints = new THREE.Points(smokeGeo, smokeMat);
+    fireGroup.add(smokeParticlePoints);
+
+    sceneryGroup.add(fireGroup);
+
+    // 6. 3D Specular Mirror Lake (at X = -450, Z = -500)
+    const lakeMesh = new THREE.Mesh(
+      new THREE.CircleGeometry(220, 32),
+      new THREE.MeshPhysicalMaterial({
+        color: 0x0284c7,
+        metalness: 0.2,
+        roughness: 0.04,
+        reflectivity: 1.0,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.05
+      })
+    );
+    lakeMesh.rotation.x = -Math.PI / 2;
+    lakeMesh.position.set(-450, 0.2, -500);
+    lakeMesh.scale.set(1.4, 1.0, 1.0);
+    sceneryGroup.add(lakeMesh);
+
+    if (terrainGroup) terrainGroup.add(sceneryGroup);
+    else scene.add(sceneryGroup);
+  }
+
+  function update3DWorldScenery(dt) {
+    if (atcRadarDish) {
+      atcRadarDish.rotation.y += dt * 1.2;
+    }
+    if (fireEmbersLight) {
+      fireEmbersLight.intensity = 4.0 + Math.sin(performance.now() * 0.015) * 2.0;
+    }
+    if (fireParticlePoints) {
+      const pos = fireParticlePoints.geometry.attributes.position.array;
+      for (let i = 0; i < pos.length; i += 3) {
+        pos[i + 1] += dt * 14;
+        if (pos[i + 1] > 22) {
+          pos[i + 1] = 1;
+          pos[i] = (Math.random() - 0.5) * 24;
+          pos[i + 2] = (Math.random() - 0.5) * 24;
+        }
+      }
+      fireParticlePoints.geometry.attributes.position.needsUpdate = true;
+    }
+    if (smokeParticlePoints) {
+      const pos = smokeParticlePoints.geometry.attributes.position.array;
+      for (let i = 0; i < pos.length; i += 3) {
+        pos[i + 1] += dt * 18;
+        pos[i] += dt * 2.5; // Wind drift
+        if (pos[i + 1] > 250) {
+          pos[i + 1] = 10;
+          pos[i] = (Math.random() - 0.5) * 35;
+          pos[i + 2] = (Math.random() - 0.5) * 35;
+        }
+      }
+      smokeParticlePoints.geometry.attributes.position.needsUpdate = true;
+    }
+  }
+
+  // ----------------------------------------------------------------------------
+  // 7C. AI TRAFFIC AIRCRAFT IN THE SKY (A380, B777, AEROTERRA PATROL)
+  // ----------------------------------------------------------------------------
+  function initAITraffic() {
+    aiTrafficGroup = new THREE.Group();
+    aiTrafficGroup.name = 'AITrafficGroup';
+
+    aiTrafficList = [
+      {
+        id: 'ai-a380',
+        callsign: 'SARDOR 380',
+        type: 'A380',
+        color: '#ffd700',
+        pos: new THREE.Vector3(1200, 1250, -1800),
+        spdKmh: 640,
+        heading: 0.8,
+        radius: 3200,
+        angle: 0.5,
+        mesh: null
+      },
+      {
+        id: 'ai-b777',
+        callsign: 'AEROTERRA 777',
+        type: 'B777',
+        color: '#00e5ff',
+        pos: new THREE.Vector3(-2200, 950, 1400),
+        spdKmh: 560,
+        heading: 2.4,
+        radius: 2800,
+        angle: 2.2,
+        mesh: null
+      },
+      {
+        id: 'ai-h2',
+        callsign: 'ECO-PATROL 02',
+        type: 'AEROTERRA',
+        color: '#00ff9d',
+        pos: new THREE.Vector3(600, 450, 800),
+        spdKmh: 210,
+        heading: -1.2,
+        radius: 1600,
+        angle: 4.1,
+        mesh: null
+      }
+    ];
+
+    const planeMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.2 });
+    const wingMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.3 });
+
+    aiTrafficList.forEach(ai => {
+      const g = new THREE.Group();
+      if (ai.type === 'A380') {
+        const body = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.4, 22, 16), planeMat);
+        body.rotation.x = Math.PI / 2;
+        g.add(body);
+        const w = new THREE.Mesh(new THREE.BoxGeometry(32, 0.4, 4.5), wingMat);
+        w.position.set(0, 0.4, 1.0);
+        g.add(w);
+      } else if (ai.type === 'B777') {
+        const body = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.1, 18, 16), planeMat);
+        body.rotation.x = Math.PI / 2;
+        g.add(body);
+        const w = new THREE.Mesh(new THREE.BoxGeometry(26, 0.35, 3.8), wingMat);
+        w.position.set(0, 0.3, 1.0);
+        g.add(w);
+      } else {
+        const body = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.4, 6.2, 12), planeMat);
+        body.rotation.x = Math.PI / 2;
+        g.add(body);
+        const w = new THREE.Mesh(new THREE.BoxGeometry(12.4, 0.15, 1.4), wingMat);
+        w.position.set(0, 0.2, 0.5);
+        g.add(w);
+      }
+
+      // Strobe lights
+      const navL = new THREE.PointLight(0xff2222, 2.0, 25);
+      navL.position.set(-10, 0, 0);
+      g.add(navL);
+      const navR = new THREE.PointLight(0x00ff66, 2.0, 25);
+      navR.position.set(10, 0, 0);
+      g.add(navR);
+
+      g.position.copy(ai.pos);
+      ai.mesh = g;
+      aiTrafficGroup.add(g);
+    });
+
+    if (terrainGroup) terrainGroup.add(aiTrafficGroup);
+    else scene.add(aiTrafficGroup);
+  }
+
+  function updateAITraffic(dt) {
+    if (!aiTrafficList.length) return;
+    const time = performance.now() * 0.001;
+
+    aiTrafficList.forEach(ai => {
+      // Angular velocity
+      const spdMs = (ai.spdKmh / 3.6);
+      const omega = spdMs / ai.radius;
+      ai.angle += omega * dt;
+
+      ai.pos.x = Math.cos(ai.angle) * ai.radius;
+      ai.pos.z = Math.sin(ai.angle) * ai.radius;
+      ai.heading = -ai.angle + Math.PI / 2;
+
+      if (ai.mesh) {
+        ai.mesh.position.copy(ai.pos);
+        ai.mesh.rotation.y = ai.heading;
+        // Banking into turn
+        ai.mesh.rotation.z = 0.18;
+      }
+    });
+  }
+
+  // ----------------------------------------------------------------------------
+  // 7D. DYNAMIC REAL-TIME GROUND SHADOW
+  // ----------------------------------------------------------------------------
+  function initDynamicShadow() {
+    const shadowGeo = new THREE.PlaneGeometry(14, 8);
+    shadowGeo.rotateX(-Math.PI / 2);
+
+    // Canvas Soft Radial Shadow Texture
+    const cv = document.createElement('canvas');
+    cv.width = 128;
+    cv.height = 128;
+    const ctx = cv.getContext('2d');
+    const grad = ctx.createRadialGradient(64, 64, 10, 64, 64, 60);
+    grad.addColorStop(0, 'rgba(0, 0, 0, 0.7)');
+    grad.addColorStop(0.6, 'rgba(0, 0, 0, 0.35)');
+    grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 128, 128);
+
+    const shadowTex = new THREE.CanvasTexture(cv);
+    const shadowMat = new THREE.MeshBasicMaterial({
+      map: shadowTex,
+      transparent: true,
+      opacity: 0.65,
+      depthWrite: false
+    });
+
+    planeShadowMesh = new THREE.Mesh(shadowGeo, shadowMat);
+    planeShadowMesh.position.set(0, 1.28, 0);
+    scene.add(planeShadowMesh);
+  }
+
+  function updateDynamicShadow() {
+    if (!planeShadowMesh) return;
+    const h = Math.max(0, flight.pos.y - 1.25);
+    if (h < 75) {
+      planeShadowMesh.visible = true;
+      const alpha = Math.max(0, 0.65 * (1 - h / 75));
+      planeShadowMesh.material.opacity = alpha;
+      const s = 1.0 + (h / 75) * 1.8;
+      planeShadowMesh.scale.set(s, 1, s);
+      planeShadowMesh.rotation.y = flight.rot.y;
+      planeShadowMesh.position.set(0, 1.28, 0);
+    } else {
+      planeShadowMesh.visible = false;
+    }
+  }
+
+  // ----------------------------------------------------------------------------
+  // 7E. CRASH EXPLOSION SYSTEM & TOUCHDOWN SMOKE
+  // ----------------------------------------------------------------------------
+  function initCrashEffects() {
+    crashFlashLight = new THREE.PointLight(0xff5500, 0, 120);
+    crashFlashLight.position.set(0, 3, 0);
+    scene.add(crashFlashLight);
+
+    // Explosion Spark & Debris Points
+    const expCount = 200;
+    const expGeo = new THREE.BufferGeometry();
+    const expPos = new Float32Array(expCount * 3);
+    const expVel = new Float32Array(expCount * 3);
+    for (let i = 0; i < expCount; i++) {
+      expPos[i * 3 + 0] = 0;
+      expPos[i * 3 + 1] = -9999;
+      expPos[i * 3 + 2] = 0;
+      expVel[i * 3 + 0] = (Math.random() - 0.5) * 35;
+      expVel[i * 3 + 1] = 8 + Math.random() * 25;
+      expVel[i * 3 + 2] = (Math.random() - 0.5) * 35;
+    }
+    expGeo.setAttribute('position', new THREE.BufferAttribute(expPos, 3));
+    const expMat = new THREE.PointsMaterial({
+      color: 0xff4500,
+      size: 5.0,
+      transparent: true,
+      opacity: 0.95,
+      blending: THREE.AdditiveBlending
+    });
+    crashExplosionPoints = new THREE.Points(expGeo, expMat);
+    crashExplosionPoints.userData = { vels: expVel };
+    scene.add(crashExplosionPoints);
+
+    // Touchdown Tire Smoke Puffs
+    const tdCount = 60;
+    const tdGeo = new THREE.BufferGeometry();
+    const tdPos = new Float32Array(tdCount * 3);
+    for (let i = 0; i < tdCount * 3; i++) tdPos[i] = -9999;
+    tdGeo.setAttribute('position', new THREE.BufferAttribute(tdPos, 3));
+    const tdMat = new THREE.PointsMaterial({
+      color: 0xffffff,
+      size: 4.5,
+      transparent: true,
+      opacity: 0.8
+    });
+    touchdownSmokePoints = new THREE.Points(tdGeo, tdMat);
+    scene.add(touchdownSmokePoints);
+  }
+
+  function triggerCrashExplosion() {
+    crashExplosionActive = true;
+    crashExplosionTimer = 2.5;
+
+    if (crashFlashLight) {
+      crashFlashLight.intensity = 20.0;
+    }
+
+    if (crashExplosionPoints) {
+      const pos = crashExplosionPoints.geometry.attributes.position.array;
+      for (let i = 0; i < pos.length; i += 3) {
+        pos[i] = (Math.random() - 0.5) * 2;
+        pos[i + 1] = 1.3 + Math.random() * 1.5;
+        pos[i + 2] = (Math.random() - 0.5) * 2;
+      }
+      crashExplosionPoints.geometry.attributes.position.needsUpdate = true;
+      crashExplosionPoints.material.opacity = 1.0;
+    }
+  }
+
+  function triggerTouchdownSmoke() {
+    if (!touchdownSmokePoints) return;
+    const pos = touchdownSmokePoints.geometry.attributes.position.array;
+    for (let i = 0; i < pos.length; i += 3) {
+      pos[i] = (Math.random() - 0.5) * 3.5;
+      pos[i + 1] = 1.3 + Math.random() * 0.8;
+      pos[i + 2] = -1.5 + (Math.random() - 0.5) * 2.0;
+    }
+    touchdownSmokePoints.geometry.attributes.position.needsUpdate = true;
+    touchdownSmokePoints.material.opacity = 0.85;
+  }
+
+  function updateCrashParticles(dt) {
+    if (crashExplosionActive) {
+      crashExplosionTimer -= dt;
+      if (crashFlashLight) {
+        crashFlashLight.intensity = Math.max(0, crashExplosionTimer * 7.0);
+      }
+      if (crashExplosionPoints) {
+        const pos = crashExplosionPoints.geometry.attributes.position.array;
+        const vels = crashExplosionPoints.userData.vels;
+        for (let i = 0; i < pos.length; i += 3) {
+          pos[i] += vels[i] * dt;
+          pos[i + 1] += vels[i + 1] * dt;
+          pos[i + 2] += vels[i + 2] * dt;
+          vels[i + 1] -= 9.8 * dt; // Gravity
+          if (pos[i + 1] < 1.25) pos[i + 1] = 1.25;
+        }
+        crashExplosionPoints.geometry.attributes.position.needsUpdate = true;
+        crashExplosionPoints.material.opacity = Math.max(0, crashExplosionTimer / 2.5);
+      }
+      if (crashExplosionTimer <= 0) {
+        crashExplosionActive = false;
+      }
+    }
+
+    if (touchdownSmokePoints && touchdownSmokePoints.material.opacity > 0.05) {
+      touchdownSmokePoints.material.opacity -= dt * 0.4;
+      const pos = touchdownSmokePoints.geometry.attributes.position.array;
+      for (let i = 0; i < pos.length; i += 3) {
+        pos[i + 1] += dt * 1.5;
+      }
+      touchdownSmokePoints.geometry.attributes.position.needsUpdate = true;
+    }
+  }
+
+  function playCrashSound() {
+    try {
+      if (!audioCtx) initAudio();
+      if (!audioCtx) return;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(140, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(35, audioCtx.currentTime + 1.2);
+      gain.gain.setValueAtTime(0.8, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1.4);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 1.4);
+    } catch (e) {}
+  }
+
   // ----------------------------------------------------------------------------
   // 8. 3D PARTICLE SYSTEMS: WATER SALVO, AGRO SPRAY & WINGTIP VORTICES
   // ----------------------------------------------------------------------------
@@ -2145,12 +2729,12 @@
     const planeCenter = new THREE.Vector3(0, flight.pos.y, 0);
 
     if (SIM.cameraMode === 'chase') {
-      // Smooth third-person chase camera behind the aircraft
-      const offset = new THREE.Vector3(0, 3.2, -12.5).applyQuaternion(flight.quat);
+      // Smooth third-person chase camera elevated so plane hovers clearly above HUD cards
+      const offset = new THREE.Vector3(0, 3.8, -13.5).applyQuaternion(flight.quat);
       const targetCamPos = planeCenter.clone().add(offset);
       camera.position.lerp(targetCamPos, 0.12);
 
-      const lookTarget = planeCenter.clone().add(new THREE.Vector3(0, 0.8, 8.0).applyQuaternion(flight.quat));
+      const lookTarget = planeCenter.clone().add(new THREE.Vector3(0, -0.6, 6.0).applyQuaternion(flight.quat));
       camera.lookAt(lookTarget);
 
       if (SIM.cameraShakeTimer > 0) {
@@ -2291,6 +2875,25 @@
         ctx.font = '8px monospace';
         ctx.fillStyle = poi.color;
         ctx.fillText(poi.name, relX, relZ - 7);
+      }
+    });
+
+    // AI Traffic Aircraft Blips
+    aiTrafficList.forEach(ai => {
+      const scale = r / 6000;
+      const relX = (ai.pos.x - flight.pos.x) * scale;
+      const relZ = -(ai.pos.z - flight.pos.z) * scale;
+      const dist = Math.hypot(relX, relZ);
+
+      if (dist < r - 5) {
+        ctx.fillStyle = ai.color;
+        ctx.beginPath();
+        ctx.arc(relX, relZ, 4.0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.font = 'bold 8px monospace';
+        ctx.fillStyle = ai.color;
+        ctx.fillText(ai.callsign + ' ' + Math.round(ai.pos.y) + 'm', relX, relZ - 8);
       }
     });
 
@@ -3489,9 +4092,27 @@
     document.getElementById('btn-sim-replay')?.addEventListener('click', toggleReplay);
     document.getElementById('btn-act-replay')?.addEventListener('click', toggleReplay);
 
-    // Crash Restart
+    // Crash Restart & Modal Binders
     document.getElementById('btn-crash-restart')?.addEventListener('click', () => {
       resetToAirFlight700();
+      const cm = document.getElementById('sim-crash-modal');
+      if (cm) cm.style.display = 'none';
+    });
+
+    document.getElementById('btn-crash-modal-restart-air')?.addEventListener('click', () => {
+      resetToAirFlight700();
+      const cm = document.getElementById('sim-crash-modal');
+      if (cm) cm.style.display = 'none';
+      const cb = document.getElementById('sim-crash-warning');
+      if (cb) cb.style.display = 'none';
+    });
+
+    document.getElementById('btn-crash-modal-restart-rwy')?.addEventListener('click', () => {
+      startFromRunway();
+      const cm = document.getElementById('sim-crash-modal');
+      if (cm) cm.style.display = 'none';
+      const cb = document.getElementById('sim-crash-warning');
+      if (cb) cb.style.display = 'none';
     });
 
     if (btnHelp && modalHelp) {
@@ -4017,7 +4638,11 @@
       }
     }
 
-    // 2. Particle FX
+    // 2. Scenery, AI Traffic & Particle FX
+    update3DWorldScenery(dt);
+    updateAITraffic(dt);
+    updateDynamicShadow();
+    updateCrashParticles(dt);
     updateParticles(dt);
 
     // 3. Dynamic Slippy Map Tile Streaming

@@ -3,7 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AeroTerra H2 — Модульный Эко-Самолёт двойного назначения | Aerospace Engineering Club</title>
+  <title>AeroTerra H2 — 3D Flight Simulator & Aerospace Suite | Created by Musayev Sardor</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#00e5ff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="AeroTerra H2">
   <meta name="description" content="Интерактивный 3D WebGL ангар и инженерный комплекс модульного водородно-электрического самолёта AeroTerra H2 (Агро-мониторинг и пожарный патруль).">
   
   <!-- Google Fonts -->
@@ -814,6 +819,27 @@
           </button>
         </div>
       </div>
+    <!-- Dedicated Crash Debriefing Modal (0 meters) -->
+    <div class="sim-crash-modal-overlay" id="sim-crash-modal" style="display: none;">
+      <div class="sim-crash-card">
+        <div class="sim-crash-title">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <span>КРУШЕНИЕ НА ВЫСОТЕ 0 МЕТРОВ</span>
+        </div>
+        <div class="sim-crash-reason-box" id="sim-crash-modal-reason">
+          Посадка на фюзеляж с невыпущенными шасси (Gear UP) или критическое превышение вертикальной скорости удара о ВПП!
+        </div>
+        <div class="sim-crash-btn-row">
+          <button class="sim-crash-btn primary" id="btn-crash-modal-restart-air">
+            <i class="fa-solid fa-plane-up"></i> <span>Восстановить в воздухе (700 м)</span>
+          </button>
+          <button class="sim-crash-btn secondary" id="btn-crash-modal-restart-rwy">
+            <i class="fa-solid fa-road"></i> <span>Начать заново на ВПП (Шасси ВКЛ)</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
     </div>
 
     <!-- Help & Pilot Manual Modal -->
@@ -2079,43 +2105,76 @@
         </div>
       </div>
 
-      <!-- Team Members Cards (Vanilla-Tilt 3D) -->
+      <!-- Musayev Sardor — Sole Creator & Chief Aerospace Architect Showcase Card -->
       <div style="margin-top: 3rem;">
         <h3 style="font-size: 1.25rem; color: #fff; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
-          <i class="fa-solid fa-id-card-clip" style="color: var(--accent-emerald);"></i> <span data-i18n="team_heading">Инженерная Команда Проекта (Aerospace Engineering Club)</span>
+          <i class="fa-solid fa-crown" style="color: #ffd700;"></i> <span data-i18n="team_heading">👑 СОЗДАТЕЛЬ И АВТОР ПРОЕКТА AEROTERRA H2</span>
         </h3>
 
-        <div class="team-cards-grid">
-          <!-- Lead 1 -->
-          <div class="team-card glass-panel" data-tilt data-tilt-max="12" data-tilt-speed="400" data-tilt-glare data-tilt-max-glare="0.2">
-            <div class="team-avatar-box"><i class="fa-solid fa-user-astronaut"></i></div>
-            <h4 class="team-name" data-i18n="member1_name">Александр Смирнов</h4>
-            <span class="team-role" data-i18n="member1_role">CHIEF DESIGNER & AERO LEAD</span>
-            <p class="team-bio" data-i18n="member1_bio">Общая компоновка Box-Wing STOL, аэродинамика профилей NACA и интеграция водородных систем.</p>
+        <div class="creator-hologram-card glass-panel" data-tilt data-tilt-max="6" data-tilt-glare data-tilt-max-glare="0.25">
+          <div class="creator-card-aura"></div>
+          <div class="creator-card-header">
+            <div class="creator-avatar-wrap">
+              <div class="creator-avatar-ring">
+                <i class="fa-solid fa-crown creator-crown-icon"></i>
+                <i class="fa-solid fa-user-astronaut creator-user-icon"></i>
+              </div>
+              <div class="creator-badge-verified">
+                <i class="fa-solid fa-check"></i> <span>VERIFIED SOLE CREATOR</span>
+              </div>
+            </div>
+
+            <div class="creator-titles">
+              <div class="creator-super-pretitle">
+                <span class="gold-badge"><i class="fa-solid fa-gem"></i> SOLE CREATOR &amp; ARCHITECT</span>
+                <span class="owner-badge"><i class="fa-solid fa-shield-halved"></i> SUPER ADMIN RBAC</span>
+              </div>
+              <h2 class="creator-main-name">Musayev Sardor — Я СОЗДАТЕЛЬ ВСЕГО</h2>
+              <div class="creator-role-title">Founder, Sole Creator &amp; Chief Aerospace Architect</div>
+              <p class="creator-official-status">
+                «Единственный автор концепции, 3D-моделирования CATIA V5 Class-A, математического ядра, водородно-электрической архитектуры и 3D-авиасимулятора AeroTerra H2.»
+              </p>
+            </div>
           </div>
 
-          <!-- Lead 2 -->
-          <div class="team-card glass-panel" data-tilt data-tilt-max="12" data-tilt-speed="400" data-tilt-glare data-tilt-max-glare="0.2">
-            <div class="team-avatar-box"><i class="fa-solid fa-compass-drafting"></i></div>
-            <h4 class="team-name" data-i18n="member2_name">Елена Воронова</h4>
-            <span class="team-role" data-i18n="member2_role">CATIA V5 CLASS-A SPECIALIST</span>
-            <p class="team-bio" data-i18n="member2_bio">Параметрическое проектирование поверхностей в ICEM Surf, непрерывность кривизны G2/G3 и композитный силовой набор.</p>
+          <!-- Key Roles & 100% Contribution Grid -->
+          <div class="creator-stats-grid">
+            <div class="creator-stat-box">
+              <div class="stat-pct">100%</div>
+              <div class="stat-name"><i class="fa-solid fa-compass-drafting cyan"></i> Architecture</div>
+              <div class="stat-desc">Концепт Box-Wing, STOL-планер и компоновка систем</div>
+            </div>
+            <div class="creator-stat-box">
+              <div class="stat-pct">100%</div>
+              <div class="stat-name"><i class="fa-solid fa-cubes-stacked emerald"></i> 3D CAD &amp; WebGL</div>
+              <div class="stat-desc">CATIA V5 Class-A, Three.js PBR шейдеры, 3D-ангар</div>
+            </div>
+            <div class="creator-stat-box">
+              <div class="stat-pct">100%</div>
+              <div class="stat-name"><i class="fa-solid fa-wind orange"></i> Flight Physics</div>
+              <div class="stat-desc">NACA 64-215, 6-DoF симуляция, DEP blown-wing</div>
+            </div>
+            <div class="creator-stat-box">
+              <div class="stat-pct">100%</div>
+              <div class="stat-name"><i class="fa-solid fa-microchip purple"></i> Fullstack AI System</div>
+              <div class="stat-desc">ИИ-конструктор, Neon Serverless DB, Vercel Edge</div>
+            </div>
           </div>
 
-          <!-- Lead 3 -->
-          <div class="team-card glass-panel" data-tilt data-tilt-max="12" data-tilt-speed="400" data-tilt-glare data-tilt-max-glare="0.2">
-            <div class="team-avatar-box"><i class="fa-solid fa-atom"></i></div>
-            <h4 class="team-name" data-i18n="member3_name">Даниил Ким</h4>
-            <span class="team-role" data-i18n="member3_role">H2 PROPULSION & THERMAL LEAD</span>
-            <p class="team-bio" data-i18n="member3_bio">Криогенный водородный бак, балансировка PEM топливной ячейки и тепловой менеджмент силовой установки.</p>
-          </div>
-
-          <!-- Lead 4 -->
-          <div class="team-card glass-panel" data-tilt data-tilt-max="12" data-tilt-speed="400" data-tilt-glare data-tilt-max-glare="0.2">
-            <div class="team-avatar-box"><i class="fa-solid fa-satellite-dish"></i></div>
-            <h4 class="team-name" data-i18n="member4_name">Марк Романов</h4>
-            <span class="team-role" data-i18n="member4_role">AVIONICS & RC TEST PILOT</span>
-            <p class="team-bio" data-i18n="member4_bio">Бортовой компьютер на ArduPilot, каналы телеметрии Starlink/5G и пилотирование лётного прототипа 1:5.</p>
+          <!-- Creator Contact & Credentials Footer -->
+          <div class="creator-contact-bar">
+            <div class="creator-contact-item">
+              <i class="fa-solid fa-envelope gold"></i>
+              <span>Email: <strong>sarikmusaev2006@gmail.com</strong></span>
+            </div>
+            <div class="creator-contact-item">
+              <i class="fa-solid fa-award emerald"></i>
+              <span>Сертификация: <strong>EASA CS-23 Standard Compliance</strong></span>
+            </div>
+            <div class="creator-contact-item">
+              <i class="fa-solid fa-lock-open cyan"></i>
+              <span>Статус доступа: <strong>Супер-Администратор Проекта</strong></span>
+            </div>
           </div>
         </div>
 
@@ -2185,7 +2244,7 @@
     <div class="footer-content">
       <div class="footer-left">
         <h3 style="color: #fff; font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem;">
-          <i class="fa-solid fa-plane-departure" style="color: var(--accent-cyan);"></i> AeroTerra H2 — Aerospace Engineering Club
+          <i class="fa-solid fa-crown" style="color: #ffd700;"></i> AeroTerra H2 — Created by Musayev Sardor
         </h3>
         <p class="footer-disclaimer" data-i18n="footer_rights">
           Проект разработан в рамках Студенческого Аэрокосмического Клуба. Подготовлено к презентации жюри и венчурным инвесторам.
@@ -2206,7 +2265,7 @@
     <div style="border-bottom: 2px solid #00e5ff; padding-bottom: 15px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
       <div>
         <h1 style="color: #00e5ff; margin: 0; font-size: 24px;">AEROTERRA H2 — ТЕХНИЧЕСКИЙ ПАСПОРТ САМОЛЁТА</h1>
-        <p style="color: #8b9bb4; margin: 4px 0 0 0; font-size: 14px;">Aerospace Engineering Club | Сертификат предварительного проекта CS-23</p>
+        <p style="color: #8b9bb4; margin: 4px 0 0 0; font-size: 14px;">Автор и Главный Архитектор: <strong>Musayev Sardor — Я СОЗДАТЕЛЬ ВСЕГО</strong> | Сертификат CS-23</p>
       </div>
       <div style="text-align: right; color: #00ff9d; font-family: monospace; font-size: 14px;">
         РЕВИЗИЯ: 2026-B<br>СТАТУС: ВАЛИДИРОВАНО
@@ -2241,8 +2300,8 @@
     </div>
 
     <div style="display: flex; justify-content: space-between; margin-top: 40px; border-top: 1px dashed #54657e; padding-top: 20px; font-size: 13px; color: #8b9bb4;">
-      <div>Главный конструктор проекта: ____________________ / Смирнов А. /</div>
-      <div>Печать Aerospace Engineering Club: [ VALIDATED ]</div>
+      <div>👑 Основатель и Главный конструктор: <strong>Musayev Sardor — Я СОЗДАТЕЛЬ ВСЕГО</strong> (sarikmusaev2006@gmail.com)</div>
+      <div>Печать Главного Конструктора: [ MUSAYEV SARDOR · VALIDATED ]</div>
     </div>
   </div>
 
@@ -2561,7 +2620,7 @@
         <div class="pres-slide" data-slide="7">
           <div class="slide-badge">СЛАЙД 7 / 7 · ЗАКЛЮЧЕНИЕ & СТАТУС ПРОЕКТА</div>
           <h2 class="slide-heading">Готовность к Сертификации CS-23 UAV & Демонстрация</h2>
-          <div class="slide-subtitle">Проект готов к переходу от TRL-5 к опытной серии TRL-7 и защите перед инвесторами</div>
+          <div class="slide-subtitle">👑 Автор и Единственный Создатель: <strong>Musayev Sardor — Я СОЗДАТЕЛЬ ВСЕГО</strong> | TRL-7 Ready</div>
           <div class="slide-grid-2col">
             <div class="slide-card-glass highlight">
               <h3><i class="fa-solid fa-certificate cyan"></i> Сертификационный Базис</h3>
@@ -2579,6 +2638,24 @@
           </div>
 
           <!-- Download App Suite (Pitch Deck & Defense) -->
+          <div class="pres-download-hero-banner">
+            <div class="pres-download-info">
+              <h4><i class="fa-solid fa-crown gold"></i> <span>📲 СКАЧАТЬ ПРИЛОЖЕНИЕ И ИГРУ AEROTERRA H2 (Created by Musayev Sardor)</span></h4>
+              <p>Официальные автономные билды для смартфонов (PWA iOS/Android), компьютеров (macOS/Windows) и PDF-паспорт создателя</p>
+            </div>
+            <div class="pres-download-btns">
+              <button class="btn-download-action btn-dl-pwa" id="btn-dl-phone-app">
+                <i class="fa-solid fa-mobile-screen-button"></i> <span>📱 Скачать на Телефон (iOS / Android)</span>
+              </button>
+              <button class="btn-download-action" id="btn-dl-offline-game">
+                <i class="fa-solid fa-laptop-code"></i> <span>💻 Скачать полную 3D-Игру (.html)</span>
+              </button>
+              <button class="btn-download-action" id="btn-dl-creator-pdf">
+                <i class="fa-solid fa-file-pdf"></i> <span>📄 Паспорт Создателя (PDF)</span>
+              </button>
+            </div>
+          </div>
+
           <div class="download-app-suite glass-panel">
             <div class="download-suite-header">
               <div class="download-suite-badge"><i class="fa-solid fa-cloud-arrow-down cyan"></i> AEROTERRA SUITE</div>

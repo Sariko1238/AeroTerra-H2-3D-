@@ -164,20 +164,11 @@
       ai_name: 'ИИ-Главный Конструктор',
       ai_btn_audit: 'Аудит Самолёта',
       ai_input_ph: 'Спросить главного конструктора...',
-      team_heading: 'Инженерная Команда Проекта (Aerospace Engineering Club)',
-      member1_name: 'Александр Смирнов',
-      member1_role: 'CHIEF DESIGNER & AERO LEAD',
-      member1_bio: 'Общая компоновка Box-Wing STOL, аэродинамика профилей NACA и интеграция водородных систем.',
-      member2_name: 'Елена Воронова',
-      member2_role: 'CATIA V5 CLASS-A SPECIALIST',
-      member2_bio: 'Параметрическое проектирование поверхностей в ICEM Surf, непрерывность кривизны G2/G3 и композитный силовой набор.',
-      member3_name: 'Даниил Ким',
-      member3_role: 'H2 PROPULSION & THERMAL LEAD',
-      member3_bio: 'Криогенный водородный бак, балансировка PEM топливной ячейки и тепловой менеджмент силовой установки.',
-      member4_name: 'Марк Романов',
-      member4_role: 'AVIONICS & RC TEST PILOT',
-      member4_bio: 'Бортовой компьютер на ArduPilot, каналы телеметрии Starlink/5G и пилотирование лётного прототипа 1:5.',
-      footer_rights: 'Проект разработан в рамках Студенческого Аэрокосмического Клуба. Подготовлено к презентации жюри и венчурным инвесторам.'
+      team_heading: '👑 СОЗДАТЕЛЬ И АВТОР ПРОЕКТА AEROTERRA H2',
+      creator_name: 'Musayev Sardor — Я СОЗДАТЕЛЬ ВСЕГО',
+      creator_role: 'Founder, Sole Creator & Chief Aerospace Architect',
+      creator_bio: 'Единственный автор концепции, 3D-моделирования CATIA V5 Class-A, математического ядра, водородно-электрической архитектуры и 3D-авиасимулятора AeroTerra H2.',
+      footer_rights: '© 2026 AeroTerra H2. Единственный создатель и главный авиаконструктор: Musayev Sardor (sarikmusaev2006@gmail.com). Все права защищены.'
     },
     en: {
       nav_blueprint: 'Engineering Blueprint',
@@ -282,20 +273,11 @@
       ai_name: 'AI Chief Designer',
       ai_btn_audit: 'Audit Aircraft',
       ai_input_ph: 'Ask Chief Designer...',
-      team_heading: 'Aerospace Engineering Club Leadership',
-      member1_name: 'Alexander Smirnov',
-      member1_role: 'CHIEF DESIGNER & AERO LEAD',
-      member1_bio: 'Overall Box-Wing STOL layout, NACA transonic airfoil optimization and hydrogen system architecture.',
-      member2_name: 'Elena Voronova',
-      member2_role: 'CATIA V5 CLASS-A SPECIALIST',
-      member2_bio: 'Parametric surface modeling in ICEM Surf, G2/G3 curvature continuity and carbon fiber structural ribs.',
-      member3_name: 'Daniil Kim',
-      member3_role: 'H2 PROPULSION & THERMAL LEAD',
-      member3_bio: 'Cryogenic liquid hydrogen containment, PEM fuel cell balancing and high-efficiency thermal radiator loop.',
-      member4_name: 'Mark Romanov',
-      member4_role: 'AVIONICS & RC TEST PILOT',
-      member4_bio: 'Flight controller based on ArduPilot/MAVLink, satellite telemetry links and 1:5 prototype flight testing.',
-      footer_rights: 'Designed and developed within the Collegiate Aerospace Engineering Club. Prepared for investor and jury presentation.'
+      team_heading: '👑 SOLE CREATOR & ARCHITECT OF AEROTERRA H2',
+      creator_name: 'Musayev Sardor — SOLE CREATOR OF EVERYTHING',
+      creator_role: 'Founder, Sole Creator & Chief Aerospace Architect',
+      creator_bio: 'Sole author of the concept, CATIA V5 Class-A 3D modeling, mathematical flight engine, hydrogen-electric architecture, and AeroTerra H2 3D Flight Simulator.',
+      footer_rights: '© 2026 AeroTerra H2. Sole creator & chief aerospace architect: Musayev Sardor (sarikmusaev2006@gmail.com). All rights reserved.'
     }
   };
 
@@ -2515,11 +2497,15 @@
       handleFlightPhysics();
     }
 
-    // 8. Pulse Hotspot Markers
-    const time = performance.now() * 0.003;
+    // 8. Pulse Hotspot Markers (Strictly hidden in flight & simulator mode)
+    const isHangarActive = !document.body.classList.contains('in-simulator-mode') && !STATE.isFlying;
     hotspotSprites.forEach(sprite => {
-      const scale = 0.65 + Math.sin(time) * 0.08;
-      sprite.scale.set(scale, scale, 1);
+      sprite.visible = isHangarActive;
+      if (isHangarActive) {
+        const time = performance.now() * 0.003;
+        const scale = 0.65 + Math.sin(time) * 0.08;
+        sprite.scale.set(scale, scale, 1);
+      }
     });
 
     controls.update();
@@ -4051,10 +4037,10 @@
       btnVipProf.addEventListener('click', () => {
         hideAlert();
         const profUser = {
-          fullName: 'Проф. А. В. Смирнов',
-          email: 'chief@aeroterra.aero',
+          fullName: 'Гостевой Эксперт / Член Жюри',
+          email: 'guest.jury@aeroterra.aero',
           role: 'professor_guest',
-          organization: 'Aerospace Engineering Club / Гостевой Эксперт',
+          organization: 'Аттестационная комиссия / Гостевой Эксперт',
           isSuperAdmin: false
         };
         localStorage.setItem('aeroterra_token', 'prof-guest-token-' + Date.now());
@@ -4062,7 +4048,7 @@
         localStorage.setItem('aeroterra_user', JSON.stringify(profUser));
         applyAdminAccessState();
         updateAuthUI(profUser);
-        showAlert('🎓 ДЕМО-ВХОД: Профессор А. В. Смирнов (Гостевой Эксперт). Права администрирования отключены.', 'info');
+        showAlert('🎓 ДЕМО-ВХОД: Эксперт Жюри (Гостевой Режим). Права администрирования отключены.', 'info');
         setTimeout(() => { if (authModal) authModal.style.display = 'none'; }, 800);
       });
     }
@@ -5467,19 +5453,105 @@
       console.log('[PWA] beforeinstallprompt captured.');
     });
 
-    const triggerDesktopDownload = (e) => {
-      if (e) e.preventDefault();
-      const fileData = `[InternetShortcut]\nURL=${window.location.origin}\nIconIndex=0\n`;
-      const blob = new Blob([fileData], { type: 'text/plain;charset=utf-8' });
+    const generateOfflineGameHtml = () => {
+      return '<!DOCTYPE html>\n' +
+'<html lang="ru">\n' +
+'<head>\n' +
+'  <meta charset="UTF-8">\n' +
+'  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">\n' +
+'  <title>AeroTerra H2 — Standalone 3D Flight Simulator (Created by Musayev Sardor)</title>\n' +
+'  <style>\n' +
+'    body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #050811; font-family: monospace; }\n' +
+'    canvas { display: block; width: 100vw; height: 100vh; }\n' +
+'    #hud { position: fixed; top: 16px; left: 16px; color: #00e5ff; font-size: 14px; background: rgba(5,8,17,0.85); padding: 12px 16px; border-radius: 8px; border: 1px solid rgba(0,229,255,0.4); pointer-events: none; }\n' +
+'    #author { position: fixed; top: 16px; right: 16px; color: #ffd700; font-size: 13px; background: rgba(5,8,17,0.85); padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(255,215,0,0.5); pointer-events: none; }\n' +
+'    #controls { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); color: #fff; font-size: 12px; background: rgba(5,8,17,0.85); padding: 8px 16px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.2); }\n' +
+'  </style>\n' +
+'  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>\n' +
+'</head>\n' +
+'<body>\n' +
+'  <div id="hud">\n' +
+'    <div>✈️ <strong>AEROTERRA H2 OFFLINE SIMULATOR</strong></div>\n' +
+'    <div>ALT: <span id="alt">700</span> m | IAS: <span id="spd">210</span> km/h | GEAR: DOWN</div>\n' +
+'  </div>\n' +
+'  <div id="author">👑 Musayev Sardor — Я СОЗДАТЕЛЬ ВСЕГО</div>\n' +
+'  <div id="controls">[W/S] Тангаж · [A/D] Крен · [Q/E] Рыскание · [Shift/Ctrl] Тяга</div>\n' +
+'  <canvas id="cv"></canvas>\n' +
+'  <script>\n' +
+'    const cv = document.getElementById("cv");\n' +
+'    const renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true });\n' +
+'    renderer.setSize(window.innerWidth, window.innerHeight);\n' +
+'    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));\n' +
+'    const scene = new THREE.Scene();\n' +
+'    scene.background = new THREE.Color(0x87ceeb);\n' +
+'    scene.fog = new THREE.FogExp2(0xdbeafe, 0.0003);\n' +
+'    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 10000);\n' +
+'    const hemi = new THREE.HemisphereLight(0xffffff, 0x444455, 0.9); scene.add(hemi);\n' +
+'    const dir = new THREE.DirectionalLight(0xfffaed, 1.4); dir.position.set(500, 1200, 800); scene.add(dir);\n' +
+'    const ground = new THREE.Mesh(new THREE.PlaneGeometry(12000, 12000), new THREE.MeshStandardMaterial({ color: 0x2d4a2d, roughness: 0.9 }));\n' +
+'    ground.rotation.x = -Math.PI / 2; scene.add(ground);\n' +
+'    const rwy = new THREE.Mesh(new THREE.PlaneGeometry(36, 1200), new THREE.MeshStandardMaterial({ color: 0x222226 }));\n' +
+'    rwy.rotation.x = -Math.PI / 2; rwy.position.y = 0.05; scene.add(rwy);\n' +
+'    const plane = new THREE.Group();\n' +
+'    const fuse = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.4, 6.2, 16), new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.2 }));\n' +
+'    fuse.rotation.x = Math.PI / 2; plane.add(fuse);\n' +
+'    const wing = new THREE.Mesh(new THREE.BoxGeometry(12.4, 0.12, 1.4), new THREE.MeshStandardMaterial({ color: 0xf8fafc }));\n' +
+'    wing.position.set(0, 0.3, 0.4); plane.add(wing);\n' +
+'    [-1, 1].forEach(s => {\n' +
+'      const w = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.8, 0.9), new THREE.MeshStandardMaterial({ color: 0x00e5ff }));\n' +
+'      w.position.set(s * 6.2, 0.6, 0.4); plane.add(w);\n' +
+'    });\n' +
+'    plane.position.set(0, 700, 0); scene.add(plane);\n' +
+'    let pos = { x: 0, y: 700, z: 0 }, rot = { x: 0, y: 0, z: 0 }, spd = 58;\n' +
+'    const keys = {};\n' +
+'    window.addEventListener("keydown", e => keys[e.code] = true);\n' +
+'    window.addEventListener("keyup", e => keys[e.code] = false);\n' +
+'    window.addEventListener("resize", () => {\n' +
+'      camera.aspect = window.innerWidth / window.innerHeight;\n' +
+'      camera.updateProjectionMatrix();\n' +
+'      renderer.setSize(window.innerWidth, window.innerHeight);\n' +
+'    });\n' +
+'    function anim() {\n' +
+'      requestAnimationFrame(anim);\n' +
+'      if (keys["KeyW"]) rot.x += 0.02;\n' +
+'      if (keys["KeyS"]) rot.x -= 0.02;\n' +
+'      if (keys["KeyA"]) { rot.z += 0.03; rot.y -= 0.015; }\n' +
+'      if (keys["KeyD"]) { rot.z -= 0.03; rot.y += 0.015; }\n' +
+'      rot.z *= 0.94; rot.x *= 0.96;\n' +
+'      pos.y += Math.sin(-rot.x) * spd * 0.016;\n' +
+'      pos.z += Math.cos(rot.y) * spd * 0.016;\n' +
+'      pos.x += Math.sin(rot.y) * spd * 0.016;\n' +
+'      if (pos.y < 1.2) pos.y = 1.2;\n' +
+'      plane.position.set(pos.x, pos.y, pos.z);\n' +
+'      plane.rotation.set(rot.x, rot.y, rot.z);\n' +
+'      camera.position.set(pos.x - Math.sin(rot.y) * 14, pos.y + 3.8, pos.z - Math.cos(rot.y) * 14);\n' +
+'      camera.lookAt(pos.x, pos.y + 0.4, pos.z + 10);\n' +
+'      document.getElementById("alt").textContent = Math.round(pos.y);\n' +
+'      document.getElementById("spd").textContent = Math.round(spd * 3.6);\n' +
+'      renderer.render(scene, camera);\n' +
+'    }\n' +
+'    anim();\n' +
+'  <\/script>\n' +
+'</body>\n' +
+'</html>';
+    };
+
+    const downloadFile = (filename, content, mime = 'text/html') => {
+      const blob = new Blob([content], { type: mime + ';charset=utf-8' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = 'AeroTerra-H2-Desktop-v2.4.url';
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(a.href);
+    };
 
-      showGlobalToast('📦 Дистрибутив AeroTerra H2 Desktop готов к запуску! Для автономного macOS/Windows приложения выполните npm run start или упакуйте через Electron.', 6000);
+    const triggerDesktopDownload = (e) => {
+      if (e) e.preventDefault();
+      const htmlGame = generateOfflineGameHtml();
+      downloadFile('AeroTerra-H2-Desktop-Offline-Game.html', htmlGame);
+      showGlobalToast('💻 3D-Игра AeroTerra H2 сохранена на ваш компьютер! Запускается офлайн двойным кликом.', 5500);
     };
 
     const triggerPwaInstall = async (e) => {
@@ -5487,15 +5559,26 @@
       if (deferredInstallPrompt) {
         deferredInstallPrompt.prompt();
         const { outcome } = await deferredInstallPrompt.userChoice;
-        console.log(`[PWA] User choice: ${outcome}`);
+        console.log('[PWA] User choice: ' + outcome);
         deferredInstallPrompt = null;
       } else {
         const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
         if (isIOS) {
-          alert('📲 УСТАНОВКА НА IPHONE / IPAD:\n\n1. Нажмите кнопку «Поделиться» (иконка квадрата со стрелкой вверх) в нижней панели Safari.\n2. Прокрутите вниз и выберите «На экран «Домой»» (Add to Home Screen).\n3. Нажмите «Добавить» — ярлык AeroTerra H2 появится на рабочем столе!');
+          alert('📲 УСТАНОВКА НА IPHONE / IPAD:\n\n1. Нажмите кнопку «Поделиться» (иконка квадрата со стрелкой вверх) в нижней панели Safari.\n2. Выберите «На экран «Домой»» (Add to Home Screen).\n3. Нажмите «Добавить» — игра AeroTerra H2 появится на домашнем экране!\n\nТакже автономный файл игры скачан на ваше устройство.');
         } else {
           showGlobalToast('📲 Для установки PWA: нажмите иконку в адресной строке или меню браузера (⋮) ➔ «Установить приложение / На главный экран».', 6000);
         }
+        const htmlGame = generateOfflineGameHtml();
+        downloadFile('AeroTerra-H2-Mobile-Game-by-Musayev-Sardor.html', htmlGame);
+      }
+    };
+
+    const triggerCreatorPdf = (e) => {
+      if (e) e.preventDefault();
+      const btnPdf = document.getElementById('btn-export-pdf');
+      if (btnPdf) {
+        btnPdf.click();
+        showGlobalToast('📄 Генерация официального инженерного паспорта Создателя Musayev Sardor (PDF)...', 4000);
       }
     };
 
@@ -5510,32 +5593,23 @@
       if (simLink) {
         simLink.click();
       }
-      showGlobalToast('🚀 Запуск авиасимулятора AeroTerra H2 Online...', 3000);
+      showGlobalToast('🚀 Запуск симулятора полётов AeroTerra H2 Online...', 3000);
     };
 
-    // Desktop Buttons
-    const dlDesktop = document.getElementById('btn-dl-desktop-pkg');
-    if (dlDesktop) dlDesktop.addEventListener('click', triggerDesktopDownload);
-    document.querySelectorAll('.btn-dl-desktop-club').forEach(btn => {
-      btn.addEventListener('click', triggerDesktopDownload);
-    });
+    // Button Binders
+    document.getElementById('btn-dl-desktop-pkg')?.addEventListener('click', triggerDesktopDownload);
+    document.querySelectorAll('.btn-dl-desktop-club').forEach(btn => btn.addEventListener('click', triggerDesktopDownload));
+    document.getElementById('btn-dl-offline-game')?.addEventListener('click', triggerDesktopDownload);
 
-    // PWA Buttons
-    const dlPwa = document.getElementById('btn-dl-pwa-app');
-    if (dlPwa) dlPwa.addEventListener('click', triggerPwaInstall);
-    document.querySelectorAll('.btn-dl-pwa-club, .btn-dl-pwa').forEach(btn => {
-      btn.addEventListener('click', triggerPwaInstall);
-    });
+    document.getElementById('btn-dl-pwa-app')?.addEventListener('click', triggerPwaInstall);
+    document.getElementById('btn-dl-phone-app')?.addEventListener('click', triggerPwaInstall);
+    document.querySelectorAll('.btn-dl-pwa-club, .btn-dl-pwa').forEach(btn => btn.addEventListener('click', triggerPwaInstall));
 
-    // Play Online Buttons
-    const dlPlay = document.getElementById('btn-dl-play-sim');
-    if (dlPlay) dlPlay.addEventListener('click', triggerPlayOnline);
-    document.querySelectorAll('.btn-dl-play-club').forEach(btn => {
-      btn.addEventListener('click', triggerPlayOnline);
-    });
-  }
+    document.getElementById('btn-dl-creator-pdf')?.addEventListener('click', triggerCreatorPdf);
 
-  // --------------------------------------------------------------------------
+    document.getElementById('btn-dl-play-sim')?.addEventListener('click', triggerPlayOnline);
+    document.querySelectorAll('.btn-dl-play-club').forEach(btn => btn.addEventListener('click', triggerPlayOnline));
+  }  // --------------------------------------------------------------------------
   // 19. APPLICATION ENTRY POINT
   // --------------------------------------------------------------------------
   window.addEventListener('DOMContentLoaded', () => {
@@ -5552,6 +5626,15 @@
     setupAdminCms();
     setupDevConsole();
     setupDownloadAppSuite();
+
+    // Register PWA Service Worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js').then(() => {
+        console.log('[PWA] Service Worker registered successfully.');
+      }).catch(err => {
+        console.warn('[PWA] Service Worker registration error:', err);
+      });
+    }
 
     // Open Node #1 (Wing) in Inspector Panel by default (on desktop)
     setTimeout(() => {

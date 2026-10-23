@@ -8272,3 +8272,357 @@ body.in-simulator-mode .hangar-hud-overlay {
 
 
 
+
+/* ==========================================================================
+   MUSAYEV SARDOR — SOLE CREATOR & ARCHITECT HOLOGRAM CARD STYLES
+   ========================================================================== */
+.creator-hologram-card {
+  position: relative;
+  background: linear-gradient(135deg, rgba(16, 24, 40, 0.95), rgba(10, 16, 28, 0.98)) !important;
+  border: 2px solid rgba(255, 215, 0, 0.7) !important;
+  box-shadow: 0 0 35px rgba(255, 215, 0, 0.25), inset 0 0 30px rgba(0, 229, 255, 0.15) !important;
+  border-radius: 20px;
+  padding: 2rem;
+  overflow: hidden;
+  backdrop-filter: blur(20px);
+  margin-top: 1rem;
+}
+.creator-card-aura {
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle at 30% 30%, rgba(255, 215, 0, 0.12), transparent 60%),
+              radial-gradient(circle at 70% 70%, rgba(0, 229, 255, 0.1), transparent 60%);
+  pointer-events: none;
+  animation: creatorHoloSpin 20s linear infinite;
+}
+@keyframes creatorHoloSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.creator-card-header {
+  display: flex;
+  align-items: center;
+  gap: 1.8rem;
+  position: relative;
+  z-index: 2;
+  margin-bottom: 1.6rem;
+  flex-wrap: wrap;
+}
+.creator-avatar-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+}
+.creator-avatar-ring {
+  width: 92px;
+  height: 92px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 215, 0, 0.25), rgba(10, 16, 28, 0.95));
+  border: 3px solid #ffd700;
+  box-shadow: 0 0 25px rgba(255, 215, 0, 0.5), inset 0 0 15px rgba(255, 215, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.creator-crown-icon {
+  position: absolute;
+  top: -14px;
+  font-size: 1.5rem;
+  color: #ffd700;
+  filter: drop-shadow(0 0 8px #ffd700);
+  animation: crownPulse 2s ease-in-out infinite;
+}
+@keyframes crownPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15) translateY(-3px); }
+}
+.creator-user-icon {
+  font-size: 2.5rem;
+  color: #fff;
+}
+.creator-badge-verified {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: #00ff9d;
+  background: rgba(0, 255, 157, 0.15);
+  border: 1px solid rgba(0, 255, 157, 0.4);
+  padding: 3px 8px;
+  border-radius: 20px;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.creator-titles {
+  flex: 1;
+  min-width: 280px;
+}
+.creator-super-pretitle {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+.gold-badge {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #ffd700;
+  background: rgba(255, 215, 0, 0.15);
+  border: 1px solid rgba(255, 215, 0, 0.45);
+  padding: 3px 10px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.owner-badge {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #00e5ff;
+  background: rgba(0, 229, 255, 0.15);
+  border: 1px solid rgba(0, 229, 255, 0.45);
+  padding: 3px 10px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.creator-main-name {
+  font-family: 'Space Grotesk', -apple-system, sans-serif;
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.01em;
+  margin: 4px 0;
+  text-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+}
+.creator-role-title {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: #ffd700;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+}
+.creator-official-status {
+  font-size: 0.95rem;
+  color: #cbd5e1;
+  line-height: 1.5;
+  margin: 0;
+  font-style: italic;
+  border-left: 3px solid #ffd700;
+  padding-left: 12px;
+}
+.creator-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  position: relative;
+  z-index: 2;
+  margin-bottom: 1.5rem;
+}
+.creator-stat-box {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 1rem;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+.creator-stat-box:hover {
+  border-color: rgba(255, 215, 0, 0.45);
+  transform: translateY(-3px);
+  background: rgba(20, 30, 55, 0.85);
+}
+.stat-pct {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.8rem;
+  font-weight: 900;
+  color: #ffd700;
+  text-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+}
+.stat-name {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #f8fafc;
+  margin: 4px 0 2px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.stat-desc {
+  font-size: 0.72rem;
+  color: #94a3b8;
+  line-height: 1.35;
+}
+.creator-contact-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  position: relative;
+  z-index: 2;
+  font-size: 0.82rem;
+  color: #94a3b8;
+}
+.creator-contact-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.creator-contact-item strong {
+  color: #e2e8f0;
+}
+
+/* ==========================================================================
+   SIMULATOR HUD VISUAL COMPACTNESS & ROLL FIX (100% PLANE VISIBILITY)
+   ========================================================================== */
+#sim-roll-deg {
+  font-size: 12px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.sim-panel-center {
+  bottom: 8px !important;
+  padding: 6px 12px !important;
+  transform: scale(0.92) !important;
+  transform-origin: bottom center !important;
+  max-width: 620px !important;
+}
+
+/* Crash Debrief Modal & Emergency Banner */
+.sim-crash-modal-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(10, 0, 0, 0.78);
+  backdrop-filter: blur(14px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 12000;
+  animation: crashFadeIn 0.35s ease;
+}
+@keyframes crashFadeIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+.sim-crash-card {
+  max-width: 520px;
+  width: 90%;
+  background: linear-gradient(135deg, rgba(28, 10, 10, 0.96), rgba(15, 5, 5, 0.98)) !important;
+  border: 2px solid #ef4444 !important;
+  box-shadow: 0 0 40px rgba(239, 68, 68, 0.5), inset 0 0 25px rgba(239, 68, 68, 0.2) !important;
+  border-radius: 18px;
+  padding: 24px;
+  text-align: center;
+  color: #fff;
+}
+.sim-crash-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #ff4d4d;
+  margin-bottom: 12px;
+  text-shadow: 0 0 20px rgba(239, 68, 68, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.sim-crash-reason-box {
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: 12px;
+  padding: 14px;
+  margin: 16px 0;
+  font-size: 0.92rem;
+  color: #fca5a5;
+  line-height: 1.45;
+}
+.sim-crash-btn-row {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+.sim-crash-btn {
+  padding: 12px 18px;
+  border-radius: 10px;
+  font-family: var(--font-tech);
+  font-weight: 800;
+  font-size: 0.88rem;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sim-crash-btn.primary {
+  background: linear-gradient(135deg, #00e5ff, #0284c7);
+  color: #060b16;
+  box-shadow: 0 0 16px rgba(0, 229, 255, 0.4);
+}
+.sim-crash-btn.primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 24px rgba(0, 229, 255, 0.6);
+}
+.sim-crash-btn.secondary {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+.sim-crash-btn.secondary:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* Presentation Pitch Deck Download Hero Banner */
+.pres-download-hero-banner {
+  background: linear-gradient(135deg, rgba(16, 24, 45, 0.92), rgba(10, 15, 30, 0.95));
+  border: 1px solid rgba(0, 229, 255, 0.4);
+  box-shadow: 0 0 25px rgba(0, 229, 255, 0.2);
+  border-radius: 14px;
+  padding: 16px 20px;
+  margin: 16px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+.pres-download-info h4 {
+  margin: 0 0 4px 0;
+  font-size: 1.05rem;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pres-download-info p {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #94a3b8;
+}
+.pres-download-btns {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
