@@ -5412,6 +5412,130 @@
   }
 
   // --------------------------------------------------------------------------
+  // GLOBAL TOAST NOTIFICATIONS
+  // --------------------------------------------------------------------------
+  function showGlobalToast(msg, duration = 4000) {
+    let toast = document.getElementById('global-app-toast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'global-app-toast';
+      toast.style.cssText = `
+        position: fixed;
+        bottom: 24px;
+        left: 50%;
+        transform: translateX(-50%) translateY(100px);
+        background: rgba(10, 16, 28, 0.94);
+        border: 1px solid rgba(0, 242, 254, 0.55);
+        color: #e2f1ff;
+        padding: 12px 22px;
+        border-radius: 12px;
+        font-family: 'Space Grotesk', -apple-system, sans-serif;
+        font-size: 0.9rem;
+        font-weight: 500;
+        letter-spacing: 0.02em;
+        backdrop-filter: blur(16px);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(0, 242, 254, 0.25);
+        z-index: 99999;
+        transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease;
+        opacity: 0;
+        pointer-events: none;
+        max-width: 90vw;
+        text-align: center;
+      `;
+      document.body.appendChild(toast);
+    }
+    toast.textContent = msg;
+    toast.style.opacity = '1';
+    toast.style.transform = 'translateX(-50%) translateY(0)';
+
+    clearTimeout(toast._timeout);
+    toast._timeout = setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateX(-50%) translateY(100px)';
+    }, duration);
+  }
+
+  // --------------------------------------------------------------------------
+  // DOWNLOAD APP SUITE & PWA INSTALLATION HANDLER
+  // --------------------------------------------------------------------------
+  function setupDownloadAppSuite() {
+    let deferredInstallPrompt = null;
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredInstallPrompt = e;
+      console.log('[PWA] beforeinstallprompt captured.');
+    });
+
+    const triggerDesktopDownload = (e) => {
+      if (e) e.preventDefault();
+      const fileData = `[InternetShortcut]\nURL=${window.location.origin}\nIconIndex=0\n`;
+      const blob = new Blob([fileData], { type: 'text/plain;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'AeroTerra-H2-Desktop-v2.4.url';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+
+      showGlobalToast('📦 Дистрибутив AeroTerra H2 Desktop готов к запуску! Для автономного macOS/Windows приложения выполните npm run start или упакуйте через Electron.', 6000);
+    };
+
+    const triggerPwaInstall = async (e) => {
+      if (e) e.preventDefault();
+      if (deferredInstallPrompt) {
+        deferredInstallPrompt.prompt();
+        const { outcome } = await deferredInstallPrompt.userChoice;
+        console.log(`[PWA] User choice: ${outcome}`);
+        deferredInstallPrompt = null;
+      } else {
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        if (isIOS) {
+          alert('📲 УСТАНОВКА НА IPHONE / IPAD:\n\n1. Нажмите кнопку «Поделиться» (иконка квадрата со стрелкой вверх) в нижней панели Safari.\n2. Прокрутите вниз и выберите «На экран «Домой»» (Add to Home Screen).\n3. Нажмите «Добавить» — ярлык AeroTerra H2 появится на рабочем столе!');
+        } else {
+          showGlobalToast('📲 Для установки PWA: нажмите иконку в адресной строке или меню браузера (⋮) ➔ «Установить приложение / На главный экран».', 6000);
+        }
+      }
+    };
+
+    const triggerPlayOnline = (e) => {
+      if (e) e.preventDefault();
+      const presModal = document.getElementById('presentation-modal');
+      if (presModal) {
+        presModal.style.display = 'none';
+        document.body.style.overflow = '';
+      }
+      const simLink = document.getElementById('nav-simulator-tab');
+      if (simLink) {
+        simLink.click();
+      }
+      showGlobalToast('🚀 Запуск авиасимулятора AeroTerra H2 Online...', 3000);
+    };
+
+    // Desktop Buttons
+    const dlDesktop = document.getElementById('btn-dl-desktop-pkg');
+    if (dlDesktop) dlDesktop.addEventListener('click', triggerDesktopDownload);
+    document.querySelectorAll('.btn-dl-desktop-club').forEach(btn => {
+      btn.addEventListener('click', triggerDesktopDownload);
+    });
+
+    // PWA Buttons
+    const dlPwa = document.getElementById('btn-dl-pwa-app');
+    if (dlPwa) dlPwa.addEventListener('click', triggerPwaInstall);
+    document.querySelectorAll('.btn-dl-pwa-club, .btn-dl-pwa').forEach(btn => {
+      btn.addEventListener('click', triggerPwaInstall);
+    });
+
+    // Play Online Buttons
+    const dlPlay = document.getElementById('btn-dl-play-sim');
+    if (dlPlay) dlPlay.addEventListener('click', triggerPlayOnline);
+    document.querySelectorAll('.btn-dl-play-club').forEach(btn => {
+      btn.addEventListener('click', triggerPlayOnline);
+    });
+  }
+
+  // --------------------------------------------------------------------------
   // 19. APPLICATION ENTRY POINT
   // --------------------------------------------------------------------------
   window.addEventListener('DOMContentLoaded', () => {
@@ -5427,6 +5551,7 @@
     setupPresentationModal();
     setupAdminCms();
     setupDevConsole();
+    setupDownloadAppSuite();
 
     // Open Node #1 (Wing) in Inspector Panel by default (on desktop)
     setTimeout(() => {

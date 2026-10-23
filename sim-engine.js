@@ -19,7 +19,9 @@
     initialized: false,
     running: false,
     paused: true,            // Paused until user opens simulator tab!
-    planeModel: 'full',      // 'full', 'rc', 'agro', 'fire'
+    planeModel: 'full',      // 'full', 'a380', 'b777', 'rc', 'agro', 'fire'
+    invertPitch: false,      // false = Classic Flight Yoke (S=up, W=down), true = Arcade (W=up, S=down)
+    cameraShakeTimer: 0,
     locationId: 'charvak',   // 'charvak', 'dubai', 'california', 'fergana', 'innsbruck'
     mapProvider: 'google-sat',// 'google-sat', 'google-hybrid', 'esri-terrain'
     timeOfDay: 'day',        // 'day', 'sunset', 'night'
@@ -114,6 +116,47 @@
   // 2. AIRCRAFT MODIFICATIONS SPECS
   // ----------------------------------------------------------------------------
   const PLANE_CONFIGS = {
+    a380: {
+      name: 'Airbus A380-800 Super Heavy',
+      scale: 1.0,
+      mass: 380000.0,
+      wingspan: 36.0,
+      wingArea: 180.0,
+      thrustMax: 920000.0,
+      fluidCapacity: 12000,
+      h2Capacity: 500,
+      pitchAuth: 0.42,
+      rollAuth: 0.35,
+      yawAuth: 0.40,
+      maxSpeedKmh: 950
+    },
+    b777: {
+      name: 'Boeing 777-300ER Twin-Jet',
+      scale: 1.0,
+      mass: 240000.0,
+      wingspan: 32.0,
+      wingArea: 140.0,
+      thrustMax: 760000.0,
+      fluidCapacity: 8000,
+      h2Capacity: 400,
+      pitchAuth: 0.55,
+      rollAuth: 0.48,
+      yawAuth: 0.50,
+      maxSpeedKmh: 940
+    },
+    aeroterra: {
+      name: 'AeroTerra H2 — Full-Scale',
+      scale: 1.0,
+      mass: 1638.0,
+      wingspan: 12.4,
+      wingArea: 13.35,
+      thrustMax: 8400.0,
+      fluidCapacity: 800,
+      h2Capacity: 28.5,
+      pitchAuth: 1.2,
+      rollAuth: 1.6,
+      yawAuth: 1.4
+    },
     full: {
       name: 'AeroTerra H2 — Full-Scale',
       scale: 1.0,
@@ -193,6 +236,8 @@
     altAGL: 700.0,    // m
     aoa: -1.5,        // degrees
     gLoad: 1.0,
+    crashed: false,
+    _touchdownAnnounced: false,
 
     // Mechanization States
     gearPos: 0.0,     // 0 = retracted (UP), 1 = extended (DOWN)
@@ -533,6 +578,8 @@
     // Build Subsystems
     buildAircraftModel();
     buildSTOLRunway();
+    if (window.ILSAutopilot) window.ILSAutopilot.initILSGates(scene, terrainGroup, -340);
+    if (window.AeroDynamics) window.AeroDynamics.initWingtipVortices(scene, planeGroup);
     buildVolumetricClouds();
     buildAtmosphericSun();
     buildParticleSystems();
@@ -553,8 +600,51 @@
   // ----------------------------------------------------------------------------
   function buildAircraftModel() {
     planeGroup = new THREE.Group();
-    planeGroup.name = 'AeroTerraH2';
+    planeGroup.name = 'AircraftGroup';
+    buildAircraftMesh(SIM.planeModel || 'full');
+    scene.add(planeGroup);
+  }
 
+  function switchAircraftModel(modelKey) {
+    if (!planeGroup) return;
+    SIM.planeModel = modelKey;
+    const cfg = PLANE_CONFIGS[modelKey] || PLANE_CONFIGS.full;
+    buildAircraftMesh(modelKey);
+    if (planeGroup) planeGroup.scale.setScalar(cfg.scale || 1.0);
+    if (window.AeroDynamics) {
+      window.AeroDynamics.initWingtipVortices(scene, planeGroup);
+    }
+    showToast(`САМОЛЁТ: ${cfg.name.toUpperCase()}`);
+  }
+
+  function buildAircraftMesh(modelKey) {
+    while (planeGroup.children.length > 0) {
+      const child = planeGroup.children[0];
+      planeGroup.remove(child);
+      if (child.geometry) child.geometry.dispose();
+      if (child.material) {
+        if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+        else child.material.dispose();
+      }
+    }
+    propMeshes = [];
+    propBlurMeshes = [];
+    flapMeshes = [];
+    spoilerMeshes = [];
+    gearMeshes = [];
+
+    if (modelKey === 'a380') {
+      buildA380Mesh();
+    } else if (modelKey === 'b777') {
+      buildB777Mesh();
+    } else {
+      buildAeroTerraMesh();
+    }
+
+    buildAeroVectorHelpers();
+  }
+
+  function buildAeroTerraMesh() {
     // Materials (High-End PBR Clearcoat & Aerospace Composites)
     const carbonWhiteMat = new THREE.MeshPhysicalMaterial({
       color: 0xf8fafc,
@@ -872,10 +962,388 @@
     dragArrow.name = 'dragArrow';
     aeroVectorGroup.add(dragArrow);
 
-    aeroVectorGroup.visible = false;
-    planeGroup.add(aeroVectorGroup);
 
-    scene.add(planeGroup);
+  }
+
+  function buildA380Mesh() {
+    const airbusWhiteMat = new THREE.MeshPhysicalMaterial({
+      color: 0xf8fafc,
+      roughness: 0.15,
+      metalness: 0.12,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.05,
+      reflectivity: 1.0,
+      envMapIntensity: 1.8
+    });
+    const airbusBlueMat = new THREE.MeshPhysicalMaterial({
+      color: 0x1e3a8a,
+      roughness: 0.18,
+      metalness: 0.35,
+      clearcoat: 1.0,
+      envMapIntensity: 1.5
+    });
+    const darkEngineMat = new THREE.MeshPhysicalMaterial({
+      color: 0x1e293b,
+      roughness: 0.25,
+      metalness: 0.8
+    });
+    const fanBladeMat = new THREE.MeshStandardMaterial({
+      color: 0x94a3b8,
+      roughness: 0.2,
+      metalness: 0.9
+    });
+    const cockpitGlassMat = new THREE.MeshPhysicalMaterial({
+      color: 0x0f172a,
+      metalness: 0.8,
+      roughness: 0.1,
+      clearcoat: 1.0
+    });
+
+    // 1. Double-Deck Widebody Fuselage
+    const fuseGeo = new THREE.CylinderGeometry(1.5, 1.35, 20.0, 32);
+    fuseGeo.rotateX(Math.PI / 2);
+    fuseGeo.scale(1.0, 1.38, 1.0);
+    fuselageMesh = new THREE.Mesh(fuseGeo, airbusWhiteMat);
+    fuselageMesh.castShadow = true;
+    fuselageMesh.receiveShadow = true;
+    planeGroup.add(fuselageMesh);
+
+    // Nose Cone
+    const noseGeo = new THREE.ConeGeometry(1.5, 3.8, 32);
+    noseGeo.rotateX(Math.PI / 2);
+    noseGeo.scale(1.0, 1.38, 1.0);
+    const noseMesh = new THREE.Mesh(noseGeo, airbusWhiteMat);
+    noseMesh.position.set(0, 0, 11.9);
+    noseMesh.castShadow = true;
+    planeGroup.add(noseMesh);
+
+    // Cockpit Window Visor
+    const visorGeo = new THREE.BoxGeometry(1.2, 0.45, 1.2);
+    const visorMesh = new THREE.Mesh(visorGeo, cockpitGlassMat);
+    visorMesh.position.set(0, 0.9, 10.5);
+    planeGroup.add(visorMesh);
+
+    // Tail Boattail Cone
+    const tailConeGeo = new THREE.ConeGeometry(1.35, 4.2, 32);
+    tailConeGeo.rotateX(-Math.PI / 2);
+    tailConeGeo.scale(1.0, 1.38, 1.0);
+    const tailConeMesh = new THREE.Mesh(tailConeGeo, airbusWhiteMat);
+    tailConeMesh.position.set(0, 0.35, -12.1);
+    tailConeMesh.castShadow = true;
+    planeGroup.add(tailConeMesh);
+
+    // 2. Swept Wings with High Dihedral (Span: 32m)
+    [-1, 1].forEach((side) => {
+      const wingGeo = new THREE.BoxGeometry(15.5, 0.35, 4.2);
+      const wingMesh = new THREE.Mesh(wingGeo, airbusWhiteMat);
+      wingMesh.position.set(side * 8.5, 0.2, 0.5);
+      wingMesh.rotation.z = -side * (4.5 * Math.PI / 180);
+      wingMesh.rotation.y = -side * (28 * Math.PI / 180);
+      wingMesh.castShadow = true;
+      planeGroup.add(wingMesh);
+
+      // Airbus Wingtip Fences
+      const fenceGeo = new THREE.BoxGeometry(0.08, 1.4, 1.2);
+      const fenceMesh = new THREE.Mesh(fenceGeo, airbusBlueMat);
+      fenceMesh.position.set(side * 16.2, 1.4, -4.2);
+      planeGroup.add(fenceMesh);
+
+      // 4 Turbofan Engine Nacelles (2 per wing)
+      const engineOffsets = [
+        { x: side * 5.2, y: -0.85, z: 2.2, r: 0.72 },
+        { x: side * 9.8, y: -0.45, z: -0.2, r: 0.68 }
+      ];
+
+      engineOffsets.forEach((eng) => {
+        const engGroup = new THREE.Group();
+        engGroup.position.set(eng.x, eng.y, eng.z);
+
+        const nacelleGeo = new THREE.CylinderGeometry(eng.r, eng.r * 0.92, 3.2, 24, 1, true);
+        nacelleGeo.rotateX(Math.PI / 2);
+        const nacelleMesh = new THREE.Mesh(nacelleGeo, darkEngineMat);
+        engGroup.add(nacelleMesh);
+
+        const hubGeo = new THREE.ConeGeometry(0.24, 0.7, 16);
+        hubGeo.rotateX(Math.PI / 2);
+        const hubMesh = new THREE.Mesh(hubGeo, fanBladeMat);
+        hubMesh.position.set(0, 0, 1.2);
+        engGroup.add(hubMesh);
+
+        const fanGroup = new THREE.Group();
+        for (let b = 0; b < 12; b++) {
+          const bladeGeo = new THREE.BoxGeometry(0.04, eng.r * 0.82, 0.12);
+          const bladeMesh = new THREE.Mesh(bladeGeo, fanBladeMat);
+          bladeMesh.rotation.z = (b * Math.PI * 2) / 12;
+          fanGroup.add(bladeMesh);
+        }
+        fanGroup.position.set(0, 0, 1.1);
+        engGroup.add(fanGroup);
+        propMeshes.push(fanGroup);
+
+        planeGroup.add(engGroup);
+      });
+    });
+
+    // 3. Vertical Stabilizer
+    const finGeo = new THREE.BoxGeometry(0.22, 5.2, 4.0);
+    const finMesh = new THREE.Mesh(finGeo, airbusBlueMat);
+    finMesh.position.set(0, 3.8, -10.5);
+    finMesh.rotation.x = -0.32;
+    finMesh.castShadow = true;
+    planeGroup.add(finMesh);
+
+    // Horizontal Tailplanes
+    const hTailGeo = new THREE.BoxGeometry(11.0, 0.22, 2.4);
+    const hTailMesh = new THREE.Mesh(hTailGeo, airbusWhiteMat);
+    hTailMesh.position.set(0, 1.2, -12.4);
+    planeGroup.add(hTailMesh);
+
+    // 4. Heavy Landing Gear
+    const noseStrutGeo = new THREE.CylinderGeometry(0.1, 0.1, 1.8, 12);
+    const noseStrut = new THREE.Mesh(noseStrutGeo, darkEngineMat);
+    const nosePivot = new THREE.Group();
+    nosePivot.position.set(0, -1.0, 8.5);
+    noseStrut.position.set(0, -0.9, 0);
+    nosePivot.add(noseStrut);
+    [-0.22, 0.22].forEach(wx => {
+      const wGeo = new THREE.CylinderGeometry(0.32, 0.32, 0.14, 16);
+      wGeo.rotateZ(Math.PI / 2);
+      const wMesh = new THREE.Mesh(wGeo, darkEngineMat);
+      wMesh.position.set(wx, -1.6, 0);
+      nosePivot.add(wMesh);
+    });
+    planeGroup.add(nosePivot);
+    gearMeshes.push({ pivot: nosePivot, retractRotX: 1.4 });
+
+    [-1, 1].forEach(side => {
+      const mainPivot = new THREE.Group();
+      mainPivot.position.set(side * 3.2, -1.0, -1.5);
+      const strutGeo = new THREE.CylinderGeometry(0.14, 0.14, 2.0, 12);
+      const strut = new THREE.Mesh(strutGeo, darkEngineMat);
+      strut.position.set(0, -1.0, 0);
+      mainPivot.add(strut);
+
+      [-0.45, 0.45].forEach(wz => {
+        [-0.32, 0.32].forEach(wx => {
+          const wGeo = new THREE.CylinderGeometry(0.42, 0.42, 0.18, 16);
+          wGeo.rotateZ(Math.PI / 2);
+          const wMesh = new THREE.Mesh(wGeo, darkEngineMat);
+          wMesh.position.set(wx, -1.8, wz);
+          mainPivot.add(wMesh);
+        });
+      });
+      planeGroup.add(mainPivot);
+      gearMeshes.push({ pivot: mainPivot, retractRotX: -1.4 });
+    });
+  }
+
+  function buildB777Mesh() {
+    const boeingWhiteMat = new THREE.MeshPhysicalMaterial({
+      color: 0xf8fafc,
+      roughness: 0.14,
+      metalness: 0.12,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.05,
+      reflectivity: 1.0,
+      envMapIntensity: 1.8
+    });
+    const boeingBlueMat = new THREE.MeshPhysicalMaterial({
+      color: 0x0284c7,
+      roughness: 0.18,
+      metalness: 0.35,
+      clearcoat: 1.0,
+      envMapIntensity: 1.5
+    });
+    const titaniumMat = new THREE.MeshStandardMaterial({
+      color: 0x94a3b8,
+      roughness: 0.25,
+      metalness: 0.85
+    });
+    const darkEngineMat = new THREE.MeshPhysicalMaterial({
+      color: 0x1e293b,
+      roughness: 0.25,
+      metalness: 0.8
+    });
+    const glassMat = new THREE.MeshPhysicalMaterial({
+      color: 0x0f172a,
+      metalness: 0.8,
+      roughness: 0.1,
+      clearcoat: 1.0
+    });
+
+    // 1. Long Widebody Fuselage
+    const fuseGeo = new THREE.CylinderGeometry(1.25, 1.25, 23.0, 32);
+    fuseGeo.rotateX(Math.PI / 2);
+    fuselageMesh = new THREE.Mesh(fuseGeo, boeingWhiteMat);
+    fuselageMesh.castShadow = true;
+    fuselageMesh.receiveShadow = true;
+    planeGroup.add(fuselageMesh);
+
+    // Boeing Pointed Nose Cone
+    const noseGeo = new THREE.ConeGeometry(1.25, 4.2, 32);
+    noseGeo.rotateX(Math.PI / 2);
+    const noseMesh = new THREE.Mesh(noseGeo, boeingWhiteMat);
+    noseMesh.position.set(0, -0.05, 13.6);
+    noseMesh.castShadow = true;
+    planeGroup.add(noseMesh);
+
+    // Cockpit Window Strip
+    const glassGeo = new THREE.BoxGeometry(1.0, 0.35, 1.0);
+    const glassMesh = new THREE.Mesh(glassGeo, glassMat);
+    glassMesh.position.set(0, 0.65, 12.2);
+    planeGroup.add(glassMesh);
+
+    // Blade-Style Tail Cone with APU nozzle
+    const tailGeo = new THREE.ConeGeometry(1.25, 4.5, 32);
+    tailGeo.rotateX(-Math.PI / 2);
+    tailGeo.scale(0.85, 1.2, 1.0);
+    const tailMesh = new THREE.Mesh(tailGeo, boeingWhiteMat);
+    tailMesh.position.set(0, 0.25, -13.75);
+    tailMesh.castShadow = true;
+    planeGroup.add(tailMesh);
+
+    // 2. Wings with Raked Wingtips (Span: 28m)
+    [-1, 1].forEach((side) => {
+      const wingGeo = new THREE.BoxGeometry(13.5, 0.28, 3.8);
+      const wingMesh = new THREE.Mesh(wingGeo, boeingWhiteMat);
+      wingMesh.position.set(side * 7.5, 0.15, 0.8);
+      wingMesh.rotation.z = -side * (3.8 * Math.PI / 180);
+      wingMesh.rotation.y = -side * (31.5 * Math.PI / 180);
+      wingMesh.castShadow = true;
+      planeGroup.add(wingMesh);
+
+      // Raked Wingtip
+      const rakedGeo = new THREE.BoxGeometry(2.2, 0.15, 1.4);
+      const rakedMesh = new THREE.Mesh(rakedGeo, boeingWhiteMat);
+      rakedMesh.position.set(side * 14.8, 0.95, -4.2);
+      rakedMesh.rotation.z = -side * (12 * Math.PI / 180);
+      rakedMesh.rotation.y = -side * (45 * Math.PI / 180);
+      planeGroup.add(rakedMesh);
+
+      // 2 Giant GE90-115B Turbofans
+      const engGroup = new THREE.Group();
+      engGroup.position.set(side * 4.8, -0.65, 1.5);
+
+      const nacelleGeo = new THREE.CylinderGeometry(0.88, 0.80, 3.8, 28, 1, true);
+      nacelleGeo.rotateX(Math.PI / 2);
+      const nacelleMesh = new THREE.Mesh(nacelleGeo, darkEngineMat);
+      engGroup.add(nacelleMesh);
+
+      const hubGeo = new THREE.ConeGeometry(0.28, 0.9, 16);
+      hubGeo.rotateX(Math.PI / 2);
+      const hubMesh = new THREE.Mesh(hubGeo, titaniumMat);
+      hubMesh.position.set(0, 0, 1.4);
+      engGroup.add(hubMesh);
+
+      const fanGroup = new THREE.Group();
+      for (let b = 0; b < 16; b++) {
+        const bladeGeo = new THREE.BoxGeometry(0.04, 0.76, 0.14);
+        const bladeMesh = new THREE.Mesh(bladeGeo, darkEngineMat);
+        bladeMesh.rotation.z = (b * Math.PI * 2) / 16;
+        fanGroup.add(bladeMesh);
+      }
+      fanGroup.position.set(0, 0, 1.35);
+      engGroup.add(fanGroup);
+      propMeshes.push(fanGroup);
+
+      planeGroup.add(engGroup);
+    });
+
+    // 3. Boeing Tall Swept Fin
+    const finGeo = new THREE.BoxGeometry(0.2, 4.8, 3.6);
+    const finMesh = new THREE.Mesh(finGeo, boeingBlueMat);
+    finMesh.position.set(0, 3.4, -12.0);
+    finMesh.rotation.x = -0.36;
+    finMesh.castShadow = true;
+    planeGroup.add(finMesh);
+
+    // Horizontal Tailplanes
+    const hTailGeo = new THREE.BoxGeometry(10.0, 0.18, 2.2);
+    const hTailMesh = new THREE.Mesh(hTailGeo, boeingWhiteMat);
+    hTailMesh.position.set(0, 0.9, -13.6);
+    planeGroup.add(hTailMesh);
+
+    // 4. Landing Gears
+    const noseStrutGeo = new THREE.CylinderGeometry(0.09, 0.09, 1.7, 12);
+    const noseStrut = new THREE.Mesh(noseStrutGeo, darkEngineMat);
+    const nosePivot = new THREE.Group();
+    nosePivot.position.set(0, -0.9, 9.8);
+    noseStrut.position.set(0, -0.85, 0);
+    nosePivot.add(noseStrut);
+    [-0.2, 0.2].forEach(wx => {
+      const wGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.12, 16);
+      wGeo.rotateZ(Math.PI / 2);
+      const wMesh = new THREE.Mesh(wGeo, darkEngineMat);
+      wMesh.position.set(wx, -1.5, 0);
+      nosePivot.add(wMesh);
+    });
+    planeGroup.add(nosePivot);
+    gearMeshes.push({ pivot: nosePivot, retractRotX: 1.4 });
+
+    [-1, 1].forEach(side => {
+      const mainPivot = new THREE.Group();
+      mainPivot.position.set(side * 2.8, -0.9, -0.8);
+      const strutGeo = new THREE.CylinderGeometry(0.12, 0.12, 1.9, 12);
+      const strut = new THREE.Mesh(strutGeo, darkEngineMat);
+      strut.position.set(0, -0.95, 0);
+      mainPivot.add(strut);
+
+      [-0.45, 0, 0.45].forEach(wz => {
+        [-0.28, 0.28].forEach(wx => {
+          const wGeo = new THREE.CylinderGeometry(0.38, 0.38, 0.16, 16);
+          wGeo.rotateZ(Math.PI / 2);
+          const wMesh = new THREE.Mesh(wGeo, darkEngineMat);
+          wMesh.position.set(wx, -1.75, wz);
+          mainPivot.add(wMesh);
+        });
+      });
+      planeGroup.add(mainPivot);
+      gearMeshes.push({ pivot: mainPivot, retractRotX: -1.4 });
+    });
+  }
+
+  function buildAeroVectorHelpers() {
+    if (aeroVectorGroup) {
+      if (planeGroup) planeGroup.remove(aeroVectorGroup);
+    }
+    aeroVectorGroup = new THREE.Group();
+    aeroVectorGroup.name = 'AeroVectors';
+
+    const liftArrow = new THREE.ArrowHelper(
+      new THREE.Vector3(0, 1, 0),
+      new THREE.Vector3(0, 0.4, 0),
+      2.5,
+      0x00ff9d,
+      0.5,
+      0.25
+    );
+    liftArrow.name = 'liftArrow';
+    aeroVectorGroup.add(liftArrow);
+
+    const thrustArrow = new THREE.ArrowHelper(
+      new THREE.Vector3(0, 0, 1),
+      new THREE.Vector3(0, 0.4, 4.0),
+      2.8,
+      0x00e5ff,
+      0.5,
+      0.25
+    );
+    thrustArrow.name = 'thrustArrow';
+    aeroVectorGroup.add(thrustArrow);
+
+    const dragArrow = new THREE.ArrowHelper(
+      new THREE.Vector3(0, 0, -1),
+      new THREE.Vector3(0, 0.4, -4.5),
+      1.8,
+      0xef4444,
+      0.4,
+      0.2
+    );
+    dragArrow.name = 'dragArrow';
+    aeroVectorGroup.add(dragArrow);
+
+    aeroVectorGroup.visible = flight.showAeroVectors;
+    planeGroup.add(aeroVectorGroup);
   }
 
   // ----------------------------------------------------------------------------
@@ -1135,7 +1603,7 @@
     // Current plane lat/lon
     const deltaZ = flight.pos.z;
     const deltaX = flight.pos.x;
-    const currentLat = currentOriginLat - (deltaZ / 111132);
+    const currentLat = currentOriginLat + (deltaZ / 111132);
     const currentLon = currentOriginLon + (deltaX / (111132 * Math.cos(currentOriginLat * Math.PI / 180)));
 
     const txCenter = lonToTileX(currentLon, TILE_ZOOM);
@@ -1165,7 +1633,7 @@
           const tileLat = tileYToLat(ty, TILE_ZOOM);
 
           const worldX = (tileLon - currentOriginLon) * (111132 * Math.cos(currentOriginLat * Math.PI / 180));
-          const worldZ = (currentOriginLat - tileLat) * 111132;
+          const worldZ = (tileLat - currentOriginLat) * 111132;
 
           const tileGeo = new THREE.PlaneGeometry(tileMeters, tileMeters);
           tileGeo.rotateX(-Math.PI / 2);
@@ -1524,25 +1992,67 @@
     flight.pos.x = safeClamp(flight.pos.x, -200000, 200000, 0);
     flight.pos.z = safeClamp(flight.pos.z, -200000, 200000, 0);
 
-    // Ground collision & Runway Roll physics
+    // Ground collision & Touchdown / Crash physics
     const groundLevel = 1.25;
-    if (flight.pos.y <= groundLevel) {
-      flight.pos.y = groundLevel;
-      flight.vel.y = Math.max(0, flight.vel.y);
-      flight.rot.z *= 0.8;
-      // Allow nose-up pitch rotation on runway up to -12° (-0.21 rad) for STOL takeoff!
-      flight.rot.x = Math.max(-0.21, Math.min(0.02, flight.rot.x));
-      flight.altAGL = 0;
+    if (flight.pos.y <= groundLevel + 0.25) {
+      const gearRetracted = (flight.gearPos < 0.5);
+      const hardImpact = (flight.vsi < -4.5);
 
-      // Ground rolling resistance & brakes
-      if (flight.gearPos > 0.5) {
-        flight.vel.x *= Math.max(0, 1.0 - 1.5 * dt);
-        if (flight.throttle < 0.1 || flight.spoilersActive) {
-          flight.vel.z *= Math.max(0, 1.0 - 1.2 * dt);
+      if ((gearRetracted || hardImpact) && !flight.crashed) {
+        flight.crashed = true;
+        flight.pos.y = groundLevel;
+        flight.vel.set(0, 0, 0);
+        flight.throttle = 0;
+        flight.ias = 0;
+        flight.tas = 0;
+        flight.altAGL = 0;
+        flight.altMSL = 0;
+
+        SIM.cameraShakeTimer = 1.5;
+
+        const crashBanner = document.getElementById('sim-crash-warning');
+        const crashText = document.getElementById('sim-crash-text');
+        if (crashBanner) {
+          crashBanner.style.display = 'flex';
+          if (crashText) {
+            if (gearRetracted) {
+              crashText.textContent = '💥 КРУШЕНИЕ (0 м): ШАССИ НЕ ВЫПУЩЕНЫ! АВАРИЙНАЯ ПОСАДКА НА ФЮЗЕЛЯЖ';
+            } else {
+              crashText.textContent = '💥 АВАРИЙНАЯ ЖЁСТКАЯ ПОСАДКА (0 м): VSI = ' + flight.vsi.toFixed(1) + ' м/с (ПРЕВЫШЕН ЛИМИТ -4.5 м/с)';
+            }
+          }
+        }
+
+        if (window.ILSAutopilot) {
+          window.ILSAutopilot.calloutCrash(gearRetracted ? 'Gear not extended' : 'Hard landing');
+        }
+
+        showToast('💥 КРУШЕНИЕ: САМОЛЁТ РАЗБИТ! НАЖМИТЕ «СБРОС В ПОЛЁТ»');
+      } else if (!flight.crashed) {
+        if (flight.pos.y <= groundLevel) {
+          flight.pos.y = groundLevel;
+          flight.vel.y = Math.max(0, flight.vel.y);
+          flight.rot.z *= 0.8;
+          flight.rot.x = Math.max(-0.21, Math.min(0.02, flight.rot.x));
+          flight.altAGL = 0;
+
+          if (!flight._touchdownAnnounced && flight.vsi < -0.8) {
+            flight._touchdownAnnounced = true;
+            if (window.ILSAutopilot) {
+              window.ILSAutopilot.calloutTouchdown();
+            }
+            showToast('🛬 МЯГКАЯ ПОСАДКА (TOUCHDOWN): ШАССИ ВЫПУЩЕНЫ, ПЕРЕГРУЗКА В НОРМЕ');
+          }
+
+          flight.vel.x *= Math.max(0, 1.0 - 1.5 * dt);
+          if (flight.throttle < 0.1 || flight.spoilersActive) {
+            flight.vel.z *= Math.max(0, 1.0 - 1.2 * dt);
+          }
         }
       }
     } else {
-      flight.altAGL = flight.pos.y - 1.25;
+      flight.altAGL = flight.pos.y - groundLevel;
+      flight._touchdownAnnounced = false;
     }
 
     // Altitude (ALT) safety envelope: 0 to 6500 m
@@ -1643,6 +2153,14 @@
       const lookTarget = planeCenter.clone().add(new THREE.Vector3(0, 0.8, 8.0).applyQuaternion(flight.quat));
       camera.lookAt(lookTarget);
 
+      if (SIM.cameraShakeTimer > 0) {
+        SIM.cameraShakeTimer -= dt;
+        const shakeAmt = Math.min(1.0, SIM.cameraShakeTimer) * 0.45;
+        camera.position.x += (Math.random() - 0.5) * shakeAmt;
+        camera.position.y += (Math.random() - 0.5) * shakeAmt;
+        camera.position.z += (Math.random() - 0.5) * shakeAmt;
+      }
+
     } else if (SIM.cameraMode === 'cockpit') {
       // Inside pilot seat looking forward
       const cockpitOffset = new THREE.Vector3(0, 0.45, 1.2).applyQuaternion(flight.quat);
@@ -1737,7 +2255,7 @@
     // Compass Heading & Rotating POIs
     ctx.save();
     ctx.translate(cx, cy);
-    ctx.rotate(flight.rot.y); // Rotate relative to heading
+    ctx.rotate(-flight.rot.y); // Rotate relative to heading
 
     ctx.font = 'bold 9px monospace';
     ctx.textAlign = 'center';
@@ -1859,7 +2377,7 @@
     const radarCoords = document.getElementById('sim-radar-coords');
     const radarAgl = document.getElementById('sim-radar-agl');
 
-    const hdgDeg = Math.round(((-flight.rot.y * 180 / Math.PI) % 360 + 360) % 360);
+    const hdgDeg = Math.round(((flight.rot.y * 180 / Math.PI) % 360 + 360) % 360);
     if (radarHdg) radarHdg.textContent = `${String(hdgDeg).padStart(3, '0')}°`;
     if (radarSpd) radarSpd.textContent = `${Math.round(iasVal)}\u00A0км/ч`;
     if (radarAgl) radarAgl.textContent = `${Math.round(safeClamp(flight.altAGL, 0, 6500, 700))}\u00A0м`;
@@ -1867,7 +2385,7 @@
     if (radarCoords) {
       const deltaZ = safeClamp(flight.pos.z, -200000, 200000, 0);
       const deltaX = safeClamp(flight.pos.x, -200000, 200000, 0);
-      let curLat = currentOriginLat - (deltaZ / 111132);
+      let curLat = currentOriginLat + (deltaZ / 111132);
       curLat = safeClamp(curLat, -85.0, 85.0, 41.3111);
       const cosLat = Math.max(0.1, Math.cos(curLat * Math.PI / 180));
       let curLon = currentOriginLon + (deltaX / (111132 * cosLat));
@@ -2090,6 +2608,12 @@
     flight.flapsStage = 0;
     flight.spoilersActive = false;
     flight.waterDropping = false;
+    flight.crashed = false;
+    flight._touchdownAnnounced = false;
+    SIM.cameraShakeTimer = 0;
+    const crashBanner = document.getElementById('sim-crash-warning');
+    if (crashBanner) crashBanner.style.display = 'none';
+    if (window.ILSAutopilot) window.ILSAutopilot.resetGates();
     flight.agroSpraying = false;
     SIM.boostActive = false;
     SIM.apMode.level = false;
@@ -2160,6 +2684,12 @@
     flight.gearPos = 1.0;
     flight.flapsStage = 1;  // Flaps 15° for STOL takeoff
     flight.spoilersActive = false;
+    flight.crashed = false;
+    flight._touchdownAnnounced = false;
+    SIM.cameraShakeTimer = 0;
+    const crashBanner = document.getElementById('sim-crash-warning');
+    if (crashBanner) crashBanner.style.display = 'none';
+    if (window.ILSAutopilot) window.ILSAutopilot.resetGates();
 
     if (planeGroup) {
       planeGroup.position.set(0, 1.25, 0);
@@ -2285,11 +2815,12 @@
         }
         joyKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
 
-        // dx > 0 -> drag right -> turn right
-        // dy > 0 -> drag down -> stick back -> pitch up
-        flight.rollInput = THREE.MathUtils.clamp(dx / maxR, -1.0, 1.0);
-        flight.yawInput = flight.rollInput;
-        flight.pitchInput = THREE.MathUtils.clamp(dy / maxR, -1.0, 1.0);
+        // dx < 0 -> drag left -> turn left; dx > 0 -> drag right -> turn right
+        const stickX = THREE.MathUtils.clamp(dx / maxR, -1.0, 1.0);
+        const stickY = THREE.MathUtils.clamp(dy / maxR, -1.0, 1.0);
+        flight.rollInput = stickX;
+        flight.yawInput = stickX * 0.75;
+        flight.pitchInput = SIM.invertPitch ? -stickY : stickY;
       };
 
       // Pointer Events (supports stylus, mouse, and multi-touch)
@@ -2813,6 +3344,156 @@
     const btnHelp = document.getElementById('btn-sim-help');
     const modalHelp = document.getElementById('sim-help-modal');
     const btnCloseHelp = document.getElementById('btn-close-help');
+
+    // Aircraft Model Select
+    const handleModelChange = (val) => {
+      switchAircraftModel(val);
+      const selA = document.getElementById('sim-select-aircraft');
+      const selP = document.getElementById('sim-select-plane');
+      if (selA && selA.value !== val) selA.value = val;
+      if (selP && selP.value !== val) selP.value = val;
+    };
+    document.getElementById('sim-select-plane')?.addEventListener('change', (e) => handleModelChange(e.target.value));
+    document.getElementById('sim-select-aircraft')?.addEventListener('change', (e) => handleModelChange(e.target.value));
+
+    // Pitch Inversion Toggle
+    const togglePitchInvert = () => {
+      SIM.invertPitch = !SIM.invertPitch;
+      const txt = SIM.invertPitch ? 'Аркада (W-Вверх)' : 'Штурвал (S-Вверх)';
+      const el1 = document.getElementById('sim-invert-pitch-txt');
+      const el2 = document.getElementById('lbl-pitch-mode');
+      if (el1) el1.textContent = txt;
+      if (el2) el2.textContent = '🔄 W/S: ' + (SIM.invertPitch ? 'Аркада' : 'Штурвал');
+      showToast('РЕЖИМ ТАНГАЖА: ' + (SIM.invertPitch ? 'АРКАДА (W - НАБОР, S - СНИЖЕНИЕ)' : 'КЛАССИЧЕСКИЙ ШТУРВАЛ (S - НАБОР, W - СНИЖЕНИЕ)'));
+    };
+    document.getElementById('btn-sim-invert-pitch')?.addEventListener('click', togglePitchInvert);
+    document.getElementById('btn-act-invert')?.addEventListener('click', togglePitchInvert);
+
+    // ILS Glideslope Toggle
+    const toggleILS = () => {
+      if (window.ILSAutopilot) {
+        const active = window.ILSAutopilot.toggleILS();
+        const txt = active ? 'Глиссада ВКЛ' : 'Глиссада ILS';
+        const el1 = document.getElementById('sim-ils-txt');
+        if (el1) el1.textContent = txt;
+        document.getElementById('btn-sim-ils-toggle')?.classList.toggle('active', active);
+        document.getElementById('btn-act-ils')?.classList.toggle('active', active);
+        showToast(active ? '🛬 3D-ГЛИССАДА ILS ВКЛЮЧЕНА: СЛЕДУЙТЕ ПО НЕОНОВЫМ ВОРОТАМ (УГОЛ 3.0°)' : 'ГЛИССАДА ОТКЛЮЧЕНА');
+      }
+    };
+    document.getElementById('btn-sim-ils-toggle')?.addEventListener('click', toggleILS);
+    document.getElementById('btn-act-ils')?.addEventListener('click', toggleILS);
+
+    // Voice Assistant Toggle
+    const toggleVoice = () => {
+      if (window.ILSAutopilot) {
+        const active = window.ILSAutopilot.toggleVoice();
+        const txt = active ? 'Голос ВКЛ' : 'Голос ВЫКЛ';
+        const el1 = document.getElementById('sim-voice-txt');
+        if (el1) el1.textContent = txt;
+        document.getElementById('btn-sim-voice-toggle')?.classList.toggle('active', active);
+        document.getElementById('btn-act-voice')?.classList.toggle('active', active);
+        showToast(active ? '🗣️ ГОЛОСОВОЙ АССИСТЕНТ КАБИНЫ («BITCHING BETTY») ВКЛЮЧЕН' : 'ГОЛОСОВОЙ АССИСТЕНТ ОТКЛЮЧЕН');
+      }
+    };
+    document.getElementById('btn-sim-voice-toggle')?.addEventListener('click', toggleVoice);
+    document.getElementById('btn-act-voice')?.addEventListener('click', toggleVoice);
+
+    // Preflight Checklist Modal
+    const checklistItems = [
+      { id: 'chk-h2', title: 'Давление в композитном крио-баке H2 (Type IV)', req: '350 бар ± 5 бар (98% емкости)', status: 'PASS' },
+      { id: 'chk-fc', title: 'Водородная ячейка PEMFC 120 кВт', req: 'Температура мембраны 68°C, напряжение стека 380 В', status: 'PASS' },
+      { id: 'chk-bat', title: 'Буферный высоковольтный аккумулятор LiPo', req: 'SOC >= 95%, напряжение 750 В, баланс ячеек ОК', status: 'PASS' },
+      { id: 'chk-ctl', title: 'Рули высоты, направления и закрылки Fowler', req: 'Полный ход рулей ±28°, сервоприводы без заеданий', status: 'PASS' },
+      { id: 'chk-dep', title: '4x Электромотора DEP (Distributed Electric Propulsion)', req: 'Тест синхронизации оборотов 2850 об/мин пройден', status: 'PASS' },
+      { id: 'chk-opt', title: 'Гиростабилизированная турель NDVI / FLIR', req: 'Самотестирование гироскопа ОК, лазерный дальномер калиброван', status: 'PASS' },
+      { id: 'chk-pod', title: 'Замки сменной капсулы двойного назначения (800 л)', req: '4 электромеханических замка = LOCKED', status: 'PASS' },
+      { id: 'chk-brs', title: 'Баллистическая парашютная система спасения (BRS)', req: 'Чека пиропатрона удалена, детонатор на боевом взводе', status: 'PASS' }
+    ];
+
+    const renderChecklist = () => {
+      const container = document.getElementById('checklist-items-container');
+      if (!container) return;
+      container.innerHTML = checklistItems.map((item, idx) => `
+        <div class="checklist-item-card" id="card-${item.id}">
+          <div class="chk-left">
+            <input type="checkbox" class="chk-box" id="box-${item.id}" data-idx="${idx}">
+            <div>
+              <div class="chk-title">${item.title}</div>
+              <div class="chk-req">${item.req}</div>
+            </div>
+          </div>
+          <span class="chk-status-badge">${item.status}</span>
+        </div>
+      `).join('');
+
+      const updateCount = () => {
+        const checked = container.querySelectorAll('.chk-box:checked').length;
+        const total = checklistItems.length;
+        const countEl = document.getElementById('chk-checked-count');
+        const btnClearance = document.getElementById('btn-takeoff-clearance');
+        if (countEl) countEl.textContent = checked;
+        if (btnClearance) {
+          if (checked === total) {
+            btnClearance.style.background = 'linear-gradient(135deg, #00ff9d, #00e5ff)';
+            btnClearance.style.boxShadow = '0 0 25px rgba(0, 255, 157, 0.7)';
+          }
+        }
+      };
+
+      container.querySelectorAll('.chk-box').forEach(box => {
+        box.addEventListener('change', (e) => {
+          const card = document.getElementById('card-' + e.target.id.replace('box-', ''));
+          if (card) card.classList.toggle('checked', e.target.checked);
+          updateCount();
+        });
+      });
+      updateCount();
+    };
+
+    const openChecklistModal = () => {
+      const modal = document.getElementById('preflight-checklist-modal');
+      if (modal) {
+        modal.style.display = 'flex';
+        renderChecklist();
+      }
+    };
+
+    document.getElementById('btn-sim-checklist')?.addEventListener('click', openChecklistModal);
+    document.getElementById('btn-act-checklist')?.addEventListener('click', openChecklistModal);
+    document.getElementById('btn-close-checklist')?.addEventListener('click', () => {
+      const modal = document.getElementById('preflight-checklist-modal');
+      if (modal) modal.style.display = 'none';
+    });
+
+    document.getElementById('btn-takeoff-clearance')?.addEventListener('click', () => {
+      const modal = document.getElementById('preflight-checklist-modal');
+      if (modal) modal.style.display = 'none';
+      if (window.ILSAutopilot) {
+        window.ILSAutopilot.speak('All systems checked. Cleared for takeoff runway three four!', 'Все системы проверены. Взлёт разрешён!');
+      }
+      startFromRunway();
+      showToast('☑️ ЧЕК-ЛИСТ ПРОЙДЕН: ВЗЛЁТ РАЗРЕШЁН! ЗАКРЫЛКИ 15°');
+    });
+
+    // 3D Replay
+    const toggleReplay = () => {
+      if (window.FlightRecorder) {
+        if (window.FlightRecorder.isReplaying) {
+          window.FlightRecorder.stopReplay();
+        } else {
+          window.FlightRecorder.startReplay();
+        }
+      }
+    };
+    document.getElementById('btn-sim-replay')?.addEventListener('click', toggleReplay);
+    document.getElementById('btn-act-replay')?.addEventListener('click', toggleReplay);
+
+    // Crash Restart
+    document.getElementById('btn-crash-restart')?.addEventListener('click', () => {
+      resetToAirFlight700();
+    });
+
     if (btnHelp && modalHelp) {
       btnHelp.addEventListener('click', () => { modalHelp.style.display = 'flex'; });
     }
@@ -3058,32 +3739,45 @@
   function updateFlightInputsFromKeys() {
     if (SIM.isJoyDragging || SIM.isMouseFlightActive) return;
 
-    // Pitch: W / Up / Ц (forward -> pitch down), S / Down / Ы (backward -> pitch up)
+    // Pitch: W / Up (stick forward -> dive / climb), S / Down (stick back -> climb / dive)
     const isForward = keysPressed['KeyW'] || keysPressed['w'] || keysPressed['ц'] || keysPressed['ArrowUp'];
     const isBack = keysPressed['KeyS'] || keysPressed['s'] || keysPressed['ы'] || keysPressed['ArrowDown'];
 
     if (isForward && !isBack) {
-      flight.pitchInput = -1.0;
+      flight.pitchInput = SIM.invertPitch ? 1.0 : -1.0;
     } else if (isBack && !isForward) {
-      flight.pitchInput = 1.0;
+      flight.pitchInput = SIM.invertPitch ? -1.0 : 1.0;
     } else {
       flight.pitchInput = 0;
     }
 
-    // Roll & Yaw: A / Left / Ф (turn left), D / Right / В (turn right)
+    // Roll: A / Left (turn left), D / Right (turn right)
     const isLeft = keysPressed['KeyA'] || keysPressed['a'] || keysPressed['ф'] || keysPressed['ArrowLeft'];
     const isRight = keysPressed['KeyD'] || keysPressed['d'] || keysPressed['в'] || keysPressed['ArrowRight'];
 
+    // Rudder: Q (yaw left), E (yaw right)
+    const isRudLeft = keysPressed['KeyQ'] || keysPressed['q'] || keysPressed['й'];
+    const isRudRight = keysPressed['KeyE'] || keysPressed['e'] || keysPressed['у'];
+
+    let roll = 0;
+    let yaw = 0;
+
     if (isLeft && !isRight) {
-      flight.rollInput = -1.0;
-      flight.yawInput = -1.0;
+      roll = -1.0;
+      yaw -= 0.75;
     } else if (isRight && !isLeft) {
-      flight.rollInput = 1.0;
-      flight.yawInput = 1.0;
-    } else {
-      flight.rollInput = 0;
-      flight.yawInput = 0;
+      roll = 1.0;
+      yaw += 0.75;
     }
+
+    if (isRudLeft && !isRudRight) {
+      yaw -= 1.0;
+    } else if (isRudRight && !isRudLeft) {
+      yaw += 1.0;
+    }
+
+    flight.rollInput = roll;
+    flight.yawInput = THREE.MathUtils.clamp(yaw, -1.0, 1.0);
   }
 
   function handleKeyDown(e) {
@@ -3105,11 +3799,11 @@
     updateFlightInputsFromKeys();
 
     // Throttle & Special Operations
-    if (code === 'KeyQ' || key === 'q' || key === 'й' || code === 'ShiftLeft' || code === 'ShiftRight' || key === 'shift') {
+    if (code === 'ShiftLeft' || code === 'ShiftRight' || key === 'shift' || code === 'PageUp') {
       flight.throttle = Math.min(1.0, flight.throttle + 0.05);
       const thrSlider = document.getElementById('sim-slider-throttle');
       if (thrSlider) thrSlider.value = Math.round(flight.throttle * 100);
-    } else if (code === 'KeyE' || key === 'e' || key === 'у' || code === 'ControlLeft' || code === 'ControlRight' || key === 'control') {
+    } else if (code === 'ControlLeft' || code === 'ControlRight' || key === 'control' || code === 'PageDown') {
       flight.throttle = Math.max(0.0, flight.throttle - 0.05);
       const thrSlider = document.getElementById('sim-slider-throttle');
       if (thrSlider) thrSlider.value = Math.round(flight.throttle * 100);
@@ -3275,11 +3969,53 @@
       ? Math.min(Math.max(rawDelta, 0.001), 0.033)
       : 0.016; // Strict delta time clamping (<= 33ms) to prevent physics explosion
 
+    // Gamepad API integration
+    if (window.FlightRecorder) {
+      const gp = window.FlightRecorder.pollGamepad();
+      if (gp && gp.active) {
+        flight.rollInput = gp.roll;
+        flight.yawInput = gp.yaw;
+        flight.pitchInput = SIM.invertPitch ? gp.pitch : -gp.pitch;
+        if (gp.btnWater) document.getElementById('btn-act-water')?.click();
+        if (gp.btnGear) document.getElementById('btn-act-gear')?.click();
+        if (gp.btnFlaps) document.getElementById('btn-act-flaps')?.click();
+        if (gp.btnBoost) document.getElementById('btn-h2-boost')?.click();
+        if (gp.btnReset) resetToAirFlight700();
+      }
+    }
+
     // 0. Update Keyboard Continuous Input (holding keys & Russian layout)
     updateFlightInputsFromKeys();
 
-    // 1. Aerodynamic Physics
-    updatePhysics(dt);
+    // 1. Aerodynamic Physics / Replay
+    if (window.FlightRecorder && window.FlightRecorder.isReplaying) {
+      const rep = window.FlightRecorder.getReplayFrame(dt);
+      if (rep) {
+        planeGroup.position.set(0, rep.pos.y, 0);
+        planeGroup.quaternion.setFromEuler(new THREE.Euler(rep.rot.x, rep.rot.y, rep.rot.z, 'YXZ'));
+        if (terrainGroup) terrainGroup.position.set(-rep.pos.x, 0, -rep.pos.z);
+        flight.ias = rep.ias;
+        flight.vsi = rep.vsi;
+        flight.aoa = rep.aoa;
+        flight.gLoad = rep.gLoad;
+        flight.pos.y = rep.pos.y;
+        flight.altMSL = rep.pos.y;
+        window.FlightRecorder.updateReplayUI();
+      }
+    } else {
+      updatePhysics(dt);
+
+      if (window.FlightRecorder) {
+        window.FlightRecorder.recordFrame(flight);
+      }
+      if (window.ILSAutopilot) {
+        window.ILSAutopilot.updateILS(flight.pos);
+        window.ILSAutopilot.processAltitudeCallouts(flight.altAGL, flight.vsi);
+      }
+      if (window.AeroDynamics) {
+        window.AeroDynamics.updateVortices(dt, flight.gLoad, flight.aoa, flight.ias, planeGroup.position, planeGroup.quaternion, (PLANE_CONFIGS[SIM.planeModel]?.wingspan || 12.4) / 2);
+      }
+    }
 
     // 2. Particle FX
     updateParticles(dt);

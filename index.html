@@ -311,14 +311,16 @@
 
       <!-- Controls & Dropdowns Group -->
       <div class="sim-top-selects-group">
-        <!-- 1. Aircraft Modification -->
-        <div class="sim-select-wrap" title="Модификация самолёта AeroTerra H2">
+        <!-- 1. Aircraft Selection -->
+        <div class="sim-select-wrap" title="Выбор модели самолёта">
           <i class="fa-solid fa-plane"></i>
           <select class="sim-select" id="sim-select-plane">
-            <option value="full" selected>AeroTerra H2 — Full-Scale (1638 кг, 4x DEP)</option>
-            <option value="rc">AeroTerra H2 — RC Prototype 1:5 (25 кг, 3.2 м)</option>
-            <option value="agro">AeroTerra Agro-Sprayer (Штанги ULV)</option>
-            <option value="fire">AeroTerra Fire-Bomber (Водяной бак 800 л)</option>
+            <option value="full" selected>✈️ AeroTerra H2 (STOL Twin-Boom H2-Hybrid)</option>
+            <option value="a380">🛫 Airbus A380-800 (Super Heavy 4-Jet)</option>
+            <option value="b777">🛩️ Boeing 777-300ER (Twin-Jet Long Range)</option>
+            <option value="agro">🌿 AeroTerra Agro-Sprayer (Штанги ULV)</option>
+            <option value="fire">💧 AeroTerra Fire-Bomber (Водяной бак 800 л)</option>
+            <option value="rc">🎮 AeroTerra RC Prototype 1:5 (25 кг)</option>
           </select>
         </div>
 
@@ -360,6 +362,26 @@
         <button class="sim-top-btn" id="btn-sim-sound" title="Звук двигателя (Web Audio API)">
           <i class="fa-solid fa-volume-high" id="sim-sound-icon"></i>
           <span id="sim-sound-txt">Звук ВКЛ</span>
+        </button>
+        <button class="sim-top-btn" id="btn-sim-invert-pitch" title="Переключить направление тангажа: Классический штурвал (S - набор, W - снижение) / Аркада (W - набор, S - снижение)">
+          <i class="fa-solid fa-arrows-up-down"></i>
+          <span id="sim-invert-pitch-txt">Штурвал (S-Вверх)</span>
+        </button>
+        <button class="sim-top-btn" id="btn-sim-ils-toggle" title="Включить 3D-глиссаду посадки (неоновые ворота захода на ВПП)">
+          <i class="fa-solid fa-road"></i>
+          <span id="sim-ils-txt">Глиссада ILS</span>
+        </button>
+        <button class="sim-top-btn" id="btn-sim-voice-toggle" title="Голосовой бортовой ассистент высоты и предупреждений (Web Speech API)">
+          <i class="fa-solid fa-headset"></i>
+          <span id="sim-voice-txt">Голос ВКЛ</span>
+        </button>
+        <button class="sim-top-btn" id="btn-sim-checklist" title="Предполётный интерактивный чек-лист систем">
+          <i class="fa-solid fa-clipboard-check"></i>
+          <span>Чек-лист</span>
+        </button>
+        <button class="sim-top-btn" id="btn-sim-replay" title="3D Replay повтор полёта и график чёрного ящика">
+          <i class="fa-solid fa-backward-step"></i>
+          <span>3D Повтор</span>
         </button>
         <button class="sim-top-btn" id="btn-sim-reset-700" title="Сбросить самолёт в воздух на высоту 700 м (скорость 140 км/ч, тяга 65%)">
           <i class="fa-solid fa-rotate-right"></i>
@@ -413,6 +435,13 @@
     <div class="sim-stall-warning" id="sim-stall-warning" style="display: none;">
       <i class="fa-solid fa-triangle-exclamation"></i>
       <span>⚠️ STALL WARNING! PULL DOWN &amp; ADD POWER!</span>
+    </div>
+
+    <!-- Crash Warning Alert Banner -->
+    <div class="sim-crash-warning" id="sim-crash-warning" style="display: none;">
+      <i class="fa-solid fa-skull-crossbones"></i>
+      <span id="sim-crash-text">💥 КРУШЕНИЕ (0 м): ШАССИ НЕ ВЫПУЩЕНЫ! АВАРИЙНАЯ ПОСАДКА НА ФЮЗЕЛЯЖ</span>
+      <button class="btn-crash-restart" id="btn-crash-restart">🔄 Сброс и перезапуск полёта (700 м)</button>
     </div>
 
     <!-- Mission & Action Notification Toast -->
@@ -600,6 +629,28 @@
             </button>
             <button class="sim-act-btn ap-btn btn-demo-glow" id="btn-ap-demo" title="Автоматический демонстрационный полёт ИИ">
               <i class="fa-solid fa-robot"></i> <span>🤖 Полный Демо-Полёт</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Row 4: Advanced Avionics & Tools -->
+        <div class="sim-ctrl-row">
+          <span class="ctrl-row-label"><i class="fa-solid fa-plane-arrival"></i> АВИОНИКА &amp; ИНСТРУМЕНТЫ:</span>
+          <div class="ctrl-buttons-group">
+            <button class="sim-act-btn" id="btn-act-ils" title="Включить 3D-глиссаду посадки (ILS Landing Gates)">
+              <i class="fa-solid fa-road"></i> <span>🛬 Глиссада ILS</span>
+            </button>
+            <button class="sim-act-btn" id="btn-act-voice" title="Голосовой помощник кабины пилота (Bitching Betty)">
+              <i class="fa-solid fa-headset"></i> <span>🗣️ Голос Борта</span>
+            </button>
+            <button class="sim-act-btn" id="btn-act-checklist" title="Предполётный интерактивный чек-лист пилота">
+              <i class="fa-solid fa-clipboard-check"></i> <span>☑️ Чек-лист</span>
+            </button>
+            <button class="sim-act-btn" id="btn-act-replay" title="3D Replay повтор манёвра и график чёрного ящика">
+              <i class="fa-solid fa-backward-step"></i> <span>⏪ 3D Повтор</span>
+            </button>
+            <button class="sim-act-btn" id="btn-act-invert" title="Инверсия тангажа W/S (Штурвал ⇄ Аркада)">
+              <i class="fa-solid fa-arrows-up-down"></i> <span id="lbl-pitch-mode">🔄 W/S: Штурвал</span>
             </button>
           </div>
         </div>
@@ -2067,6 +2118,61 @@
             <p class="team-bio" data-i18n="member4_bio">Бортовой компьютер на ArduPilot, каналы телеметрии Starlink/5G и пилотирование лётного прототипа 1:5.</p>
           </div>
         </div>
+
+        <!-- Download App Suite (Club & Ecosystem) -->
+        <div class="download-app-suite glass-panel" style="margin-top: 32px;">
+          <div class="download-suite-header">
+            <div class="download-suite-badge"><i class="fa-solid fa-cloud-arrow-down cyan"></i> AEROTERRA ECOSYSTEM</div>
+            <h3>📥 Скачать AeroTerra H2 Flight Simulator (Desktop &amp; Mobile App / Web App)</h3>
+            <p>Установите симулятор на компьютер или смартфон для автономного тестирования аэродинамики</p>
+          </div>
+          <div class="download-cards-grid">
+            <!-- Desktop App -->
+            <div class="download-card glass-panel highlight">
+              <div class="dl-card-icon"><i class="fa-brands fa-apple"></i> / <i class="fa-brands fa-windows"></i></div>
+              <h4>Desktop App (macOS &amp; Windows)</h4>
+              <p>Автономный нативный билд симулятора с максимальной частотой кадров (120 FPS Metal/DirectX) и поддержкой USB-джойстиков.</p>
+              <div class="dl-card-tags">
+                <span class="badge-tag">macOS .app</span>
+                <span class="badge-tag">Windows .exe</span>
+                <span class="badge-tag">v2.4 LTS</span>
+              </div>
+              <a href="#" class="btn-download-action btn-dl-desktop-club">
+                <i class="fa-solid fa-download"></i> <span>Скачать для macOS / Windows (.zip)</span>
+              </a>
+            </div>
+
+            <!-- PWA Mobile App -->
+            <div class="download-card glass-panel emerald">
+              <div class="dl-card-icon"><i class="fa-brands fa-android"></i> / <i class="fa-brands fa-app-store-ios"></i></div>
+              <h4>PWA Mobile App (iOS / Android)</h4>
+              <p>Установка в 1 клик на домашний экран смартфона. Работает офлайн с сенсорными джойстиками и гироскопом.</p>
+              <div class="dl-card-tags">
+                <span class="badge-tag">PWA 3.0</span>
+                <span class="badge-tag">Add to Homescreen</span>
+                <span class="badge-tag">Offline Ready</span>
+              </div>
+              <button class="btn-download-action btn-dl-pwa btn-dl-pwa-club">
+                <i class="fa-solid fa-mobile-screen-button"></i> <span>Установить PWA на смартфон</span>
+              </button>
+            </div>
+
+            <!-- Web App / Play Online -->
+            <div class="download-card glass-panel">
+              <div class="dl-card-icon"><i class="fa-solid fa-globe"></i> / <i class="fa-solid fa-gamepad"></i></div>
+              <h4>Web Sim Online (MSFS Engine)</h4>
+              <p>Мгновенный запуск в браузере с 3D картами Google Satellite, PBR шейдерами и 3D-глиссадой ILS.</p>
+              <div class="dl-card-tags">
+                <span class="badge-tag">WebGL 2.0</span>
+                <span class="badge-tag">Zero Install</span>
+                <span class="badge-tag">Live Cloud</span>
+              </div>
+              <button class="btn-download-action btn-dl-play-club">
+                <i class="fa-solid fa-play"></i> <span>Играть онлайн в браузере (MSFS Sim)</span>
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -2235,6 +2341,39 @@
           <span class="neon-indicator-dot"></span>
           <span id="neon-status-text">Neon Serverless: Готов к работе</span>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       INTERACTIVE PREFLIGHT CHECKLIST MODAL (DO-178C / IATA COMPLIANT)
+       ========================================================================== -->
+  <div class="admin-modal-overlay" id="preflight-checklist-modal" style="display: none; z-index: 11000;">
+    <div class="admin-modal-card glass-panel checklist-modal-card">
+      <div class="admin-modal-header">
+        <div class="admin-header-title-wrap">
+          <div class="admin-icon-badge" style="background: rgba(0, 255, 157, 0.2); color: #00ff9d;">
+            <i class="fa-solid fa-clipboard-check"></i>
+          </div>
+          <div>
+            <div class="admin-modal-title">ИНТЕРАКТИВНЫЙ ПРЕДПОЛЁТНЫЙ ЧЕК-ЛИСТ (PREFLIGHT CHECKLIST)</div>
+            <div class="admin-modal-subtitle">Контроль готовности водородной силовой установки, авионики и систем STOL</div>
+          </div>
+        </div>
+        <button class="btn-admin-close" id="btn-close-checklist"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="checklist-items-list" id="checklist-items-container">
+        <!-- Rendered dynamically from data/aircraft-specs.json or fallback -->
+      </div>
+
+      <div class="checklist-footer">
+        <div class="chk-summary" id="chk-summary-text" style="font-family: var(--font-mono); font-size: 0.82rem; color: #94a3b8;">
+          Проверено: <strong id="chk-checked-count" style="color: #00ff9d;">0</strong> из <strong id="chk-total-count">8</strong> систем
+        </div>
+        <button class="btn-takeoff-clearance" id="btn-takeoff-clearance">
+          <i class="fa-solid fa-plane-departure"></i> <span>ВЗЛЁТ РАЗРЕШЁН (ALL SYSTEMS GO)</span>
+        </button>
       </div>
     </div>
   </div>
@@ -2436,6 +2575,61 @@
               <h3><i class="fa-solid fa-paper-plane emerald"></i> Интерактивная Демонстрация</h3>
               <p>Предлагаем уважаемому профессору и членам комиссии протестировать поведение AeroTerra H2 во вкладке <strong>«🎮 ПОЛЁТ (MSFS Sim)»</strong> в режиме реального времени на спутниковых картах Узбекистана, Дубая и США.</p>
               <button class="btn-pres-launch-sim" id="btn-pres-to-sim"><i class="fa-solid fa-gamepad"></i> <span>Перейти к Тестовому Полёту в Симуляторе</span></button>
+            </div>
+          </div>
+
+          <!-- Download App Suite (Pitch Deck & Defense) -->
+          <div class="download-app-suite glass-panel">
+            <div class="download-suite-header">
+              <div class="download-suite-badge"><i class="fa-solid fa-cloud-arrow-down cyan"></i> AEROTERRA SUITE</div>
+              <h3>📥 Скачать AeroTerra H2 Flight Simulator (Desktop &amp; Mobile App / Web App)</h3>
+              <p>Кросс-платформенное приложение симулятора и автономный клиент для демонстрации на защите</p>
+            </div>
+            <div class="download-cards-grid">
+              <!-- Desktop App -->
+              <div class="download-card glass-panel highlight">
+                <div class="dl-card-icon"><i class="fa-brands fa-apple"></i> / <i class="fa-brands fa-windows"></i></div>
+                <h4>Desktop App (macOS &amp; Windows)</h4>
+                <p>Автономный нативный билд симулятора с максимальной частотой кадров (120 FPS Metal/DirectX) и поддержкой USB-джойстиков.</p>
+                <div class="dl-card-tags">
+                  <span class="badge-tag">macOS .app</span>
+                  <span class="badge-tag">Windows .exe</span>
+                  <span class="badge-tag">v2.4 LTS</span>
+                </div>
+                <a href="#" class="btn-download-action" id="btn-dl-desktop-pkg">
+                  <i class="fa-solid fa-download"></i> <span>Скачать для macOS / Windows (.zip)</span>
+                </a>
+              </div>
+
+              <!-- PWA Mobile App -->
+              <div class="download-card glass-panel emerald">
+                <div class="dl-card-icon"><i class="fa-brands fa-android"></i> / <i class="fa-brands fa-app-store-ios"></i></div>
+                <h4>PWA Mobile App (iOS / Android)</h4>
+                <p>Установка в 1 клик на домашний экран смартфона. Работает офлайн с сенсорными джойстиками и гироскопом.</p>
+                <div class="dl-card-tags">
+                  <span class="badge-tag">PWA 3.0</span>
+                  <span class="badge-tag">Add to Homescreen</span>
+                  <span class="badge-tag">Offline Ready</span>
+                </div>
+                <button class="btn-download-action btn-dl-pwa" id="btn-dl-pwa-app">
+                  <i class="fa-solid fa-mobile-screen-button"></i> <span>Установить PWA на смартфон</span>
+                </button>
+              </div>
+
+              <!-- Web App / Play Online -->
+              <div class="download-card glass-panel">
+                <div class="dl-card-icon"><i class="fa-solid fa-globe"></i> / <i class="fa-solid fa-gamepad"></i></div>
+                <h4>Web Sim Online (MSFS Engine)</h4>
+                <p>Мгновенный запуск в браузере с 3D картами Google Satellite, PBR шейдерами и 3D-глиссадой ILS.</p>
+                <div class="dl-card-tags">
+                  <span class="badge-tag">WebGL 2.0</span>
+                  <span class="badge-tag">Zero Install</span>
+                  <span class="badge-tag">Live Cloud</span>
+                </div>
+                <button class="btn-download-action" id="btn-dl-play-sim">
+                  <i class="fa-solid fa-play"></i> <span>Играть онлайн в браузере (MSFS Sim)</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -2939,6 +3133,11 @@
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <!-- html2pdf.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+  <!-- Advanced Aerospace Engineering Modules -->
+  <script src="physics/aero-dynamics.js"></script>
+  <script src="avionics/ils-autopilot.js"></script>
+  <script src="missions/flight-recorder.js"></script>
 
   <!-- Flight Simulator 6-DOF Engine & Sound Synthesis -->
   <script src="sim-engine.js"></script>

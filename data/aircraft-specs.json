@@ -1,0 +1,250 @@
+{
+  "project": "AeroTerra H2 — Hydrogen-Electric Dual-Role Eco-Aircraft",
+  "version": "2.4.0",
+  "airfoils": {
+    "NACA_64_215": {
+      "name": "NACA 64-215 (AeroTerra H2 Main Wing)",
+      "type": "Laminar flow low-drag aerofoil with high maximum lift coefficient",
+      "thicknessPct": 15.0,
+      "camberPct": 2.0,
+      "camberPosPct": 40.0,
+      "alphaZeroLiftDeg": -1.8,
+      "clMaxClean": 1.62,
+      "clMaxFlaps": 2.45,
+      "alphaStallDeg": 16.5,
+      "cd0": 0.0055,
+      "polar": [
+        { "alpha": -12.0, "cl": -0.85, "cd": 0.0380, "cm": -0.055 },
+        { "alpha": -8.0,  "cl": -0.52, "cd": 0.0195, "cm": -0.054 },
+        { "alpha": -4.0,  "cl": -0.18, "cd": 0.0092, "cm": -0.052 },
+        { "alpha": 0.0,   "cl":  0.22, "cd": 0.0058, "cm": -0.050 },
+        { "alpha": 4.0,   "cl":  0.64, "cd": 0.0076, "cm": -0.048 },
+        { "alpha": 8.0,   "cl":  1.05, "cd": 0.0135, "cm": -0.045 },
+        { "alpha": 12.0,  "cl":  1.42, "cd": 0.0240, "cm": -0.041 },
+        { "alpha": 15.0,  "cl":  1.61, "cd": 0.0390, "cm": -0.038 },
+        { "alpha": 16.5,  "cl":  1.62, "cd": 0.0520, "cm": -0.035 },
+        { "alpha": 18.0,  "cl":  1.38, "cd": 0.0880, "cm": -0.025 },
+        { "alpha": 20.0,  "cl":  1.05, "cd": 0.1450, "cm": -0.015 }
+      ]
+    },
+    "NACA_23012_MOD": {
+      "name": "NACA 23012 Mod (Airbus A380 Inboard Wing)",
+      "type": "Supercritical high subsonic transport aerofoil",
+      "thicknessPct": 12.0,
+      "camberPct": 1.8,
+      "alphaZeroLiftDeg": -1.2,
+      "clMaxClean": 1.55,
+      "clMaxFlaps": 2.85,
+      "alphaStallDeg": 14.8,
+      "cd0": 0.0072
+    },
+    "BAC_SUPERCRITICAL": {
+      "name": "Boeing Advanced Supercritical (B777 Wing)",
+      "type": "Transonic shock-free supercritical aerofoil",
+      "thicknessPct": 11.5,
+      "camberPct": 1.5,
+      "alphaZeroLiftDeg": -1.0,
+      "clMaxClean": 1.52,
+      "clMaxFlaps": 2.75,
+      "alphaStallDeg": 15.2,
+      "cd0": 0.0068
+    }
+  },
+  "aircraft": {
+    "aeroterra": {
+      "id": "aeroterra",
+      "name": "AeroTerra H2",
+      "subtitle": "STOL Twin-Boom H2-Hybrid Eco-Aircraft",
+      "role": "Dual-Role Regional & Special Missions (Agro/Firefighting/Cargo)",
+      "wingspanM": 12.4,
+      "wingAreaM2": 14.8,
+      "aspectRatio": 10.38,
+      "lengthM": 7.8,
+      "heightM": 2.65,
+      "massEmptyKg": 540,
+      "payloadMaxKg": 880,
+      "mtowKg": 1420,
+      "propulsion": {
+        "type": "Distributed Electric Propulsion (DEP)",
+        "fuelCellKw": 120,
+        "fuelCellType": "PEMFC (Proton Exchange Membrane)",
+        "bufferBatteryKwh": 28.5,
+        "motors": 4,
+        "motorPowerEachKw": 32,
+        "maxThrustN": 5200,
+        "h2StorageType": "Type IV Carbon-Composite Cryo/700bar",
+        "h2CapacityKg": 28.5,
+        "waterTankCapacityL": 800
+      },
+      "flightEnvelope": {
+        "vs0_kmh": 52,
+        "vs1_kmh": 68,
+        "vx_kmh": 85,
+        "vy_kmh": 115,
+        "vc_kmh": 165,
+        "vne_kmh": 340,
+        "takeoffRollSTOL_m": 110,
+        "landingRollSTOL_m": 85,
+        "serviceCeilingM": 6500,
+        "maxRangeKm": 1150,
+        "gLimits": { "min": -1.5, "max": 3.8 }
+      },
+      "physicsParams": {
+        "pitchAuth": 1.0,
+        "rollAuth": 1.0,
+        "yawAuth": 1.0,
+        "inertia": 1.0,
+        "dragMult": 1.0,
+        "groundEffectMultiplier": 1.22
+      }
+    },
+    "a380": {
+      "id": "a380",
+      "name": "Airbus A380-800",
+      "subtitle": "Double-Deck Super Heavy Commercial Airliner",
+      "role": "Long-Range Commercial Passenger Transport (555-853 seats)",
+      "wingspanM": 79.75,
+      "wingAreaM2": 845.0,
+      "aspectRatio": 7.53,
+      "lengthM": 72.72,
+      "heightM": 24.09,
+      "massEmptyKg": 277000,
+      "payloadMaxKg": 84000,
+      "mtowKg": 575000,
+      "propulsion": {
+        "type": "4x High-Bypass Turbofans (Engine Alliance GP7200 / Trent 900)",
+        "motors": 4,
+        "maxThrustN": 1244000,
+        "fuelCapacityKg": 254000
+      },
+      "flightEnvelope": {
+        "vs0_kmh": 225,
+        "vs1_kmh": 260,
+        "vx_kmh": 310,
+        "vy_kmh": 360,
+        "vc_kmh": 903,
+        "vne_kmh": 950,
+        "takeoffRollSTOL_m": 2900,
+        "landingRollSTOL_m": 1500,
+        "serviceCeilingM": 13100,
+        "maxRangeKm": 14800,
+        "gLimits": { "min": -1.0, "max": 2.5 }
+      },
+      "physicsParams": {
+        "pitchAuth": 0.38,
+        "rollAuth": 0.32,
+        "yawAuth": 0.40,
+        "inertia": 4.8,
+        "dragMult": 0.85,
+        "groundEffectMultiplier": 1.15
+      }
+    },
+    "b777": {
+      "id": "b777",
+      "name": "Boeing 777-300ER",
+      "subtitle": "Long-Range Wide-Body Twin-Jet",
+      "role": "Long-Range Commercial Transport (396 seats)",
+      "wingspanM": 64.8,
+      "wingAreaM2": 436.8,
+      "aspectRatio": 9.61,
+      "lengthM": 73.86,
+      "heightM": 18.5,
+      "massEmptyKg": 167800,
+      "payloadMaxKg": 69800,
+      "mtowKg": 351500,
+      "propulsion": {
+        "type": "2x General Electric GE90-115B (World's Most Powerful Turbofans)",
+        "motors": 2,
+        "maxThrustN": 1026000,
+        "fuelCapacityKg": 145500
+      },
+      "flightEnvelope": {
+        "vs0_kmh": 235,
+        "vs1_kmh": 270,
+        "vx_kmh": 320,
+        "vy_kmh": 375,
+        "vc_kmh": 892,
+        "vne_kmh": 945,
+        "takeoffRollSTOL_m": 3050,
+        "landingRollSTOL_m": 1600,
+        "serviceCeilingM": 13140,
+        "maxRangeKm": 13650,
+        "gLimits": { "min": -1.0, "max": 2.5 }
+      },
+      "physicsParams": {
+        "pitchAuth": 0.52,
+        "rollAuth": 0.46,
+        "yawAuth": 0.48,
+        "inertia": 3.6,
+        "dragMult": 0.88,
+        "groundEffectMultiplier": 1.18
+      }
+    }
+  },
+  "preflightChecklist": [
+    {
+      "id": "chk-h2-tank",
+      "category": "POWERTRAIN & FUEL",
+      "item": "Давление в композитном крио-баке H2 (Type IV)",
+      "requirement": "350 бар ± 5 бар (98% емкости)",
+      "status": "PASS",
+      "desc": "Утечки водорода H2 детектором Sniffer не обнаружены. Криогенные запорные клапаны открыты."
+    },
+    {
+      "id": "chk-pemfc",
+      "category": "POWERTRAIN & FUEL",
+      "item": "Водородная ячейка PEMFC 120 кВт",
+      "requirement": "Рабочая температура мембраны 68°C, напряжение стека 380 В",
+      "status": "PASS",
+      "desc": "Контур водяного охлаждения в норме. Выхлоп дистиллята чист, циркуляция насоса 100%."
+    },
+    {
+      "id": "chk-lipo-buffer",
+      "category": "POWERTRAIN & FUEL",
+      "item": "Буферный высоковольтный аккумулятор LiPo",
+      "requirement": "SOC >= 95%, напряжение 750 В, баланс ячеек dV < 5 мВ",
+      "status": "PASS",
+      "desc": "Готов к выдаче пикового тока для взлётного буста STOL (320 А в течение 45 сек)."
+    },
+    {
+      "id": "chk-controls",
+      "category": "FLIGHT CONTROLS & SURFACES",
+      "item": "Рули высоты, направления и закрылки Fowler",
+      "requirement": "Полный ход рулей ±28°, люфты отсутствуют, сервоприводы без заеданий",
+      "status": "PASS",
+      "desc": "Двойной контур Fly-By-Wire DO-178C протестирован. Угол закрылков откалиброван: 0° / 15° / 30°."
+    },
+    {
+      "id": "chk-dep-props",
+      "category": "PROPULSION SYSTEM",
+      "item": "4x Электромотора DEP (Distributed Electric Propulsion)",
+      "requirement": "Тест синхронизации оборотов 2850 об/мин, вибрация < 0.4 мм/с",
+      "status": "PASS",
+      "desc": "Карбоновые винты изменяемого шага проверены на сколы и трещины. Обдув крыла активен."
+    },
+    {
+      "id": "chk-optics-flir",
+      "category": "AVIONICS & PAYLOAD",
+      "item": "Гиростабилизированная турель NDVI / FLIR",
+      "requirement": "Самотестирование гироскопа ОК, лазерный дальномер калиброван",
+      "status": "PASS",
+      "desc": "ИК-камера откалибрована по матрице черного тела. Канал передачи телеметрии 5.8 ГГц залочен."
+    },
+    {
+      "id": "chk-pod-lock",
+      "category": "AVIONICS & PAYLOAD",
+      "item": "Замки сменной капсулы двойного назначения (800 л)",
+      "requirement": "4 электромеханических замка закрыты, датчик концевиков = LOCKED",
+      "status": "PASS",
+      "desc": "Аварийный сброс бака гидроударом проверен. Клапан распылителя / пожарного ствола готов."
+    },
+    {
+      "id": "chk-brs-parachute",
+      "category": "EMERGENCY SYSTEMS",
+      "item": "Баллистическая парашютная система спасения (BRS)",
+      "requirement": "Чека пиропатрона удалена, сервопривод детонатора на боевом взводе",
+      "status": "PASS",
+      "desc": "Система спасения самолета с экипажем готова к аварийной активации при отказе тяги."
+    }
+  ]
+}
