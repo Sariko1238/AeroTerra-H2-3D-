@@ -595,6 +595,9 @@
     }
   };
 
+  // Bi-directional alias for Node #7 (Tail & Avionics)
+  HOTSPOTS_DATA.tail = HOTSPOTS_DATA.avionics;
+
   // --------------------------------------------------------------------------
   // 5. THREE.JS 3D HANGAR ENGINE (Airbus / Pininfarina Aerospace Expo Pavilion)
   // --------------------------------------------------------------------------
@@ -1842,6 +1845,7 @@
   }
 
   function selectHotspot(key) {
+    if (key === 'tail') key = 'avionics';
     if (!HOTSPOTS_DATA[key]) return;
     STATE.activeHotspot = key;
     audio.playHotspotChime();
@@ -1861,7 +1865,9 @@
 
     // Synchronize Quick Component Selection Ribbon (Nodes 1..8)
     document.querySelectorAll('.node-ribbon-btn').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.node === key);
+      const nodeKey = btn.dataset.node;
+      const isMatch = (nodeKey === key) || (nodeKey === 'tail' && key === 'avionics') || (nodeKey === 'avionics' && key === 'tail');
+      btn.classList.toggle('active', isMatch);
     });
   }
 
@@ -4086,22 +4092,117 @@
   }
 
   // --------------------------------------------------------------------------
-  // 18. IN-APP PRESENTATION MODAL VIEWER (FRAMER MOTION & PARALLAX SHOWCASE)
+  // 18. IN-APP PRESENTATION MODAL VIEWER (7-SLIDE PITCH DECK & LANDING VIEW)
   // --------------------------------------------------------------------------
   function setupPresentationModal() {
     const btnPres = document.getElementById('btn-presentation-link');
     const presModal = document.getElementById('presentation-modal');
-    const presIframe = document.getElementById('presentation-iframe');
     const btnClosePres = document.getElementById('btn-close-presentation');
+    const btnToggleMode = document.getElementById('btn-toggle-pres-mode');
+    const presModeLabel = document.getElementById('pres-mode-label');
+    const slidesViewport = document.getElementById('presentation-slides-viewport');
+    const bottomNav = document.getElementById('presentation-bottom-nav');
+    const iframeWrap = document.getElementById('presentation-iframe-wrap');
+    const presIframe = document.getElementById('presentation-iframe');
+    const btnPrev = document.getElementById('btn-slide-prev');
+    const btnNext = document.getElementById('btn-slide-next');
+    const currentNumEl = document.getElementById('pres-current-slide-num');
+    const dots = document.querySelectorAll('.slide-dot');
+    const slides = document.querySelectorAll('.pres-slide');
+    const btnToSim = document.getElementById('btn-pres-to-sim');
+
+    let currentSlide = 1;
+    const totalSlides = slides.length || 7;
+    let isIframeMode = false;
+
+    function showSlide(index) {
+      if (index < 1) index = 1;
+      if (index > totalSlides) index = totalSlides;
+      currentSlide = index;
+
+      slides.forEach(slide => {
+        const slideNum = parseInt(slide.getAttribute('data-slide') || '1', 10);
+        slide.classList.toggle('active', slideNum === currentSlide);
+      });
+
+      dots.forEach(dot => {
+        const dotNum = parseInt(dot.getAttribute('data-slide') || '1', 10);
+        dot.classList.toggle('active', dotNum === currentSlide);
+      });
+
+      if (currentNumEl) currentNumEl.textContent = currentSlide;
+
+      if (btnPrev) btnPrev.disabled = (currentSlide === 1);
+      if (btnNext) {
+        if (currentSlide === totalSlides) {
+          btnNext.innerHTML = `<span>В начало</span> <i class="fa-solid fa-rotate-left"></i>`;
+        } else {
+          btnNext.innerHTML = `<span>Вперёд</span> <i class="fa-solid fa-chevron-right"></i>`;
+        }
+      }
+      if (slidesViewport) slidesViewport.scrollTop = 0;
+    }
+
+    function toggleMode() {
+      isIframeMode = !isIframeMode;
+      if (isIframeMode) {
+        if (slidesViewport) slidesViewport.style.display = 'none';
+        if (bottomNav) bottomNav.style.display = 'none';
+        if (iframeWrap) iframeWrap.style.display = 'block';
+        if (presIframe && (!presIframe.src || presIframe.src === 'about:blank' || !presIframe.src.includes('landing.html'))) {
+          presIframe.src = 'landing.html';
+        }
+        if (presModeLabel) presModeLabel.textContent = '📑 Слайды';
+      } else {
+        if (iframeWrap) iframeWrap.style.display = 'none';
+        if (slidesViewport) slidesViewport.style.display = 'flex';
+        if (bottomNav) bottomNav.style.display = 'flex';
+        if (presModeLabel) presModeLabel.textContent = '🌐 Landing View';
+      }
+    }
 
     if (btnPres && presModal) {
       btnPres.addEventListener('click', (e) => {
         e.preventDefault();
-        if (presIframe && (!presIframe.src || presIframe.src === 'about:blank' || !presIframe.src.includes('landing.html'))) {
-          presIframe.src = 'landing.html';
-        }
         presModal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
+        showSlide(currentSlide);
+      });
+    }
+
+    if (btnToggleMode) {
+      btnToggleMode.addEventListener('click', toggleMode);
+    }
+
+    if (btnPrev) {
+      btnPrev.addEventListener('click', () => {
+        showSlide(currentSlide - 1);
+      });
+    }
+
+    if (btnNext) {
+      btnNext.addEventListener('click', () => {
+        if (currentSlide === totalSlides) {
+          showSlide(1);
+        } else {
+          showSlide(currentSlide + 1);
+        }
+      });
+    }
+
+    dots.forEach(dot => {
+      dot.addEventListener('click', function () {
+        const target = parseInt(this.getAttribute('data-slide') || '1', 10);
+        showSlide(target);
+      });
+    });
+
+    if (btnToSim && presModal) {
+      btnToSim.addEventListener('click', () => {
+        presModal.style.display = 'none';
+        document.body.style.overflow = '';
+        const simTab = document.getElementById('nav-simulator-tab');
+        if (simTab) simTab.click();
       });
     }
 
@@ -4122,23 +4223,42 @@
       });
     }
 
-    // Close on Escape key
+    // Keyboard navigation
     window.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && presModal && presModal.style.display === 'flex') {
+      if (!presModal || presModal.style.display !== 'flex') return;
+      if (e.key === 'Escape') {
         presModal.style.display = 'none';
         document.body.style.overflow = '';
+      } else if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') {
+        if (!isIframeMode && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+          e.preventDefault();
+          if (currentSlide === totalSlides) showSlide(1);
+          else showSlide(currentSlide + 1);
+        }
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        if (!isIframeMode && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+          e.preventDefault();
+          showSlide(currentSlide - 1);
+        }
       }
     });
 
-    // Listen for postMessage from inside iframe (e.g. clicking 3D Hangar inside presentation)
+    // Listen for postMessage from inside landing iframe
     window.addEventListener('message', (event) => {
       if (event.data && (event.data.type === 'CLOSE_PRESENTATION' || event.data.type === 'GO_TO_HANGAR')) {
         if (presModal) {
           presModal.style.display = 'none';
           document.body.style.overflow = '';
         }
+        if (event.data.type === 'GO_TO_HANGAR') {
+          const hangarTab = document.querySelector('.nav-item a[href="#hangar-section"]');
+          if (hangarTab) hangarTab.click();
+        }
       }
     });
+
+    // Initial slide
+    showSlide(1);
   }
 
   // --------------------------------------------------------------------------
@@ -4632,6 +4752,411 @@
   }
 
   // --------------------------------------------------------------------------
+  // ADMIN CMS & LIVE ON-PAGE VISUAL TEXT EDITOR ENGINE
+  // --------------------------------------------------------------------------
+  function setupAdminCms() {
+    const adminModal = document.getElementById('admin-cms-modal');
+    const btnOpenAdmin = document.getElementById('btn-open-admin');
+    const btnCloseAdmin = document.getElementById('btn-close-admin');
+    const floatingControls = document.getElementById('cms-floating-controls');
+    const btnFloatSave = document.getElementById('btn-cms-float-save');
+    const btnFloatClose = document.getElementById('btn-cms-float-close');
+    const toggleInline = document.getElementById('toggle-cms-inline-edit');
+    const btnSaveAllTexts = document.getElementById('btn-admin-save-all-texts');
+    const btnExportJson = document.getElementById('btn-admin-export-texts-json');
+    const btnResetTexts = document.getElementById('btn-admin-reset-texts');
+    const overridesCountEl = document.getElementById('cms-overrides-count');
+
+    // Tab buttons and panes
+    const tabBtns = document.querySelectorAll('.admin-tab-btn');
+    const tabPanes = document.querySelectorAll('.admin-tab-pane');
+
+    // Tab 2: Nodes Editor
+    const selectNodeTarget = document.getElementById('admin-select-node-target');
+    const nodeTitleRu = document.getElementById('node-edit-title-ru');
+    const nodeTitleEn = document.getElementById('node-edit-title-en');
+    const nodeMass = document.getElementById('node-edit-mass');
+    const nodeMtowPct = document.getElementById('node-edit-mtow-pct');
+    const nodeMaterialRu = document.getElementById('node-edit-material-ru');
+    const nodeFormula = document.getElementById('node-edit-formula');
+    const nodeDescRu = document.getElementById('node-edit-desc-ru');
+    const btnSaveNodeEdits = document.getElementById('btn-save-node-edits');
+
+    // Tab 3: Vault & API Gateway
+    const btnPingGateway = document.getElementById('btn-admin-ping-gateway');
+    const vaultKeyInput = document.getElementById('admin-vault-key-input');
+    const vaultPinInput = document.getElementById('admin-vault-pin-input');
+    const btnVaultSave = document.getElementById('btn-admin-vault-save');
+    const btnVaultClear = document.getElementById('btn-admin-vault-clear');
+    const apiLogBox = document.getElementById('admin-api-log-box');
+    const gatewayStatusText = document.getElementById('admin-gateway-status-text');
+
+    // Tab 4: Aircraft Specs
+    const specMtow = document.getElementById('spec-edit-mtow');
+    const specWingspan = document.getElementById('spec-edit-wingspan');
+    const specSpeed = document.getElementById('spec-edit-speed');
+    const specH2 = document.getElementById('spec-edit-h2');
+    const specVolume = document.getElementById('spec-edit-volume');
+    const specPower = document.getElementById('spec-edit-power');
+    const btnSaveSpecsGlobal = document.getElementById('btn-save-specs-global');
+
+    // Open/Close Admin Modal
+    function openAdmin() {
+      if (adminModal) {
+        adminModal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        updateOverridesCountBadge();
+        populateNodeEditorForm();
+      }
+    }
+
+    function closeAdmin() {
+      if (adminModal) {
+        adminModal.style.display = 'none';
+        document.body.style.overflow = '';
+      }
+    }
+
+    if (btnOpenAdmin) btnOpenAdmin.addEventListener('click', openAdmin);
+    if (btnCloseAdmin) btnCloseAdmin.addEventListener('click', closeAdmin);
+
+    if (adminModal) {
+      adminModal.addEventListener('click', (e) => {
+        if (e.target === adminModal) closeAdmin();
+      });
+    }
+
+    // Hotkey: Ctrl+Shift+A or Cmd+Shift+A toggles Admin
+    window.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'A' || e.key === 'a' || e.key === 'Ф' || e.key === 'ф')) {
+        e.preventDefault();
+        if (adminModal.style.display === 'flex') closeAdmin();
+        else openAdmin();
+      } else if (e.key === 'Escape' && adminModal && adminModal.style.display === 'flex') {
+        closeAdmin();
+      }
+    });
+
+    // Tab Switching
+    tabBtns.forEach(btn => {
+      btn.addEventListener('click', function () {
+        const targetId = this.getAttribute('data-tab');
+        tabBtns.forEach(b => b.classList.remove('active'));
+        tabPanes.forEach(p => {
+          p.classList.remove('active');
+          p.style.display = 'none';
+        });
+
+        this.classList.add('active');
+        const targetPane = document.getElementById(targetId);
+        if (targetPane) {
+          targetPane.classList.add('active');
+          targetPane.style.display = 'flex';
+        }
+      });
+    });
+
+    // ------------------------------------------------------------------------
+    // TAB 1: INLINE ON-PAGE LIVE TEXT EDITOR
+    // ------------------------------------------------------------------------
+    let inlineEditActive = false;
+
+    function getEditableElements() {
+      const selector = 'h1, h2, h3, h4, h5, p, .spec-value, .passport-val, .formula-latex, .hotspot-desc, .slide-subtitle, .stat-value, .mission-desc, .feature-desc';
+      const all = Array.from(document.querySelectorAll(selector));
+      return all.filter(el => {
+        if (el.closest('#admin-cms-modal')) return false;
+        if (el.closest('#dev-console-modal')) return false;
+        if (el.closest('#auth-modal')) return false;
+        if (el.closest('.site-header')) return false;
+        if (el.closest('.header-actions')) return false;
+        if (el.closest('#cms-floating-controls')) return false;
+        if (el.tagName === 'BUTTON' || el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') return false;
+        return true;
+      });
+    }
+
+    function ensureCmsKeys() {
+      const els = getEditableElements();
+      els.forEach((el, idx) => {
+        if (!el.getAttribute('data-cms-key')) {
+          const id = el.id || `cms-txt-${idx}`;
+          el.setAttribute('data-cms-key', id);
+        }
+      });
+    }
+
+    function setInlineEditMode(active) {
+      inlineEditActive = active;
+      ensureCmsKeys();
+      const els = getEditableElements();
+
+      els.forEach(el => {
+        if (active) {
+          el.setAttribute('contenteditable', 'true');
+          el.classList.add('cms-editable-active');
+        } else {
+          el.removeAttribute('contenteditable');
+          el.classList.remove('cms-editable-active');
+        }
+      });
+
+      if (toggleInline) toggleInline.checked = active;
+
+      if (floatingControls) {
+        floatingControls.style.display = active ? 'flex' : 'none';
+      }
+
+      if (active) {
+        closeAdmin();
+        showAlert('Режим правки текста включен! Нажмите на любой текст для редактирования.', 'info');
+      }
+    }
+
+    if (toggleInline) {
+      toggleInline.addEventListener('change', (e) => {
+        setInlineEditMode(e.target.checked);
+      });
+    }
+
+    if (btnFloatClose) {
+      btnFloatClose.addEventListener('click', () => {
+        setInlineEditMode(false);
+      });
+    }
+
+    function saveAllTextOverrides() {
+      ensureCmsKeys();
+      const els = getEditableElements();
+      const overrides = JSON.parse(localStorage.getItem('aeroterra_cms_overrides') || '{}');
+
+      els.forEach(el => {
+        const key = el.getAttribute('data-cms-key');
+        if (key) {
+          overrides[key] = el.innerHTML;
+        }
+      });
+
+      localStorage.setItem('aeroterra_cms_overrides', JSON.stringify(overrides));
+      updateOverridesCountBadge();
+      showAlert('Все текстовые правки успешно сохранены в LocalStorage!', 'success');
+      logApi('Все текстовые блоки сохранены в локальное хранилище.', 'success');
+    }
+
+    if (btnSaveAllTexts) btnSaveAllTexts.addEventListener('click', saveAllTextOverrides);
+    if (btnFloatSave) btnFloatSave.addEventListener('click', saveAllTextOverrides);
+
+    if (btnExportJson) {
+      btnExportJson.addEventListener('click', () => {
+        const overrides = localStorage.getItem('aeroterra_cms_overrides') || '{}';
+        const blob = new Blob([overrides], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `aeroterra_cms_overrides_${Date.now()}.json`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+      });
+    }
+
+    if (btnResetTexts) {
+      btnResetTexts.addEventListener('click', () => {
+        if (confirm('Сбросить все сохранённые правки текстов и перезагрузить заводские данные?')) {
+          localStorage.removeItem('aeroterra_cms_overrides');
+          updateOverridesCountBadge();
+          showAlert('Правки сброшены! Перезагрузка страницы...', 'info');
+          setTimeout(() => location.reload(), 800);
+        }
+      });
+    }
+
+    function updateOverridesCountBadge() {
+      const overrides = JSON.parse(localStorage.getItem('aeroterra_cms_overrides') || '{}');
+      const count = Object.keys(overrides).length;
+      if (overridesCountEl) overridesCountEl.textContent = count;
+    }
+
+    function applyCmsOverrides() {
+      ensureCmsKeys();
+      const overrides = JSON.parse(localStorage.getItem('aeroterra_cms_overrides') || '{}');
+      const keys = Object.keys(overrides);
+      if (keys.length === 0) return;
+
+      keys.forEach(key => {
+        const el = document.querySelector(`[data-cms-key="${key}"]`) || document.getElementById(key);
+        if (el) {
+          el.innerHTML = overrides[key];
+        }
+      });
+      updateOverridesCountBadge();
+    }
+
+    // ------------------------------------------------------------------------
+    // TAB 2: 8 AIRCRAFT NODES EDITOR
+    // ------------------------------------------------------------------------
+    function populateNodeEditorForm() {
+      if (!selectNodeTarget) return;
+      let targetKey = selectNodeTarget.value;
+      if (targetKey === 'tail') targetKey = 'avionics';
+      const node = HOTSPOTS_DATA[targetKey];
+      if (!node) return;
+
+      if (nodeTitleRu) nodeTitleRu.value = node.title?.ru || '';
+      if (nodeTitleEn) nodeTitleEn.value = node.title?.en || '';
+      if (nodeMass) nodeMass.value = node.massKg || '';
+      if (nodeMtowPct) nodeMtowPct.value = node.mtowPct || '';
+      if (nodeMaterialRu) nodeMaterialRu.value = node.material?.ru || '';
+      if (nodeFormula) nodeFormula.value = node.formula || '';
+      if (nodeDescRu) nodeDescRu.value = node.desc?.ru || '';
+    }
+
+    if (selectNodeTarget) {
+      selectNodeTarget.addEventListener('change', populateNodeEditorForm);
+    }
+
+    if (btnSaveNodeEdits) {
+      btnSaveNodeEdits.addEventListener('click', () => {
+        let targetKey = selectNodeTarget ? selectNodeTarget.value : 'wing';
+        if (targetKey === 'tail') targetKey = 'avionics';
+        if (!HOTSPOTS_DATA[targetKey]) return;
+
+        if (nodeTitleRu) HOTSPOTS_DATA[targetKey].title.ru = nodeTitleRu.value;
+        if (nodeTitleEn) HOTSPOTS_DATA[targetKey].title.en = nodeTitleEn.value;
+        if (nodeMass) HOTSPOTS_DATA[targetKey].massKg = parseFloat(nodeMass.value) || HOTSPOTS_DATA[targetKey].massKg;
+        if (nodeMtowPct) HOTSPOTS_DATA[targetKey].mtowPct = nodeMtowPct.value;
+        if (nodeMaterialRu) HOTSPOTS_DATA[targetKey].material.ru = nodeMaterialRu.value;
+        if (nodeFormula) HOTSPOTS_DATA[targetKey].formula = nodeFormula.value;
+        if (nodeDescRu) HOTSPOTS_DATA[targetKey].desc.ru = nodeDescRu.value;
+
+        // Persist to localStorage
+        const customNodes = JSON.parse(localStorage.getItem('aeroterra_nodes_overrides') || '{}');
+        customNodes[targetKey] = {
+          title: HOTSPOTS_DATA[targetKey].title,
+          massKg: HOTSPOTS_DATA[targetKey].massKg,
+          mtowPct: HOTSPOTS_DATA[targetKey].mtowPct,
+          material: HOTSPOTS_DATA[targetKey].material,
+          formula: HOTSPOTS_DATA[targetKey].formula,
+          desc: HOTSPOTS_DATA[targetKey].desc
+        };
+        localStorage.setItem('aeroterra_nodes_overrides', JSON.stringify(customNodes));
+
+        // Update Flyout Panel if currently viewing this node
+        if (STATE.activeHotspot === targetKey || (targetKey === 'avionics' && STATE.activeHotspot === 'tail')) {
+          selectHotspot(targetKey);
+        }
+
+        showAlert(`Узел #${HOTSPOTS_DATA[targetKey].nodeNumber} успешно обновлен и синхронизирован с 3D!`, 'success');
+        logApi(`Узел ${targetKey} обновлен администратором.`, 'success');
+      });
+    }
+
+    function loadSavedNodesOverrides() {
+      const saved = JSON.parse(localStorage.getItem('aeroterra_nodes_overrides') || '{}');
+      Object.keys(saved).forEach(key => {
+        if (HOTSPOTS_DATA[key]) {
+          Object.assign(HOTSPOTS_DATA[key], saved[key]);
+        }
+      });
+    }
+
+    // ------------------------------------------------------------------------
+    // TAB 3: API GATEWAY & AES-256 VAULT
+    // ------------------------------------------------------------------------
+    function logApi(msg, type = 'info') {
+      if (!apiLogBox) return;
+      const line = document.createElement('div');
+      line.className = `log-line ${type}`;
+      line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+      apiLogBox.appendChild(line);
+      apiLogBox.scrollTop = apiLogBox.scrollHeight;
+    }
+
+    if (btnPingGateway) {
+      btnPingGateway.addEventListener('click', async () => {
+        logApi('Отправка ping-запроса на /api/ai-gateway...', 'info');
+        btnPingGateway.disabled = true;
+        const start = performance.now();
+        try {
+          const res = await fetch('/api/ai-gateway', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: 'ping' })
+          });
+          const time = Math.round(performance.now() - start);
+          if (res.ok) {
+            logApi(`Ответ получен: HTTP ${res.status} OK (${time}мс). Шлюз Vercel активен!`, 'success');
+            if (gatewayStatusText) gatewayStatusText.textContent = `АКТИВЕН (${time}мс, HTTP ${res.status})`;
+          } else {
+            logApi(`Шлюз ответил HTTP ${res.status}: ${res.statusText} (${time}мс). Проверьте process.env.VERCEL_AI_API_KEY.`, 'error');
+            if (gatewayStatusText) gatewayStatusText.textContent = `ОШИБКА ${res.status}`;
+          }
+        } catch (err) {
+          const time = Math.round(performance.now() - start);
+          logApi(`Локальный запуск без Vercel Serverless (${err.message}). Серверный шлюз будет доступен на Vercel Production.`, 'info');
+        } finally {
+          btnPingGateway.disabled = false;
+        }
+      });
+    }
+
+    if (btnVaultSave) {
+      btnVaultSave.addEventListener('click', async () => {
+        const key = vaultKeyInput ? vaultKeyInput.value.trim() : '';
+        const pin = vaultPinInput ? vaultPinInput.value.trim() : '';
+        if (!key || !pin) {
+          showAlert('Введите ключ и PIN для шифрования!', 'error');
+          return;
+        }
+        try {
+          await CryptoVault.encryptApiKey(key, pin);
+          if (vaultKeyInput) vaultKeyInput.value = '';
+          if (vaultPinInput) vaultPinInput.value = '';
+          logApi('Резервный ключ успешно зашифрован по алгоритму AES-GCM 256-bit (PBKDF2 SHA-256)!', 'success');
+          showAlert('Ключ зашифрован и надёжно сохранён в LocalStorage Vault!', 'success');
+        } catch (err) {
+          logApi(`Ошибка шифрования: ${err.message}`, 'error');
+          showAlert(err.message, 'error');
+        }
+      });
+    }
+
+    if (btnVaultClear) {
+      btnVaultClear.addEventListener('click', () => {
+        CryptoVault.purgeVault();
+        logApi('Клиентский сейф очищен. Ключи удалены.', 'info');
+        showAlert('Сейф ключей очищен.', 'info');
+      });
+    }
+
+    // ------------------------------------------------------------------------
+    // TAB 4: AIRCRAFT SPECS GLOBAL UPDATER
+    // ------------------------------------------------------------------------
+    if (btnSaveSpecsGlobal) {
+      btnSaveSpecsGlobal.addEventListener('click', () => {
+        const mtow = specMtow ? specMtow.value : '1850';
+        const span = specWingspan ? specWingspan.value : '12.4';
+        const speed = specSpeed ? specSpeed.value : '195';
+        const h2 = specH2 ? specH2.value : '24';
+        const vol = specVolume ? specVolume.value : '340';
+        const pwr = specPower ? specPower.value : '120';
+
+        // Update DOM elements containing these values
+        document.querySelectorAll('.spec-mtow-val').forEach(el => el.textContent = `${mtow} кг`);
+        document.querySelectorAll('.spec-wingspan-val').forEach(el => el.textContent = `${span} м`);
+        document.querySelectorAll('.spec-speed-val').forEach(el => el.textContent = `${speed} км/ч`);
+        document.querySelectorAll('.spec-h2-val').forEach(el => el.textContent = `${h2} кг`);
+
+        localStorage.setItem('aeroterra_specs_overrides', JSON.stringify({ mtow, span, speed, h2, vol, pwr }));
+        showAlert('Глобальные спецификации самолёта обновлены по всему сайту!', 'success');
+        logApi(`Спецификации обновлены: MTOW=${mtow}кг, Span=${span}м, Speed=${speed}км/ч.`, 'success');
+      });
+    }
+
+    // Initialization calls
+    loadSavedNodesOverrides();
+    applyCmsOverrides();
+  }
+
+  // --------------------------------------------------------------------------
   // 19. APPLICATION ENTRY POINT
   // --------------------------------------------------------------------------
   window.addEventListener('DOMContentLoaded', () => {
@@ -4645,6 +5170,7 @@
     setupEventListeners();
     setupNeonAuth();
     setupPresentationModal();
+    setupAdminCms();
     setupDevConsole();
 
     // Open Node #1 (Wing) in Inspector Panel by default
