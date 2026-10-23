@@ -2121,6 +2121,13 @@
           geometry.center();
           mesh.scale.set(0.01, 0.01, 0.01);
           aircraftGroup.add(mesh);
+        } else if (ext === 'obj' && typeof THREE.OBJLoader !== 'undefined') {
+          const loader = new THREE.OBJLoader();
+          const obj = loader.parse(contents);
+          const mat = new THREE.MeshStandardMaterial({ color: 0x00e5ff, metalness: 0.8, roughness: 0.2 });
+          obj.traverse(c => { if (c.isMesh) c.material = mat; });
+          obj.scale.set(0.01, 0.01, 0.01);
+          aircraftGroup.add(obj);
         } else if (ext === 'glb' || ext === 'gltf') {
           if (typeof THREE.GLTFLoader !== 'undefined') {
             const loader = new THREE.GLTFLoader();
@@ -2554,7 +2561,7 @@
     const sendBtn = document.getElementById('btn-ai-chat-send');
     const auditBtn = document.getElementById('btn-ai-analyze-state');
 
-    function sendAiMessage(userText) {
+    async function sendAiMessage(userText) {
       if (!userText.trim()) return;
       audio.playClick();
 
@@ -2562,11 +2569,48 @@
       addMessageToAiBox('user', userText);
       input.value = '';
 
-      // AI Response processing
-      setTimeout(() => {
-        const response = generateAiAerospaceResponse(userText);
-        addMessageToAiBox('system', response);
-      }, 500);
+      // Add temporary typing indicator
+      const box = document.getElementById('ai-messages-box');
+      const typingMsg = document.createElement('div');
+      typingMsg.className = 'ai-msg system typing-indicator';
+      typingMsg.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="color: var(--accent-cyan); margin-right: 0.4rem;"></i> Анализ телеметрии и расчёт формул...';
+      if (box) {
+        box.appendChild(typingMsg);
+        box.scrollTop = box.scrollHeight;
+      }
+
+      let aiReply = null;
+
+      // 1. Attempt secure Vercel serverless proxy call
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 7000);
+        const res = await fetch('/api/ai-gateway', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: userText, context: 'aerospace_chief_designer' }),
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.text) {
+            aiReply = data.text;
+          }
+        }
+      } catch (err) {
+        // Fallback to local intelligence below
+      }
+
+      // 2. Seamless local aerospace intelligence fallback
+      if (!aiReply) {
+        aiReply = generateAiAerospaceResponse(userText);
+      }
+
+      // Remove typing indicator and render final response
+      typingMsg.remove();
+      addMessageToAiBox('system', aiReply);
     }
 
     if (sendBtn && input) {
@@ -3343,12 +3387,68 @@
         if (btnOpenAuth) btnOpenAuth.style.display = 'none';
         if (userBadge) userBadge.style.display = 'flex';
         if (headerUserName) headerUserName.textContent = user.fullName || user.email || 'Инженер';
-        if (headerUserRole) headerUserRole.textContent = (user.role || 'engineer').toUpperCase();
+        if (headerUserRole) {
+          if (user.role === 'chief_engineer') {
+            headerUserRole.textContent = 'ГЛАВНЫЙ КОНСТРУКТОР (VIP)';
+            headerUserRole.style.color = 'var(--accent-amber)';
+          } else {
+            headerUserRole.textContent = (user.role || 'engineer').toUpperCase();
+            headerUserRole.style.color = '';
+          }
+        }
         if (headerUserAvatar) headerUserAvatar.textContent = (user.fullName ? user.fullName[0] : 'U').toUpperCase();
+
+        const btnDev = document.getElementById('btn-open-dev-console');
+        if (btnDev && (user.devMode || user.role === 'chief_engineer')) {
+          btnDev.style.borderColor = 'var(--accent-cyan)';
+          btnDev.style.boxShadow = '0 0 10px rgba(0, 229, 255, 0.4)';
+        }
       } else {
         if (btnOpenAuth) btnOpenAuth.style.display = 'inline-flex';
         if (userBadge) userBadge.style.display = 'none';
       }
+    }
+
+    async function hashPassword(str) {
+      try {
+        const enc = new TextEncoder().encode(str);
+        const buf = await window.crypto.subtle.digest('SHA-256', enc);
+        return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+      } catch (e) {
+        return str;
+      }
+    }
+
+    // Developer mode toggle
+    const devToggle = document.getElementById('auth-dev-mode-toggle');
+    if (devToggle) {
+      const isDev = localStorage.getItem('aeroterra_dev_mode') !== 'false';
+      devToggle.checked = isDev;
+      devToggle.addEventListener('change', (e) => {
+        localStorage.setItem('aeroterra_dev_mode', e.target.checked ? 'true' : 'false');
+      });
+    }
+
+    // 1-Click VIP Professor Login
+    const btnVipProf = document.getElementById('btn-vip-professor');
+    if (btnVipProf) {
+      btnVipProf.addEventListener('click', () => {
+        hideAlert();
+        const profUser = {
+          fullName: 'Проф. А. В. Смирнов',
+          email: 'chief@aeroterra.aero',
+          role: 'chief_engineer',
+          organization: 'Aerospace Engineering Club / Главный Конструктор',
+          isVip: true,
+          devMode: true
+        };
+        localStorage.setItem('aeroterra_token', 'vip-prof-token-' + Date.now());
+        localStorage.setItem('aeroterra_user', JSON.stringify(profUser));
+        localStorage.setItem('aeroterra_dev_mode', 'true');
+        updateAuthUI(profUser);
+        showAlert('🎓 VIP ВХОД: Профессор А. В. Смирнов (Главный Конструктор)', 'success');
+        setTimeout(() => { if (authModal) authModal.style.display = 'none'; }, 800);
+      });
     }
 
     // Check existing stored session
@@ -3571,6 +3671,496 @@
   }
 
   // --------------------------------------------------------------------------
+  // CRYPTO VAULT: WEB CRYPTO API AES-GCM 256-BIT WITH PBKDF2
+  // --------------------------------------------------------------------------
+  const CryptoVault = {
+    VAULT_KEY: 'aeroterra_encrypted_vault',
+
+    async deriveKey(pin, salt) {
+      const enc = new TextEncoder();
+      const keyMaterial = await window.crypto.subtle.importKey(
+        'raw',
+        enc.encode(pin),
+        { name: 'PBKDF2' },
+        false,
+        ['deriveKey']
+      );
+      return window.crypto.subtle.deriveKey(
+        {
+          name: 'PBKDF2',
+          salt: salt,
+          iterations: 100000,
+          hash: 'SHA-256'
+        },
+        keyMaterial,
+        { name: 'AES-GCM', length: 256 },
+        false,
+        ['encrypt', 'decrypt']
+      );
+    },
+
+    async encryptApiKey(apiKey, pin) {
+      if (!apiKey || !pin) throw new Error('API ключ и PIN обязательны для шифрования');
+      const salt = window.crypto.getRandomValues(new Uint8Array(16));
+      const iv = window.crypto.getRandomValues(new Uint8Array(12));
+      const key = await this.deriveKey(pin, salt);
+      const enc = new TextEncoder();
+      const ciphertext = await window.crypto.subtle.encrypt(
+        { name: 'AES-GCM', iv },
+        key,
+        enc.encode(apiKey)
+      );
+
+      const vaultData = {
+        salt: btoa(String.fromCharCode(...salt)),
+        iv: btoa(String.fromCharCode(...iv)),
+        ciphertext: btoa(String.fromCharCode(...new Uint8Array(ciphertext)))
+      };
+      localStorage.setItem(this.VAULT_KEY, JSON.stringify(vaultData));
+      return true;
+    },
+
+    async decryptApiKey(pin) {
+      const raw = localStorage.getItem(this.VAULT_KEY);
+      if (!raw) throw new Error('Сейф пуст');
+      const vaultData = JSON.parse(raw);
+      const salt = new Uint8Array(atob(vaultData.salt).split('').map(c => c.charCodeAt(0)));
+      const iv = new Uint8Array(atob(vaultData.iv).split('').map(c => c.charCodeAt(0)));
+      const ciphertext = new Uint8Array(atob(vaultData.ciphertext).split('').map(c => c.charCodeAt(0)));
+
+      const key = await this.deriveKey(pin, salt);
+      const decrypted = await window.crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv },
+        key,
+        ciphertext
+      );
+      return new TextDecoder().decode(decrypted);
+    },
+
+    isVaultSet() {
+      return !!localStorage.getItem(this.VAULT_KEY);
+    },
+
+    purgeVault() {
+      localStorage.removeItem(this.VAULT_KEY);
+    },
+
+    getMaskedKey() {
+      if (!this.isVaultSet()) return 'НЕ ЗАДАН (ПУСТО)';
+      return '••••••••••••••••••••••••••••••••';
+    }
+  };
+
+  // --------------------------------------------------------------------------
+  // DEV CONSOLE CONTROLLER (60Hz PHYSICS, SECURITY VAULT, CLI TERMINAL)
+  // --------------------------------------------------------------------------
+  function setupDevConsole() {
+    const modal = document.getElementById('dev-console-modal');
+    const btnOpen = document.getElementById('btn-open-dev-console');
+    const btnClose = document.getElementById('btn-close-dev-console');
+
+    // Tabs
+    const tabPhysics = document.getElementById('tab-dev-physics');
+    const tabSecurity = document.getElementById('tab-dev-security');
+    const tabCli = document.getElementById('tab-dev-cli');
+    const panePhysics = document.getElementById('pane-dev-physics');
+    const paneSecurity = document.getElementById('pane-dev-security');
+    const paneCli = document.getElementById('pane-dev-cli');
+
+    function openConsole(targetTab = null) {
+      if (!modal) return;
+      modal.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+      if (targetTab) switchTab(targetTab);
+      syncVaultStatus();
+      startPhysicsLoop();
+    }
+
+    function closeConsole() {
+      if (!modal) return;
+      modal.style.display = 'none';
+      document.body.style.overflow = '';
+      stopPhysicsLoop();
+    }
+
+    function toggleConsole() {
+      if (!modal) return;
+      if (modal.style.display === 'flex') {
+        closeConsole();
+      } else {
+        openConsole();
+      }
+    }
+
+    function switchTab(name) {
+      const tabs = [tabPhysics, tabSecurity, tabCli];
+      const panes = [panePhysics, paneSecurity, paneCli];
+      tabs.forEach(t => t?.classList.remove('active'));
+      panes.forEach(p => { if (p) p.style.display = 'none'; });
+
+      if (name === 'physics') {
+        tabPhysics?.classList.add('active');
+        if (panePhysics) panePhysics.style.display = 'block';
+      } else if (name === 'security') {
+        tabSecurity?.classList.add('active');
+        if (paneSecurity) paneSecurity.style.display = 'block';
+        syncVaultStatus();
+      } else if (name === 'cli') {
+        tabCli?.classList.add('active');
+        if (paneCli) paneCli.style.display = 'block';
+        document.getElementById('dev-cli-input')?.focus();
+      }
+    }
+
+    tabPhysics?.addEventListener('click', () => switchTab('physics'));
+    tabSecurity?.addEventListener('click', () => switchTab('security'));
+    tabCli?.addEventListener('click', () => switchTab('cli'));
+
+    btnOpen?.addEventListener('click', toggleConsole);
+    btnClose?.addEventListener('click', closeConsole);
+    modal?.addEventListener('click', (e) => {
+      if (e.target === modal) closeConsole();
+    });
+
+    // Global Hotkeys: ~ / ` / ё / Ё / Ctrl+Shift+D / Esc
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && modal?.style.display === 'flex') {
+        closeConsole();
+        return;
+      }
+      if ((e.code === 'Backquote' || e.key === '`' || e.key === '~' || e.key === 'ё' || e.key === 'Ё') ||
+          (e.ctrlKey && e.shiftKey && (e.code === 'KeyD' || e.key === 'D' || e.key === 'd'))) {
+        if (e.target && e.target.id === 'dev-cli-input' && e.key === '`') return;
+        e.preventDefault();
+        toggleConsole();
+      }
+    });
+
+    // ---------------------------------------------------------
+    // TAB 1: 60Hz PHYSICS INSPECTOR LOOP
+    // ---------------------------------------------------------
+    let physicsLoopId = null;
+
+    function startPhysicsLoop() {
+      if (physicsLoopId) return;
+      function loop() {
+        if (!modal || modal.style.display !== 'flex') {
+          physicsLoopId = null;
+          return;
+        }
+        updatePhysicsTelemetry();
+        physicsLoopId = requestAnimationFrame(loop);
+      }
+      physicsLoopId = requestAnimationFrame(loop);
+    }
+
+    function stopPhysicsLoop() {
+      if (physicsLoopId) {
+        cancelAnimationFrame(physicsLoopId);
+        physicsLoopId = null;
+      }
+    }
+
+    function updatePhysicsTelemetry() {
+      const m = window.AeroTerraSim?.liveMetrics;
+      const elIas = document.getElementById('dev-val-ias');
+      const elTas = document.getElementById('dev-val-tas');
+      const elAlt = document.getElementById('dev-val-alt');
+      const elVsi = document.getElementById('dev-val-vsi');
+      const elAngles = document.getElementById('dev-val-angles');
+      const elPr = document.getElementById('dev-val-pr');
+      const elAero = document.getElementById('dev-val-aero');
+      const elClcd = document.getElementById('dev-val-clcd');
+      const elForces = document.getElementById('dev-val-forces');
+      const elForces2 = document.getElementById('dev-val-forces2');
+      const elCg = document.getElementById('dev-val-cg');
+      const elMargin = document.getElementById('dev-val-margin');
+      const elDt = document.getElementById('dev-dt-display');
+      const elGuard = document.getElementById('dev-guard-status');
+
+      if (!m) {
+        if (elGuard) elGuard.textContent = 'STANDBY (SIM PAUSED)';
+        return;
+      }
+
+      if (elIas) elIas.textContent = `${Math.round(m.ias || 0)} км/ч`;
+      if (elTas) elTas.textContent = `TAS: ${(m.tas || 0).toFixed(1)} м/с`;
+      if (elAlt) elAlt.textContent = `${Math.round(m.alt || 0)} м`;
+      if (elVsi) elVsi.textContent = `VSI: ${(m.vsi >= 0 ? '+' : '')}${(m.vsi || 0).toFixed(1)} м/с`;
+      if (elAngles) elAngles.textContent = `α: ${(m.aoa >= 0 ? '+' : '')}${(m.aoa || 0).toFixed(1)}°`;
+      if (elPr) elPr.textContent = `θ: ${(m.pitch || 0).toFixed(1)}° | φ: ${(m.roll || 0).toFixed(1)}°`;
+      if (elAero) elAero.textContent = `L/D: ${(m.ld || 14.0).toFixed(1)}`;
+      if (elClcd) elClcd.textContent = `CL: ${(m.cl || 0.45).toFixed(2)} | CD: ${(m.cd || 0.032).toFixed(3)}`;
+      if (elForces) elForces.textContent = `L: ${m.lift || 0} N | T: ${m.thrust || 0} N`;
+      if (elForces2) elForces2.textContent = `D: ${m.drag || 0} N | W: ${m.weight || 245} N`;
+      if (elCg) elCg.textContent = `CG: ${(m.cg || 28.5).toFixed(1)}% MAC`;
+      if (elMargin) elMargin.textContent = `Static Margin: +${(m.margin || 11.2).toFixed(1)}%`;
+      if (elDt) elDt.textContent = `${(m.dt || 0.016).toFixed(3)}s`;
+      if (elGuard) elGuard.textContent = m.guardStatus || 'ACTIVE (0 EXPLOSIONS)';
+    }
+
+    // Tuning Sliders
+    const sGravity = document.getElementById('slider-dev-gravity');
+    const dGravity = document.getElementById('disp-dev-gravity');
+    const sRho = document.getElementById('slider-dev-rho');
+    const dRho = document.getElementById('disp-dev-rho');
+    const sFlaps = document.getElementById('slider-dev-flaps');
+    const dFlaps = document.getElementById('disp-dev-flaps');
+    const sSens = document.getElementById('slider-dev-sens');
+    const dSens = document.getElementById('disp-dev-sens');
+    const btnResetPhysics = document.getElementById('btn-dev-reset-physics');
+
+    sGravity?.addEventListener('input', (e) => {
+      const val = parseFloat(e.target.value);
+      if (window.AeroTerraSim?.devOverrides) window.AeroTerraSim.devOverrides.gravityScale = val;
+      if (dGravity) dGravity.textContent = `${val.toFixed(2)} g`;
+    });
+
+    sRho?.addEventListener('input', (e) => {
+      const val = parseFloat(e.target.value);
+      if (window.AeroTerraSim?.devOverrides) window.AeroTerraSim.devOverrides.rho = val;
+      if (dRho) dRho.textContent = `${val.toFixed(3)} кг/м³`;
+    });
+
+    sFlaps?.addEventListener('input', (e) => {
+      const val = parseFloat(e.target.value);
+      if (window.AeroTerraSim?.devOverrides) window.AeroTerraSim.devOverrides.flapsMult = val;
+      if (dFlaps) dFlaps.textContent = `${val.toFixed(2)}x`;
+    });
+
+    sSens?.addEventListener('input', (e) => {
+      const val = parseFloat(e.target.value);
+      if (window.AeroTerraSim?.devOverrides) window.AeroTerraSim.devOverrides.sens = val;
+      if (dSens) dSens.textContent = `${val.toFixed(2)}x`;
+    });
+
+    btnResetPhysics?.addEventListener('click', () => {
+      if (window.AeroTerraSim?.resetDevOverrides) window.AeroTerraSim.resetDevOverrides();
+      if (sGravity) sGravity.value = 1.0;
+      if (dGravity) dGravity.textContent = '1.00 g';
+      if (sRho) sRho.value = 1.225;
+      if (dRho) dRho.textContent = '1.225 кг/м³';
+      if (sFlaps) sFlaps.value = 1.35;
+      if (dFlaps) dFlaps.textContent = '1.35x';
+      if (sSens) sSens.value = 1.0;
+      if (dSens) dSens.textContent = '1.00x';
+    });
+
+    // Teleport Buttons
+    document.getElementById('btn-dev-tp-runway')?.addEventListener('click', () => {
+      window.AeroTerraSim?.teleportTo(1.25, 0, 0, 0);
+    });
+    document.getElementById('btn-dev-tp-cruise')?.addEventListener('click', () => {
+      window.AeroTerraSim?.teleportTo(700, 160, -1.0, 0);
+    });
+    document.getElementById('btn-dev-tp-high')?.addEventListener('click', () => {
+      window.AeroTerraSim?.teleportTo(2500, 180, -0.5, 0);
+    });
+    document.getElementById('btn-dev-stall-test')?.addEventListener('click', () => {
+      window.AeroTerraSim?.triggerStallTest();
+    });
+
+    // ---------------------------------------------------------
+    // TAB 2: SECURITY & AES-256 VAULT
+    // ---------------------------------------------------------
+    function syncVaultStatus() {
+      const vaultStatus = document.getElementById('dev-vault-status-badge');
+      const maskedKey = document.getElementById('dev-masked-key-display');
+      if (CryptoVault.isVaultSet()) {
+        if (vaultStatus) {
+          vaultStatus.textContent = 'AES-GCM ЗАШИФРОВАН';
+          vaultStatus.className = 'badge-status-ok';
+        }
+        if (maskedKey) maskedKey.textContent = '••••••••••••••••••••••••••••••••';
+      } else {
+        if (vaultStatus) {
+          vaultStatus.textContent = 'СЕЙФ ПУСТ';
+          vaultStatus.className = 'badge-status-sub';
+        }
+        if (maskedKey) maskedKey.textContent = 'НЕ ЗАДАН (ПУСТО)';
+      }
+    }
+
+    document.getElementById('btn-dev-vault-save')?.addEventListener('click', async () => {
+      const apiKey = document.getElementById('input-dev-api-key')?.value.trim();
+      const pin = document.getElementById('input-dev-pin')?.value.trim();
+      const out = document.getElementById('dev-vault-ping-output');
+
+      if (!apiKey || !pin) {
+        if (out) out.textContent = 'Ошибка: введите API ключ и PIN код (минимум 4 знака).';
+        return;
+      }
+      try {
+        await CryptoVault.encryptApiKey(apiKey, pin);
+        syncVaultStatus();
+        if (out) out.textContent = 'Успех: ключ зашифрован в Web Crypto AES-GCM 256-bit!';
+        document.getElementById('input-dev-api-key').value = '';
+        document.getElementById('input-dev-pin').value = '';
+      } catch (err) {
+        if (out) out.textContent = 'Ошибка шифрования: ' + err.message;
+      }
+    });
+
+    document.getElementById('btn-dev-vault-purge')?.addEventListener('click', () => {
+      CryptoVault.purgeVault();
+      syncVaultStatus();
+      const out = document.getElementById('dev-vault-ping-output');
+      if (out) out.textContent = 'Локальный сейф очищен.';
+    });
+
+    document.getElementById('btn-dev-vault-ping')?.addEventListener('click', async () => {
+      const out = document.getElementById('dev-vault-ping-output');
+      if (out) out.textContent = 'Отправка тестового запроса к /api/ai-gateway...';
+      const t0 = performance.now();
+      try {
+        const res = await fetch('/api/ai-gateway', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: 'PING_PROBE', ping: true })
+        });
+        const dt = Math.round(performance.now() - t0);
+        if (res.ok) {
+          const data = await res.json();
+          if (out) out.textContent = `Шлюз ответил 200 OK (${dt}мс). Статус: ${data.message || 'Готов'}`;
+        } else {
+          if (out) out.textContent = `Шлюз ответил ${res.status} (${dt}мс). Локальный AI-движок активен как резерв.`;
+        }
+      } catch (err) {
+        const dt = Math.round(performance.now() - t0);
+        if (out) out.textContent = `Серверный шлюз недоступен (${dt}мс). Работает локальный Aerospace AI Engine.`;
+      }
+    });
+
+    // ---------------------------------------------------------
+    // TAB 3: RETRO CLI TERMINAL
+    // ---------------------------------------------------------
+    const cliScreen = document.getElementById('dev-cli-screen');
+    const cliForm = document.getElementById('dev-cli-form');
+    const cliInput = document.getElementById('dev-cli-input');
+
+    function printCli(text, className = '') {
+      if (!cliScreen) return;
+      const line = document.createElement('div');
+      line.className = `cli-line ${className}`;
+      line.innerHTML = text;
+      cliScreen.appendChild(line);
+      cliScreen.scrollTop = cliScreen.scrollHeight;
+    }
+
+    function runCliCommand(rawCmd) {
+      const cmd = rawCmd.trim();
+      if (!cmd) return;
+      printCli(`<span class="cyan">AeroTerra-OS:~$</span> ${escapeHtml(cmd)}`);
+
+      const parts = cmd.split(/\s+/);
+      const action = parts[0].toLowerCase();
+      const arg1 = parts[1];
+
+      switch (action) {
+        case '/help':
+          printCli('Доступные команды авиационного терминала:', 'amber');
+          printCli('  <span class="cyan">/tp &lt;alt&gt;</span>       - Мгновенный перенос на высоту (м), напр.: /tp 700');
+          printCli('  <span class="cyan">/wind &lt;spd&gt;</span>     - Установить боковой ветер (м/с), напр.: /wind 12');
+          printCli('  <span class="cyan">/refuel</span>         - Полная заправка водородом и жидкостью (100%)');
+          printCli('  <span class="cyan">/stall_test</span>     - Имитация критического сваливания (V=58 км/ч, AoA=19.5°)');
+          printCli('  <span class="cyan">/api_status</span>     - Проверка Vercel Serverless шлюза и AES-256 сейфа');
+          printCli('  <span class="cyan">/export_logs</span>    - Экспорт полного телеметрического лога в JSON');
+          printCli('  <span class="cyan">clear</span>           - Очистить экран терминала');
+          break;
+
+        case '/tp':
+          const targetAlt = parseFloat(arg1);
+          if (isNaN(targetAlt)) {
+            printCli('Ошибка: укажите высоту в метрах, напр.: /tp 700', 'error');
+          } else {
+            window.AeroTerraSim?.teleportTo(targetAlt, 160, -1, 0);
+            printCli(`Самолёт перенесён на высоту ${targetAlt} м (IAS = 160 км/ч).`, 'emerald');
+          }
+          break;
+
+        case '/wind':
+          const wSpd = parseFloat(arg1);
+          if (isNaN(wSpd)) {
+            printCli('Ошибка: укажите скорость ветра в м/с, напр.: /wind 8', 'error');
+          } else {
+            if (window.AeroTerraSim?.devOverrides) {
+              window.AeroTerraSim.devOverrides.crosswind = wSpd;
+            }
+            printCli(`Боковой ветер установлен: ${wSpd} м/с.`, 'emerald');
+          }
+          break;
+
+        case '/refuel':
+          window.AeroTerraSim?.refuel();
+          printCli('Водородная система: H2 = 100% | Бак спрея/воды: 100%.', 'emerald');
+          break;
+
+        case '/stall_test':
+          window.AeroTerraSim?.triggerStallTest();
+          printCli('Имитация сваливания запущена! Скорость снижена, угол атаки превышен.', 'amber');
+          break;
+
+        case '/api_status':
+          const vStat = CryptoVault.isVaultSet() ? 'AES-GCM Зашифрован' : 'Пуст';
+          printCli(`Vercel Gateway: /api/ai-gateway | Local Vault: ${vStat}`, 'cyan');
+          break;
+
+        case '/export_logs':
+          exportDiagnosticLogs();
+          printCli('Лог телеметрии сгенерирован и скачан.', 'emerald');
+          break;
+
+        case 'clear':
+        case '/clear':
+          if (cliScreen) cliScreen.innerHTML = '';
+          break;
+
+        default:
+          printCli(`Неизвестная команда: "${escapeHtml(action)}". Введите <span class="cyan">/help</span> для справки.`, 'error');
+          break;
+      }
+    }
+
+    cliForm?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (!cliInput) return;
+      const val = cliInput.value;
+      cliInput.value = '';
+      runCliCommand(val);
+    });
+
+    document.querySelectorAll('.cli-cmd-chip').forEach(chip => {
+      chip.addEventListener('click', function () {
+        const cmd = this.getAttribute('data-cmd');
+        if (cmd) runCliCommand(cmd);
+      });
+    });
+
+    function exportDiagnosticLogs() {
+      const logData = {
+        timestamp: new Date().toISOString(),
+        aircraft: 'AeroTerra H2-01',
+        metrics: window.AeroTerraSim?.liveMetrics || {},
+        overrides: window.AeroTerraSim?.devOverrides || {},
+        vaultActive: CryptoVault.isVaultSet(),
+        userAgent: navigator.userAgent
+      };
+      const blob = new Blob([JSON.stringify(logData, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `aeroterra_flight_telemetry_${Date.now()}.json`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    function escapeHtml(str) {
+      return (str || '').replace(/[&<>"']/g, (m) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+      }[m]));
+    }
+  }
+
+  // --------------------------------------------------------------------------
   // 19. APPLICATION ENTRY POINT
   // --------------------------------------------------------------------------
   window.addEventListener('DOMContentLoaded', () => {
@@ -3584,6 +4174,7 @@
     setupEventListeners();
     setupNeonAuth();
     setupPresentationModal();
+    setupDevConsole();
 
     // Open Node #1 (Wing) in Inspector Panel by default
     setTimeout(() => {

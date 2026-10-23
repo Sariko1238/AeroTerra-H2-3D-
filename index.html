@@ -9,7 +9,7 @@
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@500;600;700;800;900&family=Rajdhani:wght@500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600;1,700&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Orbitron:wght@500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   
   <!-- Font Awesome 6 Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -81,10 +81,16 @@
         <i class="fa-solid fa-rocket"></i> <span>Презентация</span>
       </a>
 
+      <!-- Developer Console Trigger Button -->
+      <button class="btn-dev-console-trigger" id="btn-open-dev-console" title="Открыть инженерную консоль разработчика (~ / Ctrl+Shift+D)">
+        <i class="fa-solid fa-terminal"></i> <span>🛠️ Dev Console</span>
+        <span class="dev-status-indicator-dot" id="header-dev-dot"></span>
+      </button>
+
       <!-- User Auth Profile Widget (Neon Postgres) -->
       <div class="auth-header-widget" id="auth-header-widget">
         <button class="btn-auth-trigger" id="btn-open-auth">
-          <i class="fa-solid fa-user-astronaut"></i> <span id="auth-btn-label">Вход / Регистрация</span>
+          <i class="fa-solid fa-user-astronaut"></i> <span id="auth-btn-label">👤 Кабинет / Вход</span>
         </button>
         <div class="user-profile-badge" id="user-profile-badge" style="display: none;">
           <div class="user-avatar" id="header-user-avatar">П</div>
@@ -334,6 +340,10 @@
           <i class="fa-solid fa-gamepad"></i>
           <span id="sim-touch-label">Джойстик</span>
         </button>
+        <button class="sim-top-btn" id="btn-sim-clean-view" title="Скрыть/показать все приборы (Клавиша H)">
+          <i class="fa-solid fa-eye"></i>
+          <span id="sim-clean-view-txt">Чистый обзор (H)</span>
+        </button>
         <button class="sim-top-btn prof-btn" id="btn-sim-professor" title="Показать живые формулы аэродинамики и телеметрию">
           <i class="fa-solid fa-graduation-cap"></i>
           <span>Формулы</span>
@@ -346,6 +356,14 @@
     </div>
 
     <!-- Minimal Flight Path Vector (FPV) marker center screen (100% clean view of 3D plane) -->
+    <div class="sim-mobile-telem-ribbon" id="sim-mobile-telem-ribbon">
+      <span class="ribbon-item"><i class="fa-solid fa-arrows-up-down"></i> <b id="mob-ribbon-alt">700 м</b></span>
+      <span class="ribbon-item"><i class="fa-solid fa-gauge-high"></i> <b id="mob-ribbon-spd">140 км/ч</b></span>
+      <span class="ribbon-item"><i class="fa-solid fa-plane"></i> <b id="mob-ribbon-aoa">2.5° AoA</b></span>
+      <span class="ribbon-item cyan"><i class="fa-solid fa-droplet"></i> <b id="mob-ribbon-h2">28.5 кг</b></span>
+      <span class="ribbon-item emerald"><i class="fa-solid fa-faucet-drip"></i> <b id="mob-ribbon-fluid">800 л</b></span>
+    </div>
+
     <div class="sim-fpv-center-wrap">
       <div class="sim-fpv-marker" id="sim-fpv-marker">
         <div class="fpv-circle"></div>
@@ -374,16 +392,16 @@
       <!-- 1. LEFT PANEL: TELEMETRY & ENGINE INSTRUMENTS -->
       <div class="sim-hud-card sim-panel-left" id="sim-panel-left">
         <div class="sim-card-header">
-          <i class="fa-solid fa-gauge-high"></i>
-          <span>ПРИБОРЫ И ТЕЛЕМЕТРИЯ AEROTERRA H2</span>
+          <div class="sim-card-header-title">
+            <i class="fa-solid fa-gauge-high"></i>
+            <span>ТЕЛЕМЕТРИЯ H2</span>
+          </div>
+          <button class="btn-hud-collapse" data-card="sim-panel-left" title="Свернуть/Развернуть"><i class="fa-solid fa-minus"></i></button>
         </div>
 
         <div class="sim-left-actions-row">
           <button class="btn-h2-boost" id="btn-h2-boost" title="Активировать максимальный буст LiPo буфера для STOL взлёта">
             <i class="fa-solid fa-bolt"></i> <span>⚡ БУСТ H2-LI-PO</span>
-          </button>
-          <button class="btn-h2-boost btn-sim-reset-inline" id="btn-sim-reset-telem" title="Экстренный сброс в полёт (700 м, 140 км/ч, тяга 65%)">
-            <i class="fa-solid fa-rotate-right"></i> <span>🔄 СБРОС (700 М)</span>
           </button>
         </div>
 
@@ -480,6 +498,14 @@
 
       <!-- 2. CENTER PANEL: CAMERAS, MECHANIZATION & AUTOPILOT -->
       <div class="sim-hud-card sim-panel-center" id="sim-panel-center">
+        <div class="sim-card-header">
+          <div class="sim-card-header-title">
+            <i class="fa-solid fa-sliders"></i>
+            <span>ПУЛЬТ УПРАВЛЕНИЯ</span>
+          </div>
+          <button class="btn-hud-collapse" data-card="sim-panel-center" title="Свернуть/Развернуть"><i class="fa-solid fa-minus"></i></button>
+        </div>
+
         <!-- Row 1: Cameras -->
         <div class="sim-ctrl-row">
           <span class="ctrl-row-label"><i class="fa-solid fa-camera"></i> КАМЕРЫ (C):</span>
@@ -495,9 +521,6 @@
             </button>
             <button class="sim-act-btn" id="btn-cam-orbit" data-cam="orbit" title="Свободная орбитальная камера (вращение мышью)">
               <i class="fa-solid fa-arrows-spin"></i> <span>🎬 Орбита (Мышь)</span>
-            </button>
-            <button class="sim-act-btn btn-sim-reset-inline" id="btn-sim-reset-center" title="Мгновенный сброс в полёт (700 м, 140 км/ч, тяга 65%)">
-              <i class="fa-solid fa-rotate-right"></i> <span>🔄 Сброс в полёт (700 м)</span>
             </button>
           </div>
         </div>
@@ -550,8 +573,11 @@
       <!-- 3. RIGHT PANEL: CIRCULAR GPS RADAR & REAL SATELLITE POSITION -->
       <div class="sim-hud-card sim-panel-right" id="sim-panel-right">
         <div class="sim-card-header">
-          <i class="fa-solid fa-compass"></i>
-          <span>GPS-РАДАР И НАВИГАЦИЯ</span>
+          <div class="sim-card-header-title">
+            <i class="fa-solid fa-compass"></i>
+            <span>GPS-РАДАР И НАВИГАЦИЯ</span>
+          </div>
+          <button class="btn-hud-collapse" data-card="sim-panel-right" title="Свернуть/Развернуть"><i class="fa-solid fa-minus"></i></button>
         </div>
 
         <div class="sim-radar-canvas-wrap">
@@ -1448,6 +1474,169 @@
           </button>
         </div>
 
+        <!-- ====================================================================
+             COMPARATIVE BENCHMARK: AEROTERRA H2 VS AN-2 VS R44 VS AGRO-DRONE
+             ==================================================================== -->
+        <div class="blueprint-card span-12 benchmark-card">
+          <div class="hud-corner top-left"></div>
+          <div class="hud-corner top-right"></div>
+          <div class="hud-corner bottom-left"></div>
+          <div class="hud-corner bottom-right"></div>
+
+          <div class="blueprint-card-header">
+            <span class="blueprint-card-title">
+              <i class="fa-solid fa-chart-column" style="color: var(--accent-cyan);"></i>
+              <span>Сравнительный Бенчмарк: AeroTerra H2 vs Традиционная Авиация и Дроны</span>
+            </span>
+            <span class="blueprint-tag">EASA CS-23 / IATA Net Zero 2050 Standard</span>
+          </div>
+
+          <div class="benchmark-table-responsive">
+            <table class="benchmark-table">
+              <thead>
+                <tr>
+                  <th>Параметр Сравнения</th>
+                  <th class="col-highlight">AeroTerra H2 (Fullscale 1:1)</th>
+                  <th class="col-highlight-sub">AeroTerra H2 (Subscale 1:5)</th>
+                  <th>Ан-2 (Кукурузник)</th>
+                  <th>Robinson R44 Agro</th>
+                  <th>Agro Drone (DJI T40)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Силовая Установка</strong></td>
+                  <td class="col-highlight"><span class="badge-tech">H2 Fuel Cell + 4x DEP</span></td>
+                  <td class="col-highlight-sub"><span class="badge-tech">12S Semi-Solid + H2 Hyb</span></td>
+                  <td>АШ-62ИР (Бензин Б-91)</td>
+                  <td>Lycoming IO-540 (Авгас)</td>
+                  <td>Li-Ion 30Ah Battery</td>
+                </tr>
+                <tr>
+                  <td><strong>Взлётная Масса (MTOM)</strong></td>
+                  <td class="col-highlight font-num">450 кг (CS-23 UL)</td>
+                  <td class="col-highlight-sub font-num">25.0 кг</td>
+                  <td class="font-num">5250 кг</td>
+                  <td class="font-num">1089 кг</td>
+                  <td class="font-num">101 кг</td>
+                </tr>
+                <tr>
+                  <td><strong>Полезная Нагрузка (Spray / Water)</strong></td>
+                  <td class="col-highlight font-num">150 л / 160 кг</td>
+                  <td class="col-highlight-sub font-num">10 л / 10 кг</td>
+                  <td class="font-num">1350 л / 1400 кг</td>
+                  <td class="font-num">280 л / 300 кг</td>
+                  <td class="font-num">40 л / 50 кг</td>
+                </tr>
+                <tr>
+                  <td><strong>Расход Топлива / Энергии</strong></td>
+                  <td class="col-highlight font-num">2.4 кг H2 / 100 км</td>
+                  <td class="col-highlight-sub font-num">1.0 кВт·ч / га</td>
+                  <td class="font-num">180–200 л/ч (Авиабензин)</td>
+                  <td class="font-num">57 л/ч (100LL)</td>
+                  <td class="font-num">2.8 кВт·ч / вылет</td>
+                </tr>
+                <tr>
+                  <td><strong>Время Полёта & Радиус</strong></td>
+                  <td class="col-highlight font-num">4.5 ч / 550 км</td>
+                  <td class="col-highlight-sub font-num">30–110 мин / 45 км</td>
+                  <td class="font-num">5.5 ч / 840 км</td>
+                  <td class="font-num">3.0 ч / 400 км</td>
+                  <td class="font-num">12–18 мин / 4 км</td>
+                </tr>
+                <tr>
+                  <td><strong>Стоимость Обработки 1 Га</strong></td>
+                  <td class="col-highlight font-num text-emerald">~2.2 $ / га (-78%)</td>
+                  <td class="col-highlight-sub font-num text-emerald">~1.4 $ / га</td>
+                  <td class="font-num text-danger">~10.5 $ / га</td>
+                  <td class="font-num text-danger">~14.8 $ / га</td>
+                  <td class="font-num">~4.5 $ / га</td>
+                </tr>
+                <tr>
+                  <td><strong>Выбросы CO2 (г/км)</strong></td>
+                  <td class="col-highlight font-num text-cyan"><strong>0.0 г (Чистый H2O)</strong></td>
+                  <td class="col-highlight-sub font-num text-cyan"><strong>0.0 г (Эко)</strong></td>
+                  <td class="font-num text-danger">1420 г CO2/км</td>
+                  <td class="font-num text-danger">680 г CO2/км</td>
+                  <td class="font-num">Косвенные от сети</td>
+                </tr>
+                <tr>
+                  <td><strong>Взлётная Дистанция STOL</strong></td>
+                  <td class="col-highlight font-num"><strong>65 м (Грунт / Поле)</strong></td>
+                  <td class="col-highlight-sub font-num"><strong>12 м (Трава)</strong></td>
+                  <td class="font-num">170 м</td>
+                  <td class="font-num">0 м (Вертикальный)</td>
+                  <td class="font-num">0 м (Вертикальный)</td>
+                </tr>
+                <tr>
+                  <td><strong>Акустический Шум (100 м)</strong></td>
+                  <td class="col-highlight font-num">54 дБА (Шёпот)</td>
+                  <td class="col-highlight-sub font-num">48 дБА</td>
+                  <td class="font-num text-danger">98 дБА (Рёв)</td>
+                  <td class="font-num text-danger">92 дБА</td>
+                  <td class="font-num">65 дБА</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ====================================================================
+             CERTIFICATION ROADMAP: EASA CS-23 & IATA NET ZERO 2050
+             ==================================================================== -->
+        <div class="blueprint-card span-12 roadmap-card">
+          <div class="hud-corner top-left"></div>
+          <div class="hud-corner top-right"></div>
+          <div class="hud-corner bottom-left"></div>
+          <div class="hud-corner bottom-right"></div>
+
+          <div class="blueprint-card-header">
+            <span class="blueprint-card-title">
+              <i class="fa-solid fa-map-location-dot" style="color: var(--accent-emerald);"></i>
+              <span>Дорожная Карта Развития & Сертификации: EASA CS-23 & IATA Net Zero 2050</span>
+            </span>
+            <span class="blueprint-tag">TRL 5 → TRL 9 Roadmap</span>
+          </div>
+
+          <div class="roadmap-stages-grid">
+            <div class="roadmap-stage-box completed">
+              <div class="stage-badge-status"><i class="fa-solid fa-check"></i> TRL 5: ЗАВЕРШЕНО</div>
+              <div class="stage-title">Масштабный Прототип 1:5</div>
+              <p class="stage-desc">
+                Создание летного демонстратора размахом 3.2 м, MTOM 25 кг, проверка аэродинамики Blown Wing и устойчивости twin-boom.
+              </p>
+              <div class="stage-footer">Полёты: Успешно 2024–2025</div>
+            </div>
+
+            <div class="roadmap-stage-box in-progress">
+              <div class="stage-badge-status current"><i class="fa-solid fa-spinner fa-spin"></i> TRL 6: В РАБОТЕ</div>
+              <div class="stage-title">Водородная Ячейка & Криобак</div>
+              <p class="stage-desc">
+                Интеграция топливной ячейки H2 2.5 кВт и композитного криогенного баллона Type IV (300 бар) с клапаном аварийного сброса.
+              </p>
+              <div class="stage-footer">Стендовые тесты: 2025 Q3-Q4</div>
+            </div>
+
+            <div class="roadmap-stage-box pending">
+              <div class="stage-badge-status"><i class="fa-solid fa-clock"></i> TRL 7-8: ПЛАН 2026</div>
+              <div class="stage-title">Полноразмерный Борт 9.6 м</div>
+              <p class="stage-desc">
+                Постройка самолёта нормальной категории EASA CS-23 (MTOM 450 кг, 150 л полезная нагрузка), сертификация автономных систем.
+              </p>
+              <div class="stage-footer">Сертификация: 2026–2027</div>
+            </div>
+
+            <div class="roadmap-stage-box target">
+              <div class="stage-badge-status"><i class="fa-solid fa-award"></i> TRL 9: СЕРИЯ 2028</div>
+              <div class="stage-title">Net Zero Коммерческий Флот</div>
+              <p class="stage-desc">
+                Массовое внедрение в агрохолдинги и лесную охрану с экономией 78% эксплуатационных расходов и нулевым $CO_2$.
+              </p>
+              <div class="stage-footer">Цель: IATA Net Zero 2050</div>
+            </div>
+          </div>
+        </div>
+
       </div>
     </section>
 
@@ -1980,8 +2169,15 @@
           <input type="email" id="login-email" required placeholder="pilot@aeroterra.aero" autocomplete="email">
         </div>
         <div class="form-group">
-          <label><i class="fa-solid fa-key"></i> Пароль:</label>
+          <label><i class="fa-solid fa-key"></i> Пароль (SHA-256 Protected):</label>
           <input type="password" id="login-password" required placeholder="••••••••" autocomplete="current-password">
+        </div>
+        <div class="form-group dev-mode-toggle-group">
+          <label class="dev-switch-label">
+            <input type="checkbox" id="auth-dev-mode-toggle" checked>
+            <span class="dev-switch-slider"></span>
+            <span class="dev-switch-text"><i class="fa-solid fa-code"></i> Режим Разработчика (Dev Mode & CLI)</span>
+          </label>
         </div>
         <button type="submit" class="btn-auth-submit" id="btn-submit-login">
           <span>Войти в систему</span> <i class="fa-solid fa-arrow-right"></i>
@@ -2001,10 +2197,12 @@
         <div class="form-group">
           <label><i class="fa-solid fa-id-badge"></i> Роль в проекте:</label>
           <select id="reg-role">
-            <option value="engineer">Инженер-Конструктор</option>
-            <option value="pilot" selected>Тест-Пилот БПЛА</option>
-            <option value="investor">Инвестор / Партнёр</option>
-            <option value="flight_controller">Оператор Полётов</option>
+            <option value="chief_engineer">🎓 Профессор / Главный Конструктор (VIP)</option>
+            <option value="senior_researcher">🔬 Старший Научный Сотрудник</option>
+            <option value="pilot" selected>🛩️ Тест-Пилот БПЛА / Экспериментатор</option>
+            <option value="engineer">📐 Инженер-Конструктор (Aerodynamics / CAD)</option>
+            <option value="flight_controller">📡 Оператор Полётов / GCS MAVLink</option>
+            <option value="investor">💼 Инвестор / Партнёр Проекта</option>
           </select>
         </div>
         <div class="form-group">
@@ -2012,7 +2210,7 @@
           <input type="email" id="reg-email" required placeholder="engineer@aeroterra.aero">
         </div>
         <div class="form-group">
-          <label><i class="fa-solid fa-key"></i> Пароль (от 6 символов):</label>
+          <label><i class="fa-solid fa-key"></i> Пароль (SHA-256 от 6 символов):</label>
           <input type="password" id="reg-password" required placeholder="••••••••" minlength="6">
         </div>
         <button type="submit" class="btn-auth-submit" id="btn-submit-register">
@@ -2020,11 +2218,16 @@
         </button>
       </form>
 
-      <!-- 1-Click Demo Login -->
+      <!-- 1-Click Fast Login Grid -->
       <div class="auth-demo-footer">
-        <button type="button" class="btn-quick-demo" id="btn-quick-demo-login">
-          <i class="fa-solid fa-bolt"></i> <span>⚡ Быстрый демо-вход (Тест-Пилот)</span>
-        </button>
+        <div class="auth-fast-buttons-grid">
+          <button type="button" class="btn-quick-demo btn-vip-prof" id="btn-vip-professor" title="Мгновенный вход с правами Главного Конструктора">
+            <i class="fa-solid fa-graduation-cap"></i> <span>🎓 VIP Вход: Профессор</span>
+          </button>
+          <button type="button" class="btn-quick-demo" id="btn-quick-demo-login" title="Вход в роли Тест-Пилота">
+            <i class="fa-solid fa-bolt"></i> <span>⚡ Демо: Тест-Пилот</span>
+          </button>
+        </div>
         <div class="neon-db-status-bar">
           <span class="neon-indicator-dot"></span>
           <span id="neon-status-text">Neon Serverless: Готов к работе</span>
@@ -2060,6 +2263,237 @@
   </div>
 
   <!-- ==========================================================================
+       AEROTERRA DEVELOPER CONSOLE & TELEMETRY COMPLEX (MODAL)
+       ========================================================================== -->
+  <div class="dev-console-overlay" id="dev-console-modal" style="display: none;">
+    <div class="dev-console-card glass-panel">
+      <!-- Header -->
+      <div class="dev-console-header">
+        <div class="dev-console-title-wrap">
+          <div class="dev-console-icon"><i class="fa-solid fa-terminal"></i></div>
+          <div>
+            <div class="dev-console-title">AEROTERRA H2 — ДИАГНОСТИЧЕСКАЯ КОНСОЛЬ РАЗРАБОТЧИКА</div>
+            <div class="dev-console-meta">
+              <span>v2.8-AEROSPACE</span>
+              <span class="badge-sub">LIVE 60Hz</span>
+              <span class="badge-hotkey"><kbd>~</kbd> / <kbd>Ё</kbd> / <kbd>Ctrl+Shift+D</kbd></span>
+            </div>
+          </div>
+        </div>
+        <div class="dev-console-header-actions">
+          <button class="dev-console-close" id="btn-close-dev-console" title="Закрыть консоль (Esc)"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <div class="dev-console-tabs">
+        <button class="dev-tab-btn active" id="tab-dev-physics" data-target="pane-dev-physics">
+          <i class="fa-solid fa-satellite-dish"></i> <span>Live Physics & Inspector</span>
+        </button>
+        <button class="dev-tab-btn" id="tab-dev-security" data-target="pane-dev-security">
+          <i class="fa-solid fa-shield-halved"></i> <span>API Gateway & AES-256 Vault</span>
+        </button>
+        <button class="dev-tab-btn" id="tab-dev-cli" data-target="pane-dev-cli">
+          <i class="fa-solid fa-code"></i> <span>Interactive CLI Terminal</span>
+        </button>
+      </div>
+
+      <!-- Tab 1: Live Physics Inspector -->
+      <div class="dev-tab-pane active" id="pane-dev-physics">
+        <!-- Guard Banner -->
+        <div class="dev-guard-banner">
+          <div class="guard-pill-ok">
+            <i class="fa-solid fa-shield-check"></i>
+            <span>NaN / Infinity Clamping Guard: <strong id="dev-guard-status">ACTIVE (0 ERRORS)</strong></span>
+          </div>
+          <div class="guard-subinfo">
+            <span>dt = <code id="dev-dt-display">0.016s</code> [clamped 0.001..0.050s]</span>
+            <span>Anchor: <code id="dev-anchor-display">Local Origin Centric</code></span>
+          </div>
+        </div>
+
+        <!-- 60Hz Telemetry Matrix -->
+        <div class="dev-telemetry-grid">
+          <div class="dev-telem-card">
+            <span class="dev-telem-label">Скорость Приборная (IAS)</span>
+            <span class="dev-telem-val cyan" id="dev-val-ias">0.0 км/ч</span>
+            <span class="dev-telem-sub" id="dev-val-tas">TAS: 0.0 м/с</span>
+          </div>
+          <div class="dev-telem-card">
+            <span class="dev-telem-label">Высота (Alt Baro / AGL)</span>
+            <span class="dev-telem-val emerald" id="dev-val-alt">0.0 м</span>
+            <span class="dev-telem-sub" id="dev-val-vsi">VSI: +0.0 м/с</span>
+          </div>
+          <div class="dev-telem-card">
+            <span class="dev-telem-label">Углы Полёта (AoA / Pitch / Roll)</span>
+            <span class="dev-telem-val amber" id="dev-val-angles">α: 0.0°</span>
+            <span class="dev-telem-sub" id="dev-val-pr">θ: 0.0° | φ: 0.0°</span>
+          </div>
+          <div class="dev-telem-card">
+            <span class="dev-telem-label">Аэродинамика (CL / CD / L/D)</span>
+            <span class="dev-telem-val" id="dev-val-aero">L/D: 14.0</span>
+            <span class="dev-telem-sub" id="dev-val-clcd">CL: 0.45 | CD: 0.032</span>
+          </div>
+          <div class="dev-telem-card">
+            <span class="dev-telem-label">Векторы Сил (Lift / Drag / Thrust / Weight)</span>
+            <span class="dev-telem-val cyan" id="dev-val-forces">L: 0 N | T: 0 N</span>
+            <span class="dev-telem-sub" id="dev-val-forces2">D: 0 N | W: 245 N</span>
+          </div>
+          <div class="dev-telem-card">
+            <span class="dev-telem-label">Центровка (CG Offset & Margin)</span>
+            <span class="dev-telem-val emerald" id="dev-val-cg">CG: 28.5% MAC</span>
+            <span class="dev-telem-sub" id="dev-val-margin">Static Margin: +11.2%</span>
+          </div>
+        </div>
+
+        <!-- Live Physics Tuning Sliders -->
+        <div class="dev-sliders-section">
+          <div class="dev-section-subtitle"><i class="fa-solid fa-sliders"></i> Калибровка Физического Движка в Реальном Времени:</div>
+          <div class="dev-sliders-grid">
+            <div class="dev-slider-card">
+              <div class="dev-slider-header">
+                <span>Гравитационный Множитель (g):</span>
+                <strong id="disp-dev-gravity">1.00 g</strong>
+              </div>
+              <input type="range" id="slider-dev-gravity" min="0.0" max="2.0" step="0.05" value="1.0">
+            </div>
+            <div class="dev-slider-card">
+              <div class="dev-slider-header">
+                <span>Плотность Воздуха (ρ):</span>
+                <strong id="disp-dev-rho">1.225 кг/м³</strong>
+              </div>
+              <input type="range" id="slider-dev-rho" min="0.2" max="1.5" step="0.025" value="1.225">
+            </div>
+            <div class="dev-slider-card">
+              <div class="dev-slider-header">
+                <span>Эффективность Закрылков:</span>
+                <strong id="disp-dev-flaps">1.35x</strong>
+              </div>
+              <input type="range" id="slider-dev-flaps" min="1.0" max="2.5" step="0.05" value="1.35">
+            </div>
+            <div class="dev-slider-card">
+              <div class="dev-slider-header">
+                <span>Чувствительность Штурвала:</span>
+                <strong id="disp-dev-sens">1.00x</strong>
+              </div>
+              <input type="range" id="slider-dev-sens" min="0.2" max="3.0" step="0.1" value="1.0">
+            </div>
+          </div>
+          <div class="dev-slider-actions">
+            <button class="btn-dev-action" id="btn-dev-reset-physics"><i class="fa-solid fa-rotate-left"></i> Сброс параметров к заводским</button>
+          </div>
+        </div>
+
+        <!-- Quick Teleport Actions -->
+        <div class="dev-quick-actions">
+          <span class="dev-section-subtitle"><i class="fa-solid fa-location-crosshairs"></i> Быстрое Позиционирование Самолёта:</span>
+          <div class="dev-actions-buttons">
+            <button class="btn-dev-action" id="btn-dev-tp-runway"><i class="fa-solid fa-road"></i> ВПП 09L (0 м)</button>
+            <button class="btn-dev-action" id="btn-dev-tp-cruise"><i class="fa-solid fa-cloud"></i> Эшелон 700 м (160 км/ч)</button>
+            <button class="btn-dev-action" id="btn-dev-tp-high"><i class="fa-solid fa-mountain"></i> Высотный 2500 м</button>
+            <button class="btn-dev-action warning" id="btn-dev-stall-test"><i class="fa-solid fa-triangle-exclamation"></i> Тест сваливания (Stall Test)</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 2: Security & API Gateway -->
+      <div class="dev-tab-pane" id="pane-dev-security" style="display: none;">
+        <div class="dev-security-grid">
+          <div class="dev-security-card">
+            <div class="sec-card-header">
+              <i class="fa-solid fa-server cyan"></i>
+              <div>
+                <div class="sec-card-title">Vercel Serverless Proxy Gateway</div>
+                <div class="sec-card-subtitle">Защита от утечки ключей в Network Inspector</div>
+              </div>
+            </div>
+            <div class="sec-status-row">
+              <span>Маршрут прокси:</span>
+              <code>POST /api/ai-gateway</code>
+            </div>
+            <div class="sec-status-row">
+              <span>Переменная окружения:</span>
+              <code>process.env.VERCEL_AI_API_KEY</code>
+            </div>
+            <div class="sec-status-row">
+              <span>Статус шлюза:</span>
+              <span class="badge-status-ok" id="dev-proxy-status-badge">АКТИВЕН / ЗАЩИЩЁН</span>
+            </div>
+            <p class="sec-desc">
+              Все запросы к ИИ Конструктору отправляются через безопасный серверный бессерверный шлюз. Никакой открытый API-ключ не передаётся в браузер и не хранится в коде репозитория.
+            </p>
+          </div>
+
+          <div class="dev-security-card">
+            <div class="sec-card-header">
+              <i class="fa-solid fa-vault emerald"></i>
+              <div>
+                <div class="sec-card-title">Локальный Сейф Web Crypto AES-GCM 256-bit</div>
+                <div class="sec-card-subtitle">Резервное клиентское шифрование ключа разработчика</div>
+              </div>
+            </div>
+            <div class="sec-status-row">
+              <span>Статус хранилища:</span>
+              <span class="badge-status-ok" id="dev-vault-status-badge">СЕЙФ ЗАБЛОКИРОВАН</span>
+            </div>
+            <div class="sec-status-row">
+              <span>Маскированный ключ:</span>
+              <code id="dev-masked-key-display">••••••••••••••••••••••••••••••••</code>
+            </div>
+
+            <div class="vault-inputs-block">
+              <div class="form-group">
+                <label>API Ключ разработчика:</label>
+                <input type="password" id="input-dev-api-key" placeholder="AIzaSy... или sk-...">
+              </div>
+              <div class="form-group">
+                <label>Мастер-PIN шифрования (4-8 знаков):</label>
+                <input type="password" id="input-dev-pin" placeholder="••••" maxlength="8">
+              </div>
+              <div class="vault-btn-row">
+                <button class="btn-dev-action" id="btn-dev-vault-save"><i class="fa-solid fa-lock"></i> Зашифровать в AES-GCM</button>
+                <button class="btn-dev-action" id="btn-dev-vault-ping"><i class="fa-solid fa-bolt"></i> Ping Test</button>
+                <button class="btn-dev-action danger" id="btn-dev-vault-purge"><i class="fa-solid fa-trash"></i> Стереть сейф</button>
+              </div>
+            </div>
+            <div class="vault-ping-output" id="dev-vault-ping-output">Готов к тесту соединения...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 3: Interactive CLI Terminal -->
+      <div class="dev-tab-pane" id="pane-dev-cli" style="display: none;">
+        <div class="dev-cli-terminal">
+          <div class="dev-cli-screen" id="dev-cli-screen">
+            <div class="cli-line banner">===============================================================</div>
+            <div class="cli-line banner">  AEROTERRA H2-01 HYBRID-ELECTRIC AVIONICS COMMAND TERMINAL    </div>
+            <div class="cli-line banner">  OS: RTOS-AERO v2.8 (60Hz Physics Core · WebGL 3D Kernel)     </div>
+            <div class="cli-line banner">  Type <span class="cyan">/help</span> to view available flight control commands.</div>
+            <div class="cli-line banner">===============================================================</div>
+          </div>
+          <form class="dev-cli-input-line" id="dev-cli-form">
+            <span class="cli-prompt">AeroTerra-OS:~$</span>
+            <input type="text" id="dev-cli-input" autocomplete="off" spellcheck="false" placeholder="Введите команду (/help, /tp 700, /wind 12, /refuel)...">
+            <button type="submit" class="btn-cli-submit"><i class="fa-solid fa-arrow-right"></i></button>
+          </form>
+          <div class="cli-quick-commands">
+            <span class="cli-quick-label">Быстрые команды:</span>
+            <button type="button" class="cli-cmd-chip" data-cmd="/help">/help</button>
+            <button type="button" class="cli-cmd-chip" data-cmd="/tp 700">/tp 700</button>
+            <button type="button" class="cli-cmd-chip" data-cmd="/tp 0">/tp 0</button>
+            <button type="button" class="cli-cmd-chip" data-cmd="/wind 8">/wind 8</button>
+            <button type="button" class="cli-cmd-chip" data-cmd="/refuel">/refuel</button>
+            <button type="button" class="cli-cmd-chip" data-cmd="/stall_test">/stall_test</button>
+            <button type="button" class="cli-cmd-chip" data-cmd="/api_status">/api_status</button>
+            <button type="button" class="cli-cmd-chip" data-cmd="/export_logs">/export_logs</button>
+            <button type="button" class="cli-cmd-chip" data-cmd="clear">clear</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
        EXTERNAL CDN JAVASCRIPT LIBRARIES
        ========================================================================== -->
   <!-- Three.js Core -->
@@ -2070,6 +2504,8 @@
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
   <!-- Three.js STLLoader -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js"></script>
+  <!-- Three.js OBJLoader -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
   <!-- Apache ECharts -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
   <!-- Leaflet JS -->

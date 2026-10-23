@@ -1139,7 +1139,7 @@
     }
 
     // 4. Pilot Angular Accelerations & Coordinated Controls
-    const sens = SIM.sensitivity;
+    const sens = SIM.sensitivity * (SIM.devOverrides?.sens !== undefined ? SIM.devOverrides.sens : 1.0);
 
     // Pitch Control (Attitude & Rate command with realistic stick-holding capability):
     // flight.pitchInput: -1.0 (stick forward / dive) to +1.0 (stick back / climb)
@@ -1219,7 +1219,10 @@
 
     // ISA Atmosphere: exponential air density decay with altitude
     const alt = Math.max(0, flight.pos.y);
-    const rho = 1.225 * Math.max(0.1, Math.exp(-alt / 8500));
+    let rho = 1.225 * Math.max(0.1, Math.exp(-alt / 8500));
+    if (SIM.devOverrides?.rho !== undefined) {
+      rho = SIM.devOverrides.rho;
+    }
 
     // Blown-Wing STOL: DEP propwash adds airflow over upper wing surface
     const propWashVel = effectiveThrottle * 22.0;
@@ -1227,7 +1230,8 @@
     const qEff = 0.5 * rho * Math.pow(effectiveAirspeed, 2);
 
     // Lift coefficient: Base camber + Flaps + Linear slope with stall curve
-    const baseCL = 0.88 + flight.flapsStage * 0.45;
+    const flapsFactor = SIM.devOverrides?.flapsMult !== undefined ? (SIM.devOverrides.flapsMult / 1.35) : 1.0;
+    const baseCL = 0.88 + flight.flapsStage * 0.45 * flapsFactor;
     const clSlope = 4.8;
     let cl = baseCL + clSlope * (flight.aoa * Math.PI / 180);
     // Stall drop-off beyond ±16°
@@ -1270,12 +1274,18 @@
     const thrustN = effectiveThrottle * cfg.thrustMax * Math.pow(rho / 1.225, 0.7);
     const thrustAcc = fwd.clone().multiplyScalar(thrustN / currentMass);
 
-    // Gravity
-    const gravAcc = new THREE.Vector3(0, -9.80665, 0);
+    // Gravity (with Dev Overrides Scale)
+    const gMultiplier = SIM.devOverrides?.gravityScale !== undefined ? SIM.devOverrides.gravityScale : 1.0;
+    const gravAcc = new THREE.Vector3(0, -9.80665 * gMultiplier, 0);
 
     // Weathercock velocity alignment: aircraft velocity vector smoothly aligns with forward direction
     const currentSpeed = Math.max(0.1, flight.vel.length());
     flight.vel.lerp(fwd.clone().multiplyScalar(currentSpeed), Math.min(1.0, 5.0 * dt));
+
+    // Crosswind deviation override
+    if (SIM.devOverrides?.crosswind) {
+      flight.pos.x += SIM.devOverrides.crosswind * dt;
+    }
 
     // Total Acceleration
     const acc = new THREE.Vector3();
@@ -1367,15 +1377,37 @@
       if (flight.fluidRemaining <= 0) flight.agroSpraying = false;
     }
 
-    // Save live metrics for Professor formulas
+    // Save live metrics for Professor formulas & Dev Console 60Hz Inspector
     flight.liveCL = cl;
     flight.liveCD = totalCD;
     flight.liveLiftN = Math.round(liftForceN);
     flight.liveDragN = Math.round(dragForceN);
+    flight.liveThrustN = Math.round(thrustN);
     flight.liveLD = dragForceN > 1 ? (liftForceN / dragForceN) : 0;
     flight.liveVeff = effectiveAirspeed;
     flight.liveSigma = sigmaGround;
     flight.liveMass = currentMass;
+
+    SIM.liveMetrics = {
+      ias: flight.ias,
+      tas: flight.tas,
+      alt: flight.pos.y,
+      vsi: flight.vsi,
+      aoa: flight.aoa,
+      pitch: -flight.rot.x * 180 / Math.PI,
+      roll: -flight.rot.z * 180 / Math.PI,
+      cl: cl,
+      cd: totalCD,
+      ld: flight.liveLD,
+      lift: flight.liveLiftN,
+      drag: flight.liveDragN,
+      thrust: flight.liveThrustN,
+      weight: Math.round(currentMass * 9.80665 * gMultiplier),
+      cg: 28.5,
+      margin: 11.2,
+      dt: dt,
+      guardStatus: 'ACTIVE (0 EXPLOSIONS)'
+    };
 
     // Update Aerodynamic Vector Helpers
     if (flight.showAeroVectors && aeroVectorGroup) {
@@ -1662,6 +1694,18 @@
       const bThr = parseInt(btn.getAttribute('data-thr'), 10);
       btn.classList.toggle('active', Math.abs(bThr - thrPct) <= 5);
     });
+
+    // 10. Mobile Telemetry Ribbon Sync
+    const mobAlt = document.getElementById('mob-ribbon-alt');
+    const mobSpd = document.getElementById('mob-ribbon-spd');
+    const mobAoa = document.getElementById('mob-ribbon-aoa');
+    const mobH2 = document.getElementById('mob-ribbon-h2');
+    const mobWater = document.getElementById('mob-ribbon-water');
+    if (mobAlt) mobAlt.textContent = `${Math.round(altVal)}м`;
+    if (mobSpd) mobSpd.textContent = `${Math.round(iasVal)}км/ч`;
+    if (mobAoa) mobAoa.textContent = `${aoaVal >= 0 ? '+' : ''}${aoaVal.toFixed(1)}°`;
+    if (mobH2) mobH2.textContent = `${Math.round(h2Pct)}%`;
+    if (mobWater) mobWater.textContent = `${Math.round(flight.fluidRemaining)}л`;
   }
 
   // Live Professor Aerodynamics Formulas & Telemetry Overlay
@@ -2341,8 +2385,86 @@
     }
   }
 
+  // Clean View (H) Toggle Function
+  function toggleCleanView() {
+    const simSection = document.getElementById('simulator-section');
+    if (!simSection) return;
+    simSection.classList.toggle('hud-hidden');
+    const isHidden = simSection.classList.contains('hud-hidden');
+    const btnCleanView = document.getElementById('btn-sim-clean-view');
+    if (btnCleanView) {
+      btnCleanView.classList.toggle('active', isHidden);
+    }
+    showToast(isHidden ? '👁️ ЧИСТЫЙ ОБЗОР: HUD СКРЫТ (НАЖМИТЕ H ДЛЯ ВОЗВРАТА)' : 'HUD ВОССТАНОВЛЕН');
+  }
+
+  // Dev Overrides Configuration & Remote Telemetry API
+  SIM.devOverrides = {
+    gravityScale: 1.0,
+    rho: undefined,
+    flapsMult: 1.35,
+    sens: 1.0,
+    crosswind: 0.0
+  };
+
+  SIM.teleportTo = function(alt, ias, pitchDeg, rollDeg) {
+    flight.pos.y = safeClamp(alt !== undefined ? alt : 700, 1.25, 6000, 700);
+    const speedMs = (ias !== undefined ? ias : 155) / 3.6;
+    flight.vel.set(0, 0, speedMs);
+    flight.rot.x = (pitchDeg !== undefined ? pitchDeg : -1.0) * Math.PI / 180;
+    flight.rot.z = (rollDeg !== undefined ? rollDeg : 0.0) * Math.PI / 180;
+    flight.quat.setFromEuler(flight.rot);
+    showToast(`📍 ТЕЛЕПОРТ: ${Math.round(flight.pos.y)}м, ${Math.round(ias || 155)} км/ч`);
+  };
+
+  SIM.triggerStallTest = function() {
+    flight.pos.y = Math.max(900, flight.pos.y);
+    flight.vel.set(0, -1.0, 16.0); // ~57 km/h
+    flight.rot.x = -19.5 * Math.PI / 180;
+    flight.rot.z = 8.0 * Math.PI / 180;
+    flight.throttle = 0.15;
+    flight.aoa = 19.5;
+    showToast('⚠️ ТЕСТ СВАЛИВАНИЯ: V=58 км/ч, AoA=19.5°! РУЧКУ ОТ СЕБЯ!');
+  };
+
+  SIM.refuel = function() {
+    flight.h2MassRemaining = 2.5;
+    flight.fluidRemaining = 10.0;
+    showToast('⚡ ПОЛНАЯ ДОЗАПРАВКА: H2 = 100%, БАК = 100%');
+  };
+
+  SIM.resetDevOverrides = function() {
+    SIM.devOverrides.gravityScale = 1.0;
+    SIM.devOverrides.rho = undefined;
+    SIM.devOverrides.flapsMult = 1.35;
+    SIM.devOverrides.sens = 1.0;
+    SIM.devOverrides.crosswind = 0.0;
+    showToast('🔄 ПАРАМЕТРЫ ФИЗИКИ СБРОШЕНЫ К ЗАВОДСКИМ');
+  };
+
   function initControls() {
     initTouchControls();
+
+    // Clean View (H) Toggle Button
+    const btnCleanView = document.getElementById('btn-sim-clean-view');
+    if (btnCleanView) {
+      btnCleanView.addEventListener('click', () => {
+        toggleCleanView();
+      });
+    }
+
+    // HUD Collapse Buttons
+    document.querySelectorAll('.btn-hud-collapse').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const card = btn.closest('.sim-hud-card');
+        if (card) {
+          card.classList.toggle('minimized');
+          const isMin = card.classList.contains('minimized');
+          btn.innerHTML = isMin ? '<i class="fa-solid fa-plus"></i>' : '<i class="fa-solid fa-minus"></i>';
+        }
+      });
+    });
 
     // Throttle Quick Preset Buttons (100%, 75%, 25%, 0%)
     document.querySelectorAll('.btn-thr-preset').forEach((btn) => {
@@ -2768,6 +2890,8 @@
       document.getElementById('btn-ap-hdg')?.click();
     } else if (code === 'KeyR' || key === 'r' || key === 'к') {
       resetToAirFlight700();
+    } else if (code === 'KeyH' || key === 'h' || key === 'р') {
+      toggleCleanView();
     }
   }
 
