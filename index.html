@@ -88,8 +88,8 @@
         </div>
       </div>
 
-      <!-- Admin CMS Panel Trigger -->
-      <button class="btn-admin-trigger" id="btn-open-admin" title="Панель администратора / Живой визуальный CMS редактор (Ctrl+Shift+A)">
+      <!-- Admin CMS Panel Trigger (Hidden by default; SuperAdmin ONLY) -->
+      <button class="btn-admin-trigger" id="btn-open-admin" style="display: none !important;" title="Панель администратора / Живой визуальный CMS редактор (Ctrl+Shift+A)">
         <i class="fa-solid fa-crown"></i> <span>👑 Админ (CMS)</span>
       </button>
 
@@ -103,8 +103,8 @@
         <i class="fa-solid fa-volume-high" id="sound-icon"></i>
       </button>
 
-      <!-- Developer Console Trigger Button -->
-      <button class="btn-dev-console-trigger" id="btn-open-dev-console" title="Открыть инженерную консоль разработчика (~ / Ctrl+Shift+D)">
+      <!-- Developer Console Trigger Button (Hidden by default; SuperAdmin ONLY) -->
+      <button class="btn-dev-console-trigger" id="btn-open-dev-console" style="display: none !important;" title="Открыть инженерную консоль разработчика (~ / Ctrl+Shift+D)">
         <i class="fa-solid fa-terminal"></i> <span>🛠️ Консоль (~)</span>
         <span class="dev-status-indicator-dot" id="header-dev-dot"></span>
       </button>
@@ -2163,6 +2163,7 @@
 
       <!-- Alert notification inside modal -->
       <div class="auth-alert" id="auth-modal-alert" style="display: none;"></div>
+      <div class="owner-setup-hint" id="owner-setup-hint" style="display: none;"></div>
 
       <!-- Login Form -->
       <form class="auth-form" id="form-login">
@@ -2488,6 +2489,9 @@
         </div>
         <div class="admin-header-actions">
           <span class="admin-badge-role"><i class="fa-solid fa-shield-check"></i> SuperAdmin Active</span>
+          <button class="btn-lock-admin" id="btn-lock-admin-session" title="Заблокировать админ-панель и выйти">
+            <i class="fa-solid fa-lock"></i> <span>🔒 Заблокировать админку</span>
+          </button>
           <button class="admin-modal-close" id="btn-close-admin" title="Закрыть админ-панель (Esc)"><i class="fa-solid fa-xmark"></i></button>
         </div>
       </div>

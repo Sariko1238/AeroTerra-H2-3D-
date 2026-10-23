@@ -3891,8 +3891,74 @@
   }
 
   // --------------------------------------------------------------------------
-  // 17. NEON POSTGRESQL AUTHENTICATION & CLOUD PROFILE INTEGRATION
+  // 17. ACCESS CONTROL & NEON AUTHENTICATION (RBAC & SUPERADMIN)
   // --------------------------------------------------------------------------
+  const SUPER_ADMIN_EMAIL = 'sarikmusaev2006@gmail.com';
+
+  function isSuperAdmin() {
+    try {
+      const rawUser = localStorage.getItem('aeroterra_user');
+      const token = localStorage.getItem('aeroterra_token');
+      const role = localStorage.getItem('aeroterra_role');
+      if (!rawUser || !token) return false;
+      const user = JSON.parse(rawUser);
+      return (
+        (role === 'SUPER_ADMIN' || user.role === 'SUPER_ADMIN') &&
+        typeof user.email === 'string' &&
+        user.email.trim().toLowerCase() === SUPER_ADMIN_EMAIL
+      );
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function showSecurityAlert(msg) {
+    if (typeof Swal !== 'undefined') {
+      Swal.fire({
+        title: '🔒 Доступ ограничен',
+        text: msg,
+        icon: 'warning',
+        background: '#0a1224',
+        color: '#fff',
+        confirmButtonColor: '#00e5ff'
+      });
+    } else {
+      alert('🔒 ' + msg);
+    }
+  }
+
+  async function hashAdminPassword(pwd) {
+    try {
+      const enc = new TextEncoder().encode('aeroterra_owner_salt_v1_' + pwd);
+      const buf = await window.crypto.subtle.digest('SHA-256', enc);
+      return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+    } catch (e) {
+      return 'fallback_hash_' + pwd;
+    }
+  }
+
+  function applyAdminAccessState() {
+    if (isSuperAdmin()) {
+      document.body.classList.add('is-super-admin');
+    } else {
+      document.body.classList.remove('is-super-admin');
+      const adminModal = document.getElementById('admin-cms-modal');
+      if (adminModal) adminModal.style.display = 'none';
+      const devModal = document.getElementById('dev-console-modal');
+      if (devModal) devModal.style.display = 'none';
+      document.body.style.overflow = '';
+      const floatingControls = document.getElementById('cms-floating-controls');
+      if (floatingControls) floatingControls.style.display = 'none';
+      const toggleInline = document.getElementById('toggle-cms-inline-edit');
+      if (toggleInline) toggleInline.checked = false;
+      const editable = document.querySelectorAll('[contenteditable="true"]');
+      editable.forEach(el => {
+        el.removeAttribute('contenteditable');
+        el.classList.remove('cms-editable-active');
+      });
+    }
+  }
+
   function setupNeonAuth() {
     const authModal = document.getElementById('auth-modal');
     const btnOpenAuth = document.getElementById('btn-open-auth');
@@ -3902,6 +3968,7 @@
     const formLogin = document.getElementById('form-login');
     const formRegister = document.getElementById('form-register');
     const modalAlert = document.getElementById('auth-modal-alert');
+    const ownerSetupHint = document.getElementById('owner-setup-hint');
     const btnQuickDemo = document.getElementById('btn-quick-demo-login');
     const userBadge = document.getElementById('user-profile-badge');
     const headerUserName = document.getElementById('header-user-name');
@@ -3925,50 +3992,60 @@
       if (user) {
         if (btnOpenAuth) btnOpenAuth.style.display = 'none';
         if (userBadge) userBadge.style.display = 'flex';
-        if (headerUserName) headerUserName.textContent = user.fullName || user.email || 'Инженер';
-        if (headerUserRole) {
-          if (user.role === 'chief_engineer') {
-            headerUserRole.textContent = 'ГЛАВНЫЙ КОНСТРУКТОР (VIP)';
-            headerUserRole.style.color = 'var(--accent-amber)';
-          } else {
-            headerUserRole.textContent = (user.role || 'engineer').toUpperCase();
-            headerUserRole.style.color = '';
-          }
-        }
-        if (headerUserAvatar) headerUserAvatar.textContent = (user.fullName ? user.fullName[0] : 'U').toUpperCase();
 
-        const btnDev = document.getElementById('btn-open-dev-console');
-        if (btnDev && (user.devMode || user.role === 'chief_engineer')) {
-          btnDev.style.borderColor = 'var(--accent-cyan)';
-          btnDev.style.boxShadow = '0 0 10px rgba(0, 229, 255, 0.4)';
+        if (isSuperAdmin()) {
+          document.body.classList.add('is-super-admin');
+          if (headerUserName) headerUserName.textContent = 'Сарик Мусаев';
+          if (headerUserRole) {
+            headerUserRole.textContent = '👑 OWNER: sarikmusaev2006@gmail.com';
+            headerUserRole.style.color = 'var(--accent-amber)';
+          }
+          if (headerUserAvatar) headerUserAvatar.textContent = '👑';
+        } else {
+          document.body.classList.remove('is-super-admin');
+          if (headerUserName) headerUserName.textContent = user.fullName || user.email || 'Инженер';
+          if (headerUserRole) {
+            headerUserRole.textContent = (user.role || 'GUEST').toUpperCase();
+            headerUserRole.style.color = '#94a3b8';
+          }
+          if (headerUserAvatar) headerUserAvatar.textContent = (user.fullName ? user.fullName[0] : 'U').toUpperCase();
         }
       } else {
+        document.body.classList.remove('is-super-admin');
         if (btnOpenAuth) btnOpenAuth.style.display = 'inline-flex';
         if (userBadge) userBadge.style.display = 'none';
       }
     }
 
-    async function hashPassword(str) {
-      try {
-        const enc = new TextEncoder().encode(str);
-        const buf = await window.crypto.subtle.digest('SHA-256', enc);
-        return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
-      } catch (e) {
-        return str;
-      }
+    function logoutUser() {
+      localStorage.removeItem('aeroterra_token');
+      localStorage.removeItem('aeroterra_role');
+      localStorage.removeItem('aeroterra_user');
+      applyAdminAccessState();
+      updateAuthUI(null);
+      showAlert('Вы вышли из учетной записи. Сессия заблокирована.', 'info');
     }
 
-    // Developer mode toggle
-    const devToggle = document.getElementById('auth-dev-mode-toggle');
-    if (devToggle) {
-      const isDev = localStorage.getItem('aeroterra_dev_mode') !== 'false';
-      devToggle.checked = isDev;
-      devToggle.addEventListener('change', (e) => {
-        localStorage.setItem('aeroterra_dev_mode', e.target.checked ? 'true' : 'false');
+    // Dynamic Owner email hint
+    const loginEmailInput = document.getElementById('login-email');
+    if (loginEmailInput) {
+      loginEmailInput.addEventListener('input', () => {
+        const val = loginEmailInput.value.trim().toLowerCase();
+        if (val === SUPER_ADMIN_EMAIL) {
+          const hasHash = !!localStorage.getItem('aeroterra_owner_hash');
+          if (ownerSetupHint) {
+            ownerSetupHint.style.display = 'block';
+            ownerSetupHint.innerHTML = hasHash
+              ? `<i class="fa-solid fa-crown" style="color: #ffb800;"></i> <strong>Аккаунт Владельца проекта:</strong> Введите ваш личный Мастер-Пароль для разблокировки Админ-панели и Консоли.`
+              : `<i class="fa-solid fa-key" style="color: #00ff9d;"></i> <strong>Первый вход Владельца:</strong> Задайте ваш личный Мастер-Пароль Администратора (от 6 символов). Он будет сохранён в виде SHA-256 хэша.`;
+          }
+        } else {
+          if (ownerSetupHint) ownerSetupHint.style.display = 'none';
+        }
       });
     }
 
-    // 1-Click VIP Professor Login
+    // 1-Click VIP Professor Login (strictly Guest role, no admin rights)
     const btnVipProf = document.getElementById('btn-vip-professor');
     if (btnVipProf) {
       btnVipProf.addEventListener('click', () => {
@@ -3976,21 +4053,22 @@
         const profUser = {
           fullName: 'Проф. А. В. Смирнов',
           email: 'chief@aeroterra.aero',
-          role: 'chief_engineer',
-          organization: 'Aerospace Engineering Club / Главный Конструктор',
-          isVip: true,
-          devMode: true
+          role: 'professor_guest',
+          organization: 'Aerospace Engineering Club / Гостевой Эксперт',
+          isSuperAdmin: false
         };
-        localStorage.setItem('aeroterra_token', 'vip-prof-token-' + Date.now());
+        localStorage.setItem('aeroterra_token', 'prof-guest-token-' + Date.now());
+        localStorage.setItem('aeroterra_role', 'GUEST');
         localStorage.setItem('aeroterra_user', JSON.stringify(profUser));
-        localStorage.setItem('aeroterra_dev_mode', 'true');
+        applyAdminAccessState();
         updateAuthUI(profUser);
-        showAlert('🎓 VIP ВХОД: Профессор А. В. Смирнов (Главный Конструктор)', 'success');
+        showAlert('🎓 ДЕМО-ВХОД: Профессор А. В. Смирнов (Гостевой Эксперт). Права администрирования отключены.', 'info');
         setTimeout(() => { if (authModal) authModal.style.display = 'none'; }, 800);
       });
     }
 
     // Check existing stored session
+    applyAdminAccessState();
     const savedToken = localStorage.getItem('aeroterra_token');
     const savedUser = localStorage.getItem('aeroterra_user');
     if (savedToken && savedUser) {
@@ -4051,14 +4129,61 @@
       });
     }
 
-    // Login submit
+    // Login submit (SuperAdmin vs Guest/Member)
     if (formLogin) {
       formLogin.addEventListener('submit', async (e) => {
         e.preventDefault();
         hideAlert();
-        const email = document.getElementById('login-email').value.trim();
+        const emailRaw = document.getElementById('login-email').value;
         const password = document.getElementById('login-password').value;
+        const email = emailRaw.trim().toLowerCase();
 
+        // SUPER ADMIN VERIFICATION FOR OWNER
+        if (email === SUPER_ADMIN_EMAIL) {
+          if (!password || password.length < 6) {
+            showAlert('Мастер-Пароль Владельца должен содержать минимум 6 символов!', 'error');
+            return;
+          }
+
+          const savedHash = localStorage.getItem('aeroterra_owner_hash');
+          const inputHash = await hashAdminPassword(password);
+
+          if (!savedHash) {
+            // First time owner login: setup personal master password
+            localStorage.setItem('aeroterra_owner_hash', inputHash);
+            showAlert('👑 Мастер-Пароль Владельца успешно установлен (SHA-256)!', 'success');
+          } else if (savedHash !== inputHash) {
+            showAlert('❌ Неверный Мастер-Пароль Владельца! Доступ к роли Администратора отклонён.', 'error');
+            return;
+          }
+
+          // Optional async ping to verify Vercel serverless gateway
+          try {
+            fetch('/api/ai-gateway', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + password },
+              body: JSON.stringify({ action: 'admin-auth', email: SUPER_ADMIN_EMAIL })
+            }).catch(() => null);
+          } catch (e) {}
+
+          const ownerUser = {
+            fullName: 'Сарик Мусаев',
+            email: SUPER_ADMIN_EMAIL,
+            role: 'SUPER_ADMIN',
+            isSuperAdmin: true,
+            organization: 'AeroTerra Aerospace Chief & Project Owner'
+          };
+          localStorage.setItem('aeroterra_token', 'super-admin-token-' + Date.now());
+          localStorage.setItem('aeroterra_role', 'SUPER_ADMIN');
+          localStorage.setItem('aeroterra_user', JSON.stringify(ownerUser));
+          applyAdminAccessState();
+          updateAuthUI(ownerUser);
+          showAlert('👑 Вход Владельца выполнен! Права Супер-Администратора и Консоли активированы.', 'success');
+          setTimeout(() => { if (authModal) authModal.style.display = 'none'; }, 900);
+          return;
+        }
+
+        // Standard user / member login
         try {
           const res = await fetch('/api/auth/login', {
             method: 'POST',
@@ -4068,88 +4193,101 @@
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || 'Ошибка входа');
 
-          localStorage.setItem('aeroterra_token', data.token);
-          localStorage.setItem('aeroterra_user', JSON.stringify(data.user));
-          updateAuthUI(data.user);
-          showAlert('Авторизация успешна! Вход выполнен в Neon Cloud.', 'success');
-          setTimeout(() => { if (authModal) authModal.style.display = 'none'; }, 1000);
+          const user = Object.assign({}, data.user, { isSuperAdmin: false, role: 'club_member' });
+          localStorage.setItem('aeroterra_token', data.token || ('member-token-' + Date.now()));
+          localStorage.setItem('aeroterra_role', 'MEMBER');
+          localStorage.setItem('aeroterra_user', JSON.stringify(user));
+          applyAdminAccessState();
+          updateAuthUI(user);
+          showAlert('Авторизация успешна! Вход выполнен в роли Члена Клуба.', 'success');
+          setTimeout(() => { if (authModal) authModal.style.display = 'none'; }, 900);
         } catch (err) {
-          // Fallback simulation
           const fallbackUser = {
             fullName: email.split('@')[0],
             email,
-            role: 'pilot'
+            role: 'club_member',
+            isSuperAdmin: false
           };
           localStorage.setItem('aeroterra_token', 'mock-token-' + Date.now());
+          localStorage.setItem('aeroterra_role', 'MEMBER');
           localStorage.setItem('aeroterra_user', JSON.stringify(fallbackUser));
+          applyAdminAccessState();
           updateAuthUI(fallbackUser);
-          showAlert('Вход выполнен (локальный режим)!', 'success');
-          setTimeout(() => { if (authModal) authModal.style.display = 'none'; }, 1000);
+          showAlert('Вход выполнен в роли Члена Клуба (Гостевой доступ).', 'success');
+          setTimeout(() => { if (authModal) authModal.style.display = 'none'; }, 900);
         }
       });
     }
 
-    // Register submit
+    // Register submit (Owner vs standard user)
     if (formRegister) {
       formRegister.addEventListener('submit', async (e) => {
         e.preventDefault();
         hideAlert();
         const fullName = document.getElementById('reg-fullname').value.trim();
         const organization = document.getElementById('reg-org').value.trim();
-        const role = document.getElementById('reg-role').value;
-        const email = document.getElementById('reg-email').value.trim();
+        const email = document.getElementById('reg-email').value.trim().toLowerCase();
         const password = document.getElementById('reg-password').value;
 
-        try {
-          const res = await fetch('/api/auth/register', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fullName, organization, role, email, password })
-          });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error || 'Ошибка при регистрации');
-
-          localStorage.setItem('aeroterra_token', data.token);
-          localStorage.setItem('aeroterra_user', JSON.stringify(data.user));
-          updateAuthUI(data.user);
-          showAlert('Аккаунт успешно создан в Neon PostgreSQL!', 'success');
-          setTimeout(() => { if (authModal) authModal.style.display = 'none'; }, 1200);
-        } catch (err) {
-          const fallbackUser = { fullName, organization, role, email };
-          localStorage.setItem('aeroterra_token', 'mock-token-' + Date.now());
-          localStorage.setItem('aeroterra_user', JSON.stringify(fallbackUser));
-          updateAuthUI(fallbackUser);
-          showAlert('Аккаунт зарегистрирован (локальный режим)!', 'success');
-          setTimeout(() => { if (authModal) authModal.style.display = 'none'; }, 1200);
+        if (email === SUPER_ADMIN_EMAIL) {
+          if (password.length < 6) {
+            showAlert('Пароль Владельца должен содержать минимум 6 символов!', 'error');
+            return;
+          }
+          const inputHash = await hashAdminPassword(password);
+          localStorage.setItem('aeroterra_owner_hash', inputHash);
+          const ownerUser = {
+            fullName: fullName || 'Сарик Мусаев',
+            email: SUPER_ADMIN_EMAIL,
+            role: 'SUPER_ADMIN',
+            isSuperAdmin: true,
+            organization: organization || 'AeroTerra Aerospace Chief & Project Owner'
+          };
+          localStorage.setItem('aeroterra_token', 'super-admin-token-' + Date.now());
+          localStorage.setItem('aeroterra_role', 'SUPER_ADMIN');
+          localStorage.setItem('aeroterra_user', JSON.stringify(ownerUser));
+          applyAdminAccessState();
+          updateAuthUI(ownerUser);
+          showAlert('👑 Аккаунт Владельца зарегистрирован и защищён SHA-256!', 'success');
+          setTimeout(() => { if (authModal) authModal.style.display = 'none'; }, 900);
+          return;
         }
+
+        const fallbackUser = { fullName, organization, role: 'club_member', email, isSuperAdmin: false };
+        localStorage.setItem('aeroterra_token', 'member-token-' + Date.now());
+        localStorage.setItem('aeroterra_role', 'MEMBER');
+        localStorage.setItem('aeroterra_user', JSON.stringify(fallbackUser));
+        applyAdminAccessState();
+        updateAuthUI(fallbackUser);
+        showAlert('Аккаунт зарегистрирован (роль: Член Клуба).', 'success');
+        setTimeout(() => { if (authModal) authModal.style.display = 'none'; }, 900);
       });
     }
 
-    // Quick demo login
+    // Quick demo login (Test-Pilot)
     if (btnQuickDemo) {
       btnQuickDemo.addEventListener('click', async () => {
         hideAlert();
         const demoUser = {
           fullName: 'Капитан Алекс Воронов',
           email: 'pilot@aeroterra.aero',
-          role: 'pilot',
-          organization: 'Aerospace Engineering Club / Flight Test'
+          role: 'test_pilot',
+          organization: 'Aerospace Engineering Club / Flight Test',
+          isSuperAdmin: false
         };
         localStorage.setItem('aeroterra_token', 'demo-token-pilot');
+        localStorage.setItem('aeroterra_role', 'GUEST');
         localStorage.setItem('aeroterra_user', JSON.stringify(demoUser));
+        applyAdminAccessState();
         updateAuthUI(demoUser);
-        showAlert('Вход в демо-профиль пилота выполнен!', 'success');
+        showAlert('Вход в демо-профиль пилота выполнен! Права администрирования отключены.', 'info');
         setTimeout(() => { if (authModal) authModal.style.display = 'none'; }, 800);
       });
     }
 
     // Logout
     if (btnHeaderLogout) {
-      btnHeaderLogout.addEventListener('click', () => {
-        localStorage.removeItem('aeroterra_token');
-        localStorage.removeItem('aeroterra_user');
-        updateAuthUI(null);
-      });
+      btnHeaderLogout.addEventListener('click', logoutUser);
     }
   }
 
@@ -4421,6 +4559,10 @@
     const paneCli = document.getElementById('pane-dev-cli');
 
     function openConsole(targetTab = null) {
+      if (!isSuperAdmin()) {
+        showSecurityAlert('Доступ запрещён. Консоль разработчика доступна исключительно владельцу проекта (sarikmusaev2006@gmail.com).');
+        return;
+      }
       if (!modal) return;
       modal.style.display = 'flex';
       document.body.style.overflow = 'hidden';
@@ -4438,6 +4580,10 @@
 
     function toggleConsole() {
       if (!modal) return;
+      if (!isSuperAdmin()) {
+        showSecurityAlert('Доступ запрещён. Консоль разработчика доступна исключительно владельцу проекта.');
+        return;
+      }
       if (modal.style.display === 'flex') {
         closeConsole();
       } else {
@@ -4475,7 +4621,7 @@
       if (e.target === modal) closeConsole();
     });
 
-    // Global Hotkeys: ~ / ` / ё / Ё / Ctrl+Shift+D / Esc
+    // Global Hotkeys: ~ / ` / ё / Ё / Ctrl+Shift+D / Esc (Locked for non-admins)
     window.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && modal?.style.display === 'flex') {
         closeConsole();
@@ -4485,6 +4631,10 @@
           (e.ctrlKey && e.shiftKey && (e.code === 'KeyD' || e.key === 'D' || e.key === 'd'))) {
         if (e.target && e.target.id === 'dev-cli-input' && e.key === '`') return;
         e.preventDefault();
+        if (!isSuperAdmin()) {
+          showSecurityAlert('Доступ запрещён. Консоль разработчика доступна исключительно владельцу проекта.');
+          return;
+        }
         toggleConsole();
       }
     });
@@ -4862,8 +5012,12 @@
     const specPower = document.getElementById('spec-edit-power');
     const btnSaveSpecsGlobal = document.getElementById('btn-save-specs-global');
 
-    // Open/Close Admin Modal
+    // Open/Close Admin Modal (Locked for non-admins)
     function openAdmin() {
+      if (!isSuperAdmin()) {
+        showSecurityAlert('Доступ запрещён. Требуются права Супер-Администратора проекта (sarikmusaev2006@gmail.com).');
+        return;
+      }
       if (adminModal) {
         adminModal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
@@ -4882,16 +5036,37 @@
     if (btnOpenAdmin) btnOpenAdmin.addEventListener('click', openAdmin);
     if (btnCloseAdmin) btnCloseAdmin.addEventListener('click', closeAdmin);
 
+    // Logout / Lock Admin Session Button inside Admin Panel
+    const btnLockAdmin = document.getElementById('btn-lock-admin-session');
+    if (btnLockAdmin) {
+      btnLockAdmin.addEventListener('click', () => {
+        localStorage.removeItem('aeroterra_token');
+        localStorage.removeItem('aeroterra_role');
+        localStorage.removeItem('aeroterra_user');
+        applyAdminAccessState();
+        closeAdmin();
+        const authUserBadge = document.getElementById('user-profile-badge');
+        if (authUserBadge) authUserBadge.style.display = 'none';
+        const btnOpenAuth = document.getElementById('btn-open-auth');
+        if (btnOpenAuth) btnOpenAuth.style.display = 'inline-flex';
+        showAlert('🔒 Режим Администратора заблокирован. Панель закрыта.', 'info');
+      });
+    }
+
     if (adminModal) {
       adminModal.addEventListener('click', (e) => {
         if (e.target === adminModal) closeAdmin();
       });
     }
 
-    // Hotkey: Ctrl+Shift+A or Cmd+Shift+A toggles Admin
+    // Hotkey: Ctrl+Shift+A or Cmd+Shift+A toggles Admin (Locked for non-admins)
     window.addEventListener('keydown', (e) => {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'A' || e.key === 'a' || e.key === 'Ф' || e.key === 'ф')) {
         e.preventDefault();
+        if (!isSuperAdmin()) {
+          showSecurityAlert('Доступ запрещён. Требуются права Супер-Администратора проекта.');
+          return;
+        }
         if (adminModal.style.display === 'flex') closeAdmin();
         else openAdmin();
       } else if (e.key === 'Escape' && adminModal && adminModal.style.display === 'flex') {
@@ -4949,12 +5124,18 @@
     }
 
     function setInlineEditMode(active) {
+      if (active && !isSuperAdmin()) {
+        active = false;
+        showSecurityAlert('Редактирование сайта заблокировано. Авторизуйтесь как sarikmusaev2006@gmail.com.');
+        if (toggleInline) toggleInline.checked = false;
+        return;
+      }
       inlineEditActive = active;
       ensureCmsKeys();
       const els = getEditableElements();
 
       els.forEach(el => {
-        if (active) {
+        if (active && isSuperAdmin()) {
           el.setAttribute('contenteditable', 'true');
           el.classList.add('cms-editable-active');
         } else {
@@ -4963,13 +5144,13 @@
         }
       });
 
-      if (toggleInline) toggleInline.checked = active;
+      if (toggleInline) toggleInline.checked = (active && isSuperAdmin());
 
       if (floatingControls) {
-        floatingControls.style.display = active ? 'flex' : 'none';
+        floatingControls.style.display = (active && isSuperAdmin()) ? 'flex' : 'none';
       }
 
-      if (active) {
+      if (active && isSuperAdmin()) {
         closeAdmin();
         showAlert('Режим правки текста включен! Нажмите на любой текст для редактирования.', 'info');
       }
@@ -4988,6 +5169,10 @@
     }
 
     function saveAllTextOverrides() {
+      if (!isSuperAdmin()) {
+        showSecurityAlert('Действие запрещено. Требуются права Администратора.');
+        return;
+      }
       ensureCmsKeys();
       const els = getEditableElements();
       const overrides = JSON.parse(localStorage.getItem('aeroterra_cms_overrides') || '{}');
@@ -5077,6 +5262,10 @@
 
     if (btnSaveNodeEdits) {
       btnSaveNodeEdits.addEventListener('click', () => {
+        if (!isSuperAdmin()) {
+          showSecurityAlert('Действие запрещено. Требуются права Супер-Администратора проекта.');
+          return;
+        }
         let targetKey = selectNodeTarget ? selectNodeTarget.value : 'wing';
         if (targetKey === 'tail') targetKey = 'avionics';
         if (!HOTSPOTS_DATA[targetKey]) return;
@@ -5194,6 +5383,10 @@
     // ------------------------------------------------------------------------
     if (btnSaveSpecsGlobal) {
       btnSaveSpecsGlobal.addEventListener('click', () => {
+        if (!isSuperAdmin()) {
+          showSecurityAlert('Действие запрещено. Требуются права Супер-Администратора проекта.');
+          return;
+        }
         const mtow = specMtow ? specMtow.value : '1850';
         const span = specWingspan ? specWingspan.value : '12.4';
         const speed = specSpeed ? specSpeed.value : '195';

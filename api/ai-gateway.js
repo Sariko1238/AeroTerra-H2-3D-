@@ -16,16 +16,29 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const { prompt, history, systemInstruction } = req.body || {};
-    if (!prompt) {
-      return res.status(400).json({ error: 'Prompt is required' });
-    }
+    const { prompt, history, systemInstruction, action, email } = req.body || {};
 
     // 1. Secret API Key retrieval strictly on server side
     const serverApiKey = process.env.VERCEL_AI_API_KEY || process.env.AI_API_KEY || process.env.GEMINI_API_KEY;
     const clientHeaderKey = (req.headers['authorization'] || '').replace(/^Bearer\s+/i, '') || req.headers['x-client-vault-key'];
 
     const apiKey = serverApiKey || clientHeaderKey;
+
+    // 2. Security & RBAC: Safe Admin Verification / Gateway Health Ping without revealing the key
+    if (action === 'check-status' || action === 'admin-auth' || action === 'verify-admin' || prompt === 'ping') {
+      const isOwner = (typeof email === 'string' && email.trim().toLowerCase() === 'sarikmusaev2006@gmail.com');
+      return res.status(200).json({
+        success: true,
+        connected: !!apiKey,
+        owner: isOwner ? 'sarikmusaev2006@gmail.com' : 'Guest',
+        isSuperAdmin: isOwner,
+        status: apiKey ? 'Vercel Serverless AI Gateway Active' : 'Fallback Local Engine'
+      });
+    }
+
+    if (!prompt) {
+      return res.status(400).json({ error: 'Prompt is required' });
+    }
 
     if (!apiKey) {
       return res.status(200).json({
