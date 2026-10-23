@@ -6636,16 +6636,20 @@ body.in-simulator-mode .hangar-hud-overlay {
   }
 
   /* ------------------------------------------------------------------------
-     3. BOTTOM TOUCH CONTROLS (SAFARI SAFE-AREA COMPLIANT)
+     3. BOTTOM TOUCH CONTROLS (HIGHEST Z-INDEX 99990, 135PX JOYSTICK, 100%/0% BUTTONS)
      ------------------------------------------------------------------------ */
   .sim-touch-controls {
     display: flex !important;
-    position: absolute !important;
+    position: fixed !important;
     left: 0 !important;
     right: 0 !important;
     bottom: 0 !important;
+    padding: 0 10px calc(10px + env(safe-area-inset-bottom, 0px)) 10px !important;
+    justify-content: space-between !important;
+    align-items: flex-end !important;
     pointer-events: none !important;
-    z-index: 500 !important;
+    touch-action: none !important;
+    z-index: 99990 !important;
   }
   .touch-throttle-block,
   .touch-action-bar,
@@ -6653,71 +6657,150 @@ body.in-simulator-mode .hangar-hud-overlay {
     pointer-events: auto !important;
   }
 
-  /* Left: Vertical Throttle & Compact Rudder */
+  /* Left: Vertical Throttle & 100% / 0% Thumb Buttons + Takeoff */
   .touch-throttle-block {
-    position: absolute !important;
-    left: 14px !important;
-    bottom: calc(65px + env(safe-area-inset-bottom, 0px)) !important;
-    width: 60px !important;
+    position: relative !important;
+    left: auto !important;
+    bottom: auto !important;
+    width: 68px !important;
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
+    gap: 4px !important;
   }
   .touch-throttle-step-row {
-    display: none !important;
+    display: flex !important;
+    gap: 4px !important;
+    width: 100% !important;
+    justify-content: center !important;
+    margin-bottom: 2px !important;
+  }
+  .touch-thr-step-btn {
+    padding: 5px 6px !important;
+    font-size: 10.5px !important;
+    border-radius: 6px !important;
+    font-weight: 800 !important;
+    border: 1px solid rgba(0, 229, 255, 0.4) !important;
+    touch-action: none !important;
+  }
+  .touch-thr-step-btn.thr-max-btn {
+    background: linear-gradient(135deg, rgba(255, 77, 0, 0.5), rgba(255, 140, 0, 0.7)) !important;
+    border-color: #ff8800 !important;
+    color: #fff !important;
+  }
+  .touch-thr-step-btn.thr-zero-btn {
+    background: rgba(40, 50, 70, 0.85) !important;
+    border-color: rgba(255, 255, 255, 0.3) !important;
+    color: #cbd5e1 !important;
   }
   .touch-throttle-track {
     width: 44px !important;
     height: 125px !important;
     border-radius: 22px !important;
+    border: 2px solid #00e5ff !important;
+    touch-action: none !important;
   }
   .touch-throttle-handle {
     height: 36px !important;
     border-radius: 18px !important;
-    font-size: 0.6rem !important;
+    font-size: 0.62rem !important;
+    background: #00e5ff !important;
+    color: #060b16 !important;
   }
-  .touch-rudder-row {
-    display: flex !important;
-    gap: 4px !important;
-    margin-top: 6px !important;
-  }
-  .touch-rudder-btn {
+  .touch-takeoff-btn {
+    margin-top: 3px !important;
     padding: 4px 6px !important;
     font-size: 9.5px !important;
-    border-radius: 5px !important;
-    font-weight: 700 !important;
+    font-weight: 800 !important;
+    border-radius: 6px !important;
+    background: linear-gradient(135deg, #00e5ff, #0088ff) !important;
+    border: 1px solid #00e5ff !important;
+    color: #060b16 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 3px !important;
+    box-shadow: 0 0 10px rgba(0, 229, 255, 0.6) !important;
+    touch-action: none !important;
   }
 
-  /* Right: Round Virtual 3D Joystick (120px x 120px) */
+  /* Right: Round Virtual 3D Joystick (Exact 135px x 135px) */
   .touch-joystick-block {
-    position: absolute !important;
-    right: 14px !important;
-    bottom: calc(65px + env(safe-area-inset-bottom, 0px)) !important;
-    width: 120px !important;
+    position: relative !important;
+    right: auto !important;
+    bottom: auto !important;
+    width: 135px !important;
     height: auto !important;
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
+    gap: 4px !important;
   }
   .virtual-joystick-zone {
-    width: 120px !important;
-    height: 120px !important;
+    width: 135px !important;
+    height: 135px !important;
     border-radius: 50% !important;
+    background: radial-gradient(circle, rgba(14, 26, 60, 0.8) 0%, rgba(6, 12, 26, 0.95) 100%) !important;
+    border: 2px solid rgba(0, 229, 255, 0.6) !important;
+    box-shadow: 0 0 25px rgba(0, 229, 255, 0.3), inset 0 0 18px rgba(0, 229, 255, 0.2) !important;
+    touch-action: none !important;
+  }
+  .virtual-joystick-ring {
+    position: absolute;
+    inset: 18px;
+    border-radius: 50%;
+    border: 1px dashed rgba(0, 229, 255, 0.4);
+    pointer-events: none;
   }
   .virtual-joystick-knob {
-    width: 46px !important;
-    height: 46px !important;
+    width: 54px !important;
+    height: 54px !important;
+    border-radius: 50% !important;
+    background: radial-gradient(circle at 35% 35%, #00f0ff 0%, #0088cc 60%, #004488 100%) !important;
+    border: 2px solid #ffffff !important;
+    box-shadow: 0 0 16px rgba(0, 240, 255, 0.9) !important;
+    pointer-events: none !important;
   }
   .joystick-label {
-    font-size: 9px !important;
-    margin-top: 4px !important;
+    font-size: 8.5px !important;
+    margin-top: 2px !important;
+    color: #00e5ff !important;
+    letter-spacing: 0.05em !important;
+    white-space: nowrap !important;
   }
 
-  /* Center: Quick Action Buttons (2 Rows x 3 Cols Grid) */
+  /* Center: Quick Action Buttons (Compact 5-Button Row) */
   .touch-action-bar {
-    position: absolute !important;
-    left: 50% !important;
-    transform: translateX(-50%) !important;
+    position: relative !important;
+    left: auto !important;
+    transform: none !important;
+    bottom: auto !important;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    gap: 4px !important;
+    padding: 4px 6px !important;
+    background: rgba(6, 12, 26, 0.88) !important;
+    border: 1px solid rgba(0, 229, 255, 0.35) !important;
+    border-radius: 10px !important;
+    margin-bottom: 2px !important;
+  }
+  .touch-act-btn {
+    min-width: 36px !important;
+    padding: 4px 3px !important;
+    font-size: 9px !important;
+    border-radius: 6px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 2px !important;
+    background: rgba(14, 26, 60, 0.75) !important;
+    border: 1px solid rgba(0, 229, 255, 0.3) !important;
+    color: #e2e8f0 !important;
+    touch-action: none !important;
+  }
+  .touch-act-btn i {
+    font-size: 0.75rem !important;
+    color: #00e5ff !important;
+  }
     bottom: calc(65px + env(safe-area-inset-bottom, 0px)) !important;
     display: grid !important;
     grid-template-columns: repeat(3, 1fr) !important;
@@ -8625,4 +8708,242 @@ body.in-simulator-mode .hangar-hud-overlay {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+
+/* ==========================================================================
+   AEROTERRA H2 — APPLE KEYNOTE LEVEL 60 FPS PRESENTATION PITCH DECK & STYLES
+   ========================================================================== */
+.pres-particle-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.presentation-modal-bar,
+.presentation-slides-viewport,
+.presentation-bottom-nav {
+  position: relative;
+  z-index: 1;
+}
+
+.btn-pres-autoplay {
+  position: relative;
+  overflow: hidden;
+  border-color: #ffd700 !important;
+  color: #ffd700 !important;
+  background: rgba(255, 215, 0, 0.12) !important;
+  transition: all 0.25s ease !important;
+}
+.btn-pres-autoplay:hover {
+  background: rgba(255, 215, 0, 0.25) !important;
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.4) !important;
+}
+.pres-autoplay-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  width: 0%;
+  background: linear-gradient(90deg, #00f0ff, #ffd700);
+  transition: width 0.1s linear;
+}
+
+/* Staggered Card Reveal Animations */
+.pres-slide {
+  transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1), transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+.pres-slide.active .slide-heading {
+  animation: keynoteSlideTitle 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.05s both;
+}
+.pres-slide.active .slide-grid-2col > :nth-child(1),
+.pres-slide.active .slide-grid-3col > :nth-child(1) {
+  animation: keynoteSlideCard 0.55s cubic-bezier(0.16, 1, 0.3, 1) 0.12s both;
+}
+.pres-slide.active .slide-grid-2col > :nth-child(2),
+.pres-slide.active .slide-grid-3col > :nth-child(2) {
+  animation: keynoteSlideCard 0.55s cubic-bezier(0.16, 1, 0.3, 1) 0.22s both;
+}
+.pres-slide.active .slide-grid-3col > :nth-child(3) {
+  animation: keynoteSlideCard 0.55s cubic-bezier(0.16, 1, 0.3, 1) 0.32s both;
+}
+.pres-slide.active .slide-metrics-strip,
+.pres-slide.active .slide-roadmap-grid,
+.pres-slide.active .slide-table-wrap {
+  animation: keynoteSlideCard 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.35s both;
+}
+
+@keyframes keynoteSlideTitle {
+  from { opacity: 0; transform: translateY(-16px); filter: blur(4px); }
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+
+@keyframes keynoteSlideCard {
+  from { opacity: 0; transform: translateY(22px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Slide 8 Creator Spotlight */
+.slide-creator-spotlight {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1.4rem;
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.08), rgba(0, 229, 255, 0.08));
+  border: 1px solid rgba(255, 215, 0, 0.4);
+  border-radius: 14px;
+  box-shadow: 0 0 30px rgba(255, 215, 0, 0.15);
+  margin-bottom: 0.8rem;
+}
+.creator-avatar-badge {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 215, 0, 0.25), rgba(6, 12, 26, 0.9));
+  border: 2px solid #ffd700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+  flex-shrink: 0;
+}
+.creator-details h3 {
+  margin: 0 0 4px 0;
+  font-size: 1.4rem;
+  color: #ffd700;
+  font-family: var(--font-tech);
+  letter-spacing: 0.04em;
+}
+.creator-role-title {
+  font-size: 0.85rem;
+  color: #00e5ff;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.creator-bio-text {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: #cbd5e1;
+}
+
+/* Slide 8 3-Column Grid */
+.slide-grid-3col {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.1rem;
+}
+.slide-list-small {
+  margin: 0;
+  padding-left: 1.2rem;
+  color: #94a3b8;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+.slide-list-small li {
+  margin-bottom: 4px;
+}
+
+/* Comparison Table */
+.slide-table-wrap {
+  overflow-x: auto;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 229, 255, 0.25);
+  background: rgba(14, 26, 54, 0.65);
+}
+.slide-comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.slide-comparison-table th {
+  background: rgba(10, 18, 38, 0.9);
+  padding: 10px 14px;
+  color: #00e5ff;
+  font-family: var(--font-tech);
+  font-weight: 700;
+  text-align: left;
+  border-bottom: 1px solid rgba(0, 229, 255, 0.25);
+}
+.slide-comparison-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  color: #cbd5e1;
+}
+.slide-comparison-table tr:hover td {
+  background: rgba(0, 229, 255, 0.05);
+}
+.col-highlight {
+  background: rgba(0, 229, 255, 0.12) !important;
+  color: #fff !important;
+  border-left: 2px solid #00e5ff !important;
+  border-right: 2px solid #00e5ff !important;
+}
+
+/* Roadmap Grid */
+.slide-roadmap-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+.slide-roadmap-card {
+  padding: 1.1rem;
+  border-radius: 12px;
+  background: rgba(14, 26, 54, 0.65);
+  border: 1px solid rgba(0, 229, 255, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.slide-roadmap-card.active {
+  border-color: #ffd700;
+  background: rgba(20, 32, 65, 0.8);
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
+}
+.step-num {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.step-num.gold { color: #ffd700; }
+.step-num.cyan { color: #00e5ff; }
+.step-num.emerald { color: #10b981; }
+.slide-roadmap-card h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #fff;
+}
+.slide-roadmap-card p {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #94a3b8;
+  line-height: 1.4;
+  flex: 1;
+}
+.roadmap-badge {
+  display: inline-block;
+  align-self: flex-start;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+}
+.roadmap-badge.status-done {
+  background: rgba(16, 185, 129, 0.2);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+.roadmap-badge.status-progress {
+  background: rgba(0, 229, 255, 0.2);
+  color: #00e5ff;
+  border: 1px solid rgba(0, 229, 255, 0.4);
 }

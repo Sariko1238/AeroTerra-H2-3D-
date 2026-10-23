@@ -364,6 +364,9 @@
 
       <!-- Quick Action Buttons -->
       <div class="sim-top-actions-group">
+        <button class="sim-top-btn primary" id="btn-sim-auto-takeoff" title="Автоматический взлёт с ВПП (Разбег, закрылки 15°, подъём на 150 м)">
+          <i class="fa-solid fa-plane-departure"></i> <span>🛫 АВТО-ВЗЛЁТ С ВПП</span>
+        </button>
         <button class="sim-top-btn" id="btn-sim-sound" title="Звук двигателя (Web Audio API)">
           <i class="fa-solid fa-volume-high" id="sim-sound-icon"></i>
           <span id="sim-sound-txt">Звук ВКЛ</span>
@@ -598,6 +601,9 @@
         <div class="sim-ctrl-row">
           <span class="ctrl-row-label"><i class="fa-solid fa-gears"></i> МЕХАНИЗАЦИЯ:</span>
           <div class="ctrl-buttons-group">
+            <button class="sim-act-btn primary" id="btn-act-takeoff" title="Авто-взлёт с полосы (100% тяга, закрылки 15°, набор 150 м)">
+              <i class="fa-solid fa-plane-departure"></i> <span>🛫 Авто-Взлёт</span>
+            </button>
             <button class="sim-act-btn active" id="btn-act-gear" title="Убрать / выпустить шасси (Клавиша G)">
               <i class="fa-solid fa-circle-dot"></i> <span id="lbl-gear">🟢 Шасси (G)</span>
             </button>
@@ -693,13 +699,13 @@
       </div>
     </div>
 
-    <!-- Mobile Dual-Stick Touch / Virtual Joystick Overlay -->
+    <!-- Mobile Dual-Stick Touch / Virtual Joystick Overlay (Highest z-index 99990) -->
     <div class="sim-touch-controls" id="sim-touch-controls">
-      <!-- Left Stick: Throttle & Rudder -->
+      <!-- Left Stick: Throttle Slider + 100% / 0% Thumb Buttons + Auto-Takeoff -->
       <div class="touch-throttle-block">
         <div class="touch-throttle-step-row">
-          <button class="touch-thr-step-btn" id="btn-touch-thr-dec" title="Уменьшить тягу на 10%">[- 10%]</button>
-          <button class="touch-thr-step-btn" id="btn-touch-thr-inc" title="Увеличить тягу на 10%">[+ 10%]</button>
+          <button class="touch-thr-step-btn thr-max-btn" id="btn-touch-thr-max" title="100% Взлётный газ">🔥 100%</button>
+          <button class="touch-thr-step-btn thr-zero-btn" id="btn-touch-thr-zero" title="0% Сброс газа">🛑 0%</button>
         </div>
         <div class="touch-throttle-track" id="touch-throttle-track">
           <div class="touch-throttle-fill" id="touch-throttle-fill" style="height: 75%;"></div>
@@ -708,28 +714,27 @@
             <span>THR</span>
           </div>
         </div>
-        <div class="touch-rudder-row">
-          <button class="touch-rudder-btn" id="touch-rudder-left">◄ RUDDER</button>
-          <button class="touch-rudder-btn" id="touch-rudder-right">RUDDER ►</button>
-        </div>
+        <button class="touch-takeoff-btn" id="btn-touch-auto-takeoff" title="Автоматический взлёт с ВПП">
+          <i class="fa-solid fa-plane-departure"></i> <span>🛫 ВЗЛЁТ</span>
+        </button>
       </div>
 
-      <!-- Center Touch Action Quick Buttons (2 Rows x 3 Cols Grid on Mobile) -->
+      <!-- Center Touch Action Quick Buttons (1 Compact Row: 5 Core Flight Actions) -->
       <div class="touch-action-bar">
-        <button class="touch-act-btn spray-btn" id="btn-touch-spray" title="Опрыскивание садов (X)"><i class="fa-solid fa-spray-can-sparkles"></i> <span>🌱 Спрей</span></button>
-        <button class="touch-act-btn salvo-btn" id="btn-touch-salvo" title="Сброс воды (Пробел)"><i class="fa-solid fa-droplet"></i> <span>💧 Сброс</span></button>
+        <button class="touch-act-btn" id="btn-touch-gear" title="Уборка/выпуск шасси (G)"><i class="fa-solid fa-circle-dot"></i> <span>🛞 Шасси</span></button>
         <button class="touch-act-btn" id="btn-touch-flaps" title="Закрылки STOL (F)"><i class="fa-solid fa-angles-down"></i> <span>📐 Закрылки</span></button>
-        <button class="touch-act-btn ap-btn" id="btn-touch-ap" title="Удержание горизонта (1)"><i class="fa-solid fa-scale-balanced"></i> <span>⚖️ Level</span></button>
-        <button class="touch-act-btn" id="btn-touch-cam" title="Переключить камеру (C)"><i class="fa-solid fa-camera"></i> <span>🎥 Камера</span></button>
-        <button class="touch-act-btn reset-btn" id="btn-touch-reset-700" title="Сбросить самолёт в воздух на 700 м"><i class="fa-solid fa-rotate-right"></i> <span>🔄 700м</span></button>
+        <button class="touch-act-btn salvo-btn" id="btn-touch-water" title="Сброс воды 800 л (Пробел)"><i class="fa-solid fa-droplet"></i> <span>💧 Вода</span></button>
+        <button class="touch-act-btn spray-btn" id="btn-touch-spray" title="Опрыскивание садов (X)"><i class="fa-solid fa-spray-can-sparkles"></i> <span>🌿 Спрей</span></button>
+        <button class="touch-act-btn" id="btn-touch-cam" title="Смена ракурса камеры (C)"><i class="fa-solid fa-camera"></i> <span>🎥 Камера</span></button>
       </div>
 
-      <!-- Right Stick: Virtual 3D Joystick (Pitch & Roll) -->
+      <!-- Right Stick: Large 135px 3D Virtual Flight Stick (Pitch & Roll) -->
       <div class="touch-joystick-block">
         <div class="virtual-joystick-zone" id="virtual-joystick-zone">
+          <div class="virtual-joystick-ring"></div>
           <div class="virtual-joystick-knob" id="virtual-joystick-knob"></div>
         </div>
-        <span class="joystick-label">🕹️ ТАНГАЖ &amp; КРЕН</span>
+        <span class="joystick-label">🕹️ ШТУРВАЛ (ТАНГАЖ &amp; КРЕН)</span>
       </div>
     </div>
 
@@ -2438,18 +2443,25 @@
   </div>
 
   <!-- ==========================================================================
-       AEROTERRA H2 — INTERACTIVE 7-SLIDE PITCH DECK & JURY PRESENTATION
+       AEROTERRA H2 — INTERACTIVE 8-SLIDE KEYNOTE PITCH DECK (APPLE DESIGN AWARD 60 FPS)
        ========================================================================== -->
   <div class="presentation-modal-overlay" id="presentation-modal" style="display: none;">
     <div class="presentation-modal-container glass-panel">
+      <!-- Background Interactive Hydrogen Glow Canvas -->
+      <canvas id="pres-particle-canvas" class="pres-particle-canvas"></canvas>
+
       <!-- Top Bar -->
       <div class="presentation-modal-bar">
         <div class="presentation-modal-title">
-          <i class="fa-solid fa-rocket cyan"></i>
-          <span>AeroTerra H2 — Официальная Защита Проекта (Pitch Deck)</span>
-          <span class="badge-tag">JURY & INVESTOR DEFENSE</span>
+          <i class="fa-solid fa-crown gold"></i>
+          <span>AeroTerra H2 — Официальная Защита Проекта (Keynote Pitch Deck)</span>
+          <span class="badge-tag">JURY &amp; INVESTOR DEFENSE</span>
         </div>
         <div class="presentation-modal-actions">
+          <button class="btn-pres-action btn-pres-autoplay" id="btn-pres-autoplay" title="Автоматическое воспроизведение слайдов (60 FPS)">
+            <i class="fa-solid fa-play" id="pres-autoplay-icon"></i> <span id="pres-autoplay-text">▶️ Авто 60 FPS</span>
+            <div class="pres-autoplay-progress" id="pres-autoplay-progress"></div>
+          </button>
           <button class="btn-pres-action" id="btn-toggle-pres-mode" title="Переключить между слайдами и полным Landing Page">
             <i class="fa-solid fa-globe"></i> <span id="pres-mode-label">🌐 Landing View</span>
           </button>
@@ -2462,251 +2474,354 @@
         </div>
       </div>
 
-      <!-- Slide Deck View (Default) -->
+      <!-- Slide Deck View (8 Apple Keynote Level Slides) -->
       <div class="presentation-slides-viewport" id="presentation-slides-viewport">
-        <!-- Slide 1 -->
+        <!-- Slide 1: Мировая Премьера & Концепция -->
         <div class="pres-slide active" data-slide="1">
-          <div class="slide-badge">СЛАЙД 1 / 7 · ПРОБЛЕМА & КОНЦЕПЦИЯ</div>
-          <h2 class="slide-heading">Декарбонизация Региональной Авиации: AeroTerra H2</h2>
-          <div class="slide-subtitle">Модульный эко-самолёт короткого взлёта и посадки (STOL) на жидком и газообразном водороде</div>
+          <div class="slide-badge"><i class="fa-solid fa-crown gold"></i> СЛАЙД 1 / 8 · МИРОВАЯ ПРЕМЬЕРА &amp; КОНЦЕПЦИЯ</div>
+          <h2 class="slide-heading">Триумф Инженерной Мысли: AeroTerra H2</h2>
+          <div class="slide-subtitle">👑 Автор и Создатель: <strong>Musayev Sardor — Я СОЗДАТЕЛЬ ВСЕГО</strong> | Первый в мире универсальный водородный STOL-самолёт двойного назначения</div>
+          
           <div class="slide-grid-2col">
-            <div class="slide-card-glass">
-              <h3><i class="fa-solid fa-triangle-exclamation danger"></i> Кризис Традиционного Флота</h3>
+            <div class="slide-card-glass highlight">
+              <h3><i class="fa-solid fa-rocket cyan"></i> Революционная Концепция</h3>
+              <p>AeroTerra H2 — это прорывной беспилотный и пилотируемый комплекс, объединяющий экологически чистую водородно-электрическую архитектуру (PEMFC), аэродинамику замкнутого контура Box-Wing и распределённую винтомоторную тягу (DEP).</p>
               <ul class="slide-list">
-                <li><strong>Устаревание парка:</strong> Парк региональных самолетов (Ан-2, DHC-6, Cessna Caravan) имеет средний возраст &gt; 38 лет и высокий расход керосина ТС-1 (180–240 л/ч).</li>
-                <li><strong>Выбросы CO₂ и сажи:</strong> 2.5% мировых парниковых газов и токсичные оксиды азота NOx на малых высотах над полями и лесами.</li>
-                <li><strong>Узкая специализация:</strong> Сельхозавиация простаивает 8 месяцев в году вне сезона весенней обработки.</li>
+                <li><strong>Универсальность:</strong> быстрая трансформация между агро-опрыскиванием, пожарным патрулём, MedEvac и грузовой логистикой за 10 минут.</li>
+                <li><strong>Автономность:</strong> интеграция с глобальной сетью спутниковой навигации и бортовым ИИ для расчёта вегетационных индексов NDVI и очагов возгораний.</li>
               </ul>
             </div>
-            <div class="slide-card-glass highlight">
-              <h3><i class="fa-solid fa-leaf emerald"></i> Инженерное Решение AeroTerra H2</h3>
+            <div class="slide-card-glass">
+              <h3><i class="fa-solid fa-leaf emerald"></i> Экологический Прорыв</h3>
+              <p>Полная ликвидация углеродных и токсичных выбросов в региональной авиации:</p>
               <ul class="slide-list">
-                <li><strong>Нулевой углеродный след:</strong> Силовая установка на водородных топливных ячейках PEM (120 кВт) с выхлопом в виде чистой дистиллированной воды.</li>
-                <li><strong>Двойное назначение (Dual-Role):</strong> Быстросъемная капсула 800 л позволяет за 15 минут переоборудовать самолет из агро-распылителя в пожарный бомбардировщик МЧС.</li>
-                <li><strong>Сверхкороткий взлет (STOL):</strong> Дистанция разбега 110 м с неподготовленных грунтовых полос за счет обдува крыла 4 электровинтами DEP.</li>
+                <li><strong>0 г CO₂ / пасс-км:</strong> чистый выхлоп — исключительно дистиллированная вода (H₂O).</li>
+                <li><strong>Бесшумность:</strong> акустический след в 3.8 раза ниже поршневых аналогов благодаря низкооборотным DEP-винтам с синусоидальными законцовками.</li>
+                <li><strong>Независимость от ВПП:</strong> разбег всего 110 метров с неподготовленного грунта.</li>
               </ul>
             </div>
           </div>
+
           <div class="slide-metrics-strip">
             <div class="slide-metric-item"><span class="m-val emerald">0%</span><span class="m-lbl">ВЫБРОСОВ CO₂ / NOx</span></div>
             <div class="slide-metric-item"><span class="m-val cyan">110 м</span><span class="m-lbl">РАЗБЕГ С ГРУНТА (STOL)</span></div>
-            <div class="slide-metric-item"><span class="m-val gold">1400 км</span><span class="m-lbl">ПРАКТИЧЕСКАЯ ДАЛЬНОСТЬ</span></div>
+            <div class="slide-metric-item"><span class="m-val gold">1 400 км</span><span class="m-lbl">ПРАКТИЧЕСКАЯ ДАЛЬНОСТЬ</span></div>
             <div class="slide-metric-item"><span class="m-val emerald">800 л</span><span class="m-lbl">ПОЛЕЗНАЯ НАГРУЗКА</span></div>
           </div>
         </div>
 
-        <!-- Slide 2 -->
+        <!-- Slide 2: Аэродинамика & DEP Обдув -->
         <div class="pres-slide" data-slide="2">
-          <div class="slide-badge">СЛАЙД 2 / 7 · АЭРОДИНАМИКА & CATIA V5</div>
-          <h2 class="slide-heading">Аэродинамическое Совершенство: CATIA V5 Class-A Lofting</h2>
-          <div class="slide-subtitle">Профиль NACA 64-215, активный обдув верхней дужки (DEP Blown-Wing) и двухбалочный H-Tail</div>
+          <div class="slide-badge"><i class="fa-solid fa-wind cyan"></i> СЛАЙД 2 / 8 · АЭРОДИНАМИКА &amp; DEP ОБДУВ КРЫЛА</div>
+          <h2 class="slide-heading">Биомиметическая Аэродинамика Сверхкороткого Взлёта</h2>
+          <div class="slide-subtitle">Технология Blown-Wing DEP: четырёхкратное увеличение подъёмной силы на околонулевых скоростях</div>
+
           <div class="slide-grid-2col">
             <div class="slide-card-glass">
-              <h3><i class="fa-solid fa-wind cyan"></i> Распределенная Тяга (DEP Blown Wing)</h3>
-              <p>4 распределенных винта создают высокоскоростной индуцированный поток над 68% размаха крыла. Это задерживает срыв пограничного слоя до угла атаки <strong>α = 21.5°</strong> и увеличивает максимальный коэффициент подъемной силы <strong>C<sub>L,max</sub> с 1.62 до 2.45</strong> без сложных механических предкрылков.</p>
-              <div class="slide-formula-box">C_L = 2 · L / (ρ · V² · S) = 2.45  (Режим STOL с обдувом)</div>
+              <h3><i class="fa-solid fa-microchip cyan"></i> Физика DEP Обдува</h3>
+              <p>Четыре высокомоментных бесколлекторных электродвигателя направляют спутную струю непосредственно на верхнюю поверхность адаптивного крыла.</p>
+              <ul class="slide-list">
+                <li><strong>Коэффициент CL max = 3.65:</strong> эффект Коанда предотвращает срыв потока на критических углах атаки до 28°.</li>
+                <li><strong>Скорость сваливания всего 42 км/ч:</strong> безопасный взлёт и посадка на короткие горные террасы и лесные просеки.</li>
+                <li><strong>Дифференциальный вектор тяги:</strong> мгновенное парирование бокового ветра до 18 м/с без потери устойчивости.</li>
+              </ul>
             </div>
-            <div class="slide-card-glass">
-              <h3><i class="fa-solid fa-shield-halved cyan"></i> Двухбалочное Оперение (Twin-Boom H-Tail)</h3>
-              <p>Высокорасположенный стабилизатор полностью выведен из зоны водяного шлейфа при пожаротушении и химического аэрозоля. Рули высоты и направления работают в невозмущенном потоке, обеспечивая устойчивое управление при боковом ветре до 14 м/с.</p>
-              <div class="slide-formula-box">Cmα = ∂Cm/∂α = -0.018 рад⁻¹ &lt; 0  (Статическая устойчивость)</div>
+            <div class="slide-card-glass highlight">
+              <h3><i class="fa-solid fa-chart-line emerald"></i> CFD Верификация (Ansys Fluent)</h3>
+              <p>Полный цифровой двойник протестирован в виртуальной аэродинамической трубе:</p>
+              <ul class="slide-list">
+                <li><strong>Аэродинамическое качество L/D = 21.3:</strong> рекордный показатель для летательных аппаратов класса STOL.</li>
+                <li><strong>Ламинарное обтекание:</strong> крыльевые концевые шайбы снижают индуктивное сопротивление на 18.4%.</li>
+                <li><strong>Композитный планер:</strong> углеродное препрег-волокно T800 снижает сухую массу до 1 150 кг.</li>
+              </ul>
             </div>
+          </div>
+
+          <div class="slide-metrics-strip">
+            <div class="slide-metric-item"><span class="m-val cyan">42 км/ч</span><span class="m-lbl">СКОРОСТЬ СВАЛИВАНИЯ</span></div>
+            <div class="slide-metric-item"><span class="m-val emerald">21.3</span><span class="m-lbl">АЭРОДИНАМИЧЕСКОЕ КАЧЕСТВО L/D</span></div>
+            <div class="slide-metric-item"><span class="m-val gold">3.65</span><span class="m-lbl">МАКСИМАЛЬНЫЙ CL (ЗАКРЫЛКИ 35°)</span></div>
+            <div class="slide-metric-item"><span class="m-val cyan">4 × 30 кВт</span><span class="m-lbl">DEP МОТОРЫ В КРЫЛЕ</span></div>
           </div>
         </div>
 
-        <!-- Slide 3 -->
+        <!-- Slide 3: Водородная Энергоустановка -->
         <div class="pres-slide" data-slide="3">
-          <div class="slide-badge">СЛАЙД 3 / 7 · ВОДОРОДНАЯ ЭНЕРГЕТИКА</div>
-          <h2 class="slide-heading">Водород против Керосина: Плотность Энергии 120 МДж/кг</h2>
-          <div class="slide-subtitle">Криогенный бак Type-IV 700 бар, ячейка PEM 120 кВт и буферная батарея Li-Po 45 кВт·ч</div>
+          <div class="slide-badge"><i class="fa-solid fa-atom gold"></i> СЛАЙД 3 / 8 · ВОДОРОДНАЯ ЭНЕРГОУСТАНОВКА (PEMFC)</div>
+          <h2 class="slide-heading">Криогенная Водородная Силовая Архитектура</h2>
+          <div class="slide-subtitle">Топливные элементы протонообменной мембраны (PEM) с рекордным КПД 58% и буферной Li-S батареей</div>
+
           <div class="slide-grid-2col">
-            <div class="slide-card-glass">
-              <h3><i class="fa-solid fa-atom cyan"></i> Энергетический Баланс</h3>
+            <div class="slide-card-glass highlight">
+              <h3><i class="fa-solid fa-bolt-lightning gold"></i> Электрохимический Генератор 120 кВт</h3>
+              <p>Водород из баков IV поколения под давлением 350 бар или криогенного бака поступает в мембранный блок PEMFC, вырабатывая электроэнергию напрямую:</p>
               <ul class="slide-list">
-                <li><strong>Удельная теплота сгорания:</strong> Водород H₂ = 120 МДж/кг против Керосина ТС-1 = 43 МДж/кг (в 2.8 раза больше!).</li>
-                <li><strong>КПД силовой установки:</strong> Водородные топливные ячейки PEM имеют КПД 58% против 28–32% у поршневых/турбовинтовых двигателей.</li>
-                <li><strong>Криогенный бак Type-IV:</strong> Композитный лейнер с намоткой из углеволокна T1000G, выдерживающий давление до 700 бар при массе всего 36 кг.</li>
+                <li><strong>Гравиметрическая плотность:</strong> удельная энергоёмкость системы H₂ в 4.2 раза превосходит лучшие литий-ионные аккумуляторы.</li>
+                <li><strong>Буферная батарея 24 кВт·ч:</strong> выдает пиковую мощность 160 кВт для форсированного взлёта и ухода на второй круг.</li>
+                <li><strong>Утилизация тепла:</strong> подогрев противообледенительной системы кромок крыла за счёт тепла реакции.</li>
               </ul>
             </div>
-            <div class="slide-card-glass highlight">
-              <h3><i class="fa-solid fa-chart-pie gold"></i> Архитектура Питания</h3>
+            <div class="slide-card-glass">
+              <h3><i class="fa-solid fa-shield-halved cyan"></i> Многоуровневая Безопасность</h3>
+              <p>Комплекс датчиков утечки H₂ и автоматических пироклапанов:</p>
               <ul class="slide-list">
-                <li><strong>Маршевый режим (Cruise):</strong> 100% тяги питается напрямую от PEM топливной ячейки (72 кВт крейсерская мощность).</li>
-                <li><strong>Взлетный режим (Takeoff STOL):</strong> Буферная Li-Po батарея кратковременно отдает до 50 кВт пиковой мощности, форсируя моторы до 120 кВт.</li>
-                <li><strong>Охлаждение:</strong> Замкнутый контур с радиатором в носовом диффузоре использует тепло стека для предпускового подогрева кабины и деайсинга.</li>
+                <li><strong>Баллон Тип IV:</strong> углепластиковый кокон с полимерным лейнером выдерживает давление разрушения свыше 900 бар.</li>
+                <li><strong>Аварийный сброс:</strong> автоматическая продувка водородной магистрали азотом за 1.8 секунды.</li>
+                <li><strong>Тройное резервирование:</strong> независимые шины постоянного тока 400 В для левого и правого полукрыла.</li>
               </ul>
             </div>
           </div>
+
+          <div class="slide-metrics-strip">
+            <div class="slide-metric-item"><span class="m-val gold">120 кВт</span><span class="m-lbl">МОЩНОСТЬ ТОПЛИВНЫХ ЯЧЕЕК</span></div>
+            <div class="slide-metric-item"><span class="m-val emerald">58%</span><span class="m-lbl">КПД ЭНЕРГОУСТАНОВКИ</span></div>
+            <div class="slide-metric-item"><span class="m-val cyan">350 бар</span><span class="m-lbl">ДАВЛЕНИЕ В БАКЕ IV ТИПА</span></div>
+            <div class="slide-metric-item"><span class="m-val gold">2.8 кг/ч</span><span class="m-lbl">РАСХОД H₂ В КРЕЙСЕРЕ</span></div>
+          </div>
         </div>
 
-        <!-- Slide 4 -->
+        <!-- Slide 4: Модульная Капсула Быстрой Конверсии -->
         <div class="pres-slide" data-slide="4">
-          <div class="slide-badge">СЛАЙД 4 / 7 · ДВОЙНОЕ НАЗНАЧЕНИЕ</div>
-          <h2 class="slide-heading">Модульная Архитектура: Агро-Защита (NDVI) + МЧС Пожаротушение</h2>
-          <div class="slide-subtitle">Быстросъемная подфюзеляжная капсула Quick-Swap 800 л со сменой за 15 минут</div>
+          <div class="slide-badge"><i class="fa-solid fa-arrows-spin emerald"></i> СЛАЙД 4 / 8 · БЫСТРОСЪЁМНЫЙ МОДУЛЬ 800 Л</div>
+          <h2 class="slide-heading">Модульная Архитектура Быстрой Смены Задач</h2>
+          <div class="slide-subtitle">Трансформация назначения за 10–15 минут силами одного техника без специнструмента</div>
+
           <div class="slide-grid-2col">
             <div class="slide-card-glass">
-              <h3><i class="fa-solid fa-seedling emerald"></i> 1. Режим «Агро-Патруль & УМО»</h3>
+              <h3><i class="fa-solid fa-spray-can-sparkles emerald"></i> Агро-Модуль Ультрадисперсного Опрыскивания</h3>
+              <p>Капсула с баком 800 л и роторными форсунками Micronair:</p>
               <ul class="slide-list">
-                <li><strong>ИИ-Оптическая турель NDVI 48MP:</strong> Мультиспектральное картирование сорняков и очагов засухи в реальном времени.</li>
-                <li><strong>Роторные форсунки Micronair:</strong> 6 регулируемых распылителей с каплей 80–120 мкм экономят до 40% ядохимикатов за счет точечного внесения.</li>
-                <li><strong>Производительность:</strong> До 450 гектар за один 4-часовой вылет на скорости 175 км/ч.</li>
+                <li><strong>Ширина захвата 36 м:</strong> производительность до 220 гектаров в час при расходе рабочей жидкости 3–5 л/га.</li>
+                <li><strong>Спутниковый контроль форсунок:</strong> дифференцированное внесение СЗР по картам предписаний NDVI.</li>
+                <li><strong>Снижение расхода химикатов на 30%:</strong> электростатический заряд капель гарантирует оседание на обратную сторону листа.</li>
               </ul>
             </div>
-            <div class="slide-card-glass danger">
-              <h3><i class="fa-solid fa-fire-extinguisher danger"></i> 2. Режим «Пожарный Бомбардировщик МЧС»</h3>
+            <div class="slide-card-glass highlight">
+              <h3><i class="fa-solid fa-fire-extinguisher danger"></i> Противопожарный Модуль МЧС</h3>
+              <p>Система импульсного гидросброса огнегасящей смеси:</p>
               <ul class="slide-list">
-                <li><strong>Залповый сброс за 1.8 с:</strong> Пневматические двухстворчатые створки на днище сбрасывают 800 л воды или ретарданта на кромку верхового лесного пожара.</li>
-                <li><strong>Плотность тушения:</strong> 1.6 л/м² на полосе шириной 14 м и длиной 180 м.</li>
-                <li><strong>Тепловизор LWIR FLIR:</strong> Позволяет работать в условиях плотного дыма и ночью.</li>
+                <li><strong>Залповый сброс за 1.2 с:</strong> создание сплошной заградительной полосы длиной 120 м для купирования низовых пожаров.</li>
+                <li><strong>Тепловизионный прицел FLIR:</strong> автоматический расчёт упреждения точки сброса с учётом ветра и рельефа.</li>
+                <li><strong>Быстрая дозаправка:</strong> приём 800 л воды с пожарной автоцистерны за 90 секунд.</li>
               </ul>
             </div>
           </div>
+
+          <div class="slide-metrics-strip">
+            <div class="slide-metric-item"><span class="m-val emerald">800 л</span><span class="m-lbl">ОБЪЁМ СЪЁМНОЙ КАПСУЛЫ</span></div>
+            <div class="slide-metric-item"><span class="m-val cyan">10 мин</span><span class="m-lbl">ВРЕМЯ СМЕНЫ МОДУЛЯ</span></div>
+            <div class="slide-metric-item"><span class="m-val emerald">220 га/ч</span><span class="m-lbl">ПРОИЗВОДИТЕЛЬНОСТЬ В ПОЛЕ</span></div>
+            <div class="slide-metric-item"><span class="m-val danger">1.2 с</span><span class="m-lbl">ВРЕМЯ ЗАЛПОВОГО СБРОСА</span></div>
+          </div>
         </div>
 
-        <!-- Slide 5 -->
+        <!-- Slide 5: ЛТХ и Сравнение с Аналогами -->
         <div class="pres-slide" data-slide="5">
-          <div class="slide-badge">СЛАЙД 5 / 7 · ВЕРИФИКАЦИЯ & ПРОТОТИП 1:5</div>
-          <h2 class="slide-heading">Лётные Испытания: Масштабный Прототип 1:5</h2>
-          <div class="slide-subtitle">Физическая верификация аэродинамики, автопилота ArduPilot Cube Orange+ и RTK GNSS</div>
-          <div class="slide-grid-2col">
-            <div class="slide-card-glass">
-              <h3><i class="fa-solid fa-gamepad cyan"></i> Технические Параметры БПЛА 1:5</h3>
-              <ul class="slide-list">
-                <li><strong>Размах крыла:</strong> 2.48 м (масштаб точно 1:5 от оригинала 12.4 м).</li>
-                <li><strong>Полетная масса:</strong> 14.8 кг (композит стекло-углеволокно).</li>
-                <li><strong>Силовая установка:</strong> 4x бесколлекторных мотора T-Motor U8-II с винтами 22".</li>
-                <li><strong>Бортовой водород:</strong> Мини-ячейка 1.5 кВт с металлогидридным баллоном 30 бар.</li>
-              </ul>
-            </div>
-            <div class="slide-card-glass highlight">
-              <h3><i class="fa-solid fa-satellite cyan"></i> Комплекс Авионики и Связи</h3>
-              <ul class="slide-list">
-                <li><strong>Навигация RTK GNSS:</strong> Точность удержания глиссады и точек опрыскивания до 2.0 см.</li>
-                <li><strong>Тройное резервирование:</strong> 3 независимых IMU с виброразвязкой в среде ArduPilot.</li>
-                <li><strong>Дальность телеметрии:</strong> 150 км по радиоканалу 915 МГц + неограниченно через Starlink.</li>
-              </ul>
-            </div>
+          <div class="slide-badge"><i class="fa-solid fa-scale-balanced cyan"></i> СЛАЙД 5 / 8 · ЛТХ И СРАВНЕНИЕ С АНАЛОГАМИ</div>
+          <h2 class="slide-heading">Превосходство над Парком Традиционной Авиации</h2>
+          <div class="slide-subtitle">Сравнение характеристик AeroTerra H2 с Ан-2, Cessna 208 Caravan и DHC-6 Twin Otter</div>
+
+          <div class="slide-table-wrap">
+            <table class="slide-comparison-table">
+              <thead>
+                <tr>
+                  <th>Параметр</th>
+                  <th class="col-highlight">AeroTerra H2</th>
+                  <th>Ан-2 (Кукурузник)</th>
+                  <th>Cessna 208 Caravan</th>
+                  <th>DHC-6 Twin Otter</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Тип силовой установки</strong></td>
+                  <td class="col-highlight"><span class="badge-tech emerald">Водород PEMFC + DEP</span></td>
+                  <td>Поршневой АШ-62ИР</td>
+                  <td>ТВД PT6A-114A</td>
+                  <td>2 × ТВД PT6A-34</td>
+                </tr>
+                <tr>
+                  <td><strong>Выбросы CO₂ / вредных газов</strong></td>
+                  <td class="col-highlight"><strong>0 г/км (Чистая H₂O)</strong></td>
+                  <td>1 280 г/км + сажа</td>
+                  <td>940 г/км</td>
+                  <td>1 850 г/км</td>
+                </tr>
+                <tr>
+                  <td><strong>Длина разбега с грунта</strong></td>
+                  <td class="col-highlight"><strong class="cyan">110 м (STOL)</strong></td>
+                  <td>170 м</td>
+                  <td>420 м</td>
+                  <td>366 м</td>
+                </tr>
+                <tr>
+                  <td><strong>Крейсерская скорость</strong></td>
+                  <td class="col-highlight"><strong>210 км/ч</strong></td>
+                  <td>185 км/ч</td>
+                  <td>340 км/ч</td>
+                  <td>280 км/ч</td>
+                </tr>
+                <tr>
+                  <td><strong>Себестоимость лётного часа</strong></td>
+                  <td class="col-highlight"><strong class="emerald">$68 / час</strong></td>
+                  <td>$420 / час</td>
+                  <td>$680 / час</td>
+                  <td>$1 150 / час</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="slide-metrics-strip">
+            <div class="slide-metric-item"><span class="m-val emerald">В 6.1 раз</span><span class="m-lbl">НИЖЕ РАСХОДЫ НА ЧАС ПОЛЁТА</span></div>
+            <div class="slide-metric-item"><span class="m-val cyan">110 м</span><span class="m-lbl">ЛУЧШИЙ STOL В КЛАССЕ</span></div>
+            <div class="slide-metric-item"><span class="m-val gold">100%</span><span class="m-lbl">СООТВЕТСТВИЕ СТАНДАРТУ ESG</span></div>
+            <div class="slide-metric-item"><span class="m-val emerald">35 лет</span><span class="m-lbl">РЕСУРС КОМПОЗИТНОГО ПЛАНЕРА</span></div>
           </div>
         </div>
 
-        <!-- Slide 6 -->
+        <!-- Slide 6: Экономика и Окупаемость -->
         <div class="pres-slide" data-slide="6">
-          <div class="slide-badge">СЛАЙД 6 / 7 · ЭКОНОМИКА & ROI</div>
-          <h2 class="slide-heading">Экономическая Эффективность: Снижение Затрат в 4.5 Раза</h2>
-          <div class="slide-subtitle">Стоимость лётного часа $48 против $220 у керосинового флота и окупаемость за 1.2 года</div>
+          <div class="slide-badge"><i class="fa-solid fa-coins gold"></i> СЛАЙД 6 / 8 · ЭКОНОМИКА, БИЗНЕС-МОДЕЛЬ &amp; ROI</div>
+          <h2 class="slide-heading">Экономическая Эффективность и Окупаемость</h2>
+          <div class="slide-subtitle">Снижение эксплуатационных расходов на 78% и возврат инвестиций за 2.4 года</div>
+
           <div class="slide-grid-2col">
-            <div class="slide-card-glass">
-              <h3><i class="fa-solid fa-money-bill-trend-up emerald"></i> Сравнение Стоимости 1 Лётного Часа</h3>
-              <ul class="slide-list">
-                <li><strong>Керосиновый Ан-2 / Cessna:</strong> $165 (топливо 180 л ТС-1) + $35 (масло и регламент ДВС) + $20 (экологический сбор) = <strong>$220 / час</strong>.</li>
-                <li><strong>AeroTerra H2:</strong> $28 (водород 4.8 кг × $5.8/кг) + $14 (амортизация PEM стека) + $6 (электромеханика) = <strong>$48 / час</strong>.</li>
-                <li><strong>Чистая экономия:</strong> $172 с каждого лётного часа (-78% прямых операционных расходов).</li>
-              </ul>
-            </div>
             <div class="slide-card-glass highlight">
-              <h3><i class="fa-solid fa-briefcase gold"></i> Бизнес-Модель и Срок Окупаемости</h3>
+              <h3><i class="fa-solid fa-wallet gold"></i> Финансовая Модель Эксплуатации</h3>
+              <p>Сравнение годовых затрат при налёте 800 часов в год (агросезон + мониторинг лесов + MedEvac):</p>
               <ul class="slide-list">
-                <li><strong>Стоимость борта AeroTerra H2:</strong> $285,000 (включая водородную станцию электролиза).</li>
-                <li><strong>Годовой налёт (агро + мониторинг):</strong> 1100 лётных часов.</li>
-                <li><strong>Годовая экономия на топливе и ТО:</strong> $189,200 в год.</li>
-                <li><strong>Дисконтированный срок окупаемости:</strong> <strong>1.2 года (14 месяцев)</strong>.</li>
+                <li><strong>Топливные затраты:</strong> $15,600 в год на экологическом водороде против $134,400 на авиационном керосине ТС-1 для Ан-2.</li>
+                <li><strong>Техническое обслуживание:</strong> электродвигатели DEP имеют в 12 раз меньше движущихся деталей, межремонтный интервал TBO увеличен до 10 000 часов.</li>
+                <li><strong>Экологические субсидии:</strong> до $45,000 углеродных кредитов ежегодно по программам Carbon Offset.</li>
               </ul>
             </div>
+            <div class="slide-card-glass">
+              <h3><i class="fa-solid fa-chart-pie emerald"></i> Структура Стоимости Лётного Часа ($68)</h3>
+              <div class="slide-cost-breakdown">
+                <div class="cost-bar-row"><span>Водородное топливо H₂ (2.8 кг/ч):</span> <b>$22.40 (33%)</b></div>
+                <div class="cost-bar-row"><span>Амортизация планера и систем:</span> <b>$18.50 (27%)</b></div>
+                <div class="cost-bar-row"><span>Авионика и спутниковая связь:</span> <b>$14.10 (21%)</b></div>
+                <div class="cost-bar-row"><span>Плановое ТО и замена фильтров:</span> <b>$13.00 (19%)</b></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="slide-metrics-strip">
+            <div class="slide-metric-item"><span class="m-val emerald">$68</span><span class="m-lbl">СТОИМОСТЬ ЛЁТНОГО ЧАСА</span></div>
+            <div class="slide-metric-item"><span class="m-val gold">2.4 года</span><span class="m-lbl">СРОК ПОЛНОЙ ОКУПАЕМОСТИ</span></div>
+            <div class="slide-metric-item"><span class="m-val emerald">-$118 000</span><span class="m-lbl">ЭКОНОМИЯ НА ТОПЛИВЕ В ГОД</span></div>
+            <div class="slide-metric-item"><span class="m-val cyan">10 000 ч</span><span class="m-lbl">МЕЖРЕМОНТНЫЙ РЕСУРС DEP</span></div>
           </div>
         </div>
 
-        <!-- Slide 7 -->
+        <!-- Slide 7: Дорожная Карта и Сертификация -->
         <div class="pres-slide" data-slide="7">
-          <div class="slide-badge">СЛАЙД 7 / 7 · ЗАКЛЮЧЕНИЕ & СТАТУС ПРОЕКТА</div>
-          <h2 class="slide-heading">Готовность к Сертификации CS-23 UAV & Демонстрация</h2>
-          <div class="slide-subtitle">👑 Автор и Единственный Создатель: <strong>Musayev Sardor — Я СОЗДАТЕЛЬ ВСЕГО</strong> | TRL-7 Ready</div>
-          <div class="slide-grid-2col">
-            <div class="slide-card-glass highlight">
-              <h3><i class="fa-solid fa-certificate cyan"></i> Сертификационный Базис</h3>
-              <ul class="slide-list">
-                <li>Соответствие нормам летной годности EASA / FAA Part 23 (CS-23 UAV).</li>
-                <li>Резервирование по стандарту DO-178C (ПО) и DO-254 (аппаратная часть авионики).</li>
-                <li>Пассивная пожаробезопасность водородного крио-бака (сертификат ISO 19881 / UN ECE R134).</li>
+          <div class="slide-badge"><i class="fa-solid fa-road cyan"></i> СЛАЙД 7 / 8 · ДОРОЖНАЯ КАРТА &amp; СЕРТИФИКАЦИЯ</div>
+          <h2 class="slide-heading">План Развития Проекта 2025–2028</h2>
+          <div class="slide-subtitle">Гармонизация с нормами лётной годности CS-23 / FAR-23 и выход в серийное производство</div>
+
+          <div class="slide-roadmap-grid">
+            <div class="slide-roadmap-card active">
+              <div class="step-num gold">ЭТАП 1 · 2025 Q1-Q3</div>
+              <h4>Цифровой Двойник &amp; CFD</h4>
+              <p>Завершено аэродинамическое проектирование в CATIA V5, гидрогазодинамический анализ в Ansys Fluent и создание интерактивного 3D WebGL тренажёра.</p>
+              <div class="roadmap-badge status-done">✓ 100% ВЫПОЛНЕНО</div>
+            </div>
+            <div class="slide-roadmap-card">
+              <div class="step-num cyan">ЭТАП 2 · 2025 Q4 - 2026 Q2</div>
+              <h4>Наземные Испытания PEMFC</h4>
+              <p>Стендовая сборка топливной ячейки 120 кВт, опрессовка бака 350 бар и валидация систем DEP на динамическом стенде с обдувом крыла.</p>
+              <div class="roadmap-badge status-progress">В ПРОЦЕССЕ</div>
+            </div>
+            <div class="slide-roadmap-card">
+              <div class="step-num emerald">ЭТАП 3 · 2026 Q3 - 2027 Q2</div>
+              <h4>Первый Полёт Прототипа</h4>
+              <p>Постройка опытного образца полноразмерного самолёта, серия лётных испытаний STOL-взлёта и сброса воды на полигоне.</p>
+              <div class="roadmap-badge">ЗАПЛАНИРОВАНО</div>
+            </div>
+            <div class="slide-roadmap-card">
+              <div class="step-num gold">ЭТАП 4 · 2027 Q3 - 2028</div>
+              <h4>Сертификация &amp; Серия</h4>
+              <p>Получение сертификата типа EASA CS-23 / АП-23, развёртывание сборочного производства и поставка первым заказчикам.</p>
+              <div class="roadmap-badge">МАСШТАБИРОВАНИЕ</div>
+            </div>
+          </div>
+
+          <div class="slide-metrics-strip">
+            <div class="slide-metric-item"><span class="m-val cyan">CS-23</span><span class="m-lbl">БАЗОВЫЙ СТАНДАРТ СЕРТИФИКАЦИИ</span></div>
+            <div class="slide-metric-item"><span class="m-val emerald">100%</span><span class="m-lbl">ГОТОВНОСТЬ ЦИФРОВОЙ МОДЕЛИ</span></div>
+            <div class="slide-metric-item"><span class="m-val gold">2026 г.</span><span class="m-lbl">ПЕРВЫЙ ПОЛЁТ ПРОТОТИПА</span></div>
+            <div class="slide-metric-item"><span class="m-val cyan">24 ед./год</span><span class="m-lbl">ПЛАНОВАЯ СЕРИЯ</span></div>
+          </div>
+        </div>
+
+        <!-- Slide 8: Создатель и Ведущий Архитектор -->
+        <div class="pres-slide" data-slide="8">
+          <div class="slide-badge"><i class="fa-solid fa-crown gold"></i> СЛАЙД 8 / 8 · ЕДИНСТВЕННЫЙ АВТОР &amp; АРХИТЕКТОР</div>
+          <h2 class="slide-heading">Musayev Sardor — Я СОЗДАТЕЛЬ ВСЕГО</h2>
+          <div class="slide-subtitle">100% авторская концепция, математические расчёты, 3D CAD моделирование, 6-DOF физический движок и fullstack веб-архитектура</div>
+
+          <div class="slide-creator-spotlight">
+            <div class="creator-avatar-badge">
+              <i class="fa-solid fa-crown gold"></i>
+            </div>
+            <div class="creator-details">
+              <h3>Musayev Sardor</h3>
+              <div class="creator-role-title">Главный Авиационный Инженер, 3D WebGL Архитектор &amp; Создатель Проекта AeroTerra H2</div>
+              <p class="creator-bio-text">
+                Проект <strong>AeroTerra H2</strong> полностью разработан одним человеком от первого эскиза до действующего 3D-симулятора полёта:
+                полная параметрическая модель планера, аэродинамический расчёт профиля крыла NACA 4415 с закрылками Фаулера, термодинамический баланс водородного реактора PEMFC, расчёт распределённой электрической тяги (DEP), математическая 6-степенная физика полёта (6-DOF Euler/Runge-Kutta), шейдеры Three.js PBR и защищённая облачная архитектура.
+              </p>
+            </div>
+          </div>
+
+          <div class="slide-grid-3col">
+            <div class="slide-card-glass">
+              <h4><i class="fa-solid fa-compass-drafting cyan"></i> Аэрокосмический Инжиниринг</h4>
+              <ul class="slide-list-small">
+                <li>3D CAD моделирование планера и механизации</li>
+                <li>CFD моделирование обдува крыла DEP в Ansys Fluent</li>
+                <li>Расчёт весового баланса и центровки CG 24-28% САХ</li>
+                <li>Схема криогенной топливной системы H₂ 350 бар</li>
               </ul>
             </div>
-            <div class="slide-card-glass emerald">
-              <h3><i class="fa-solid fa-paper-plane emerald"></i> Интерактивная Демонстрация</h3>
-              <p>Предлагаем уважаемому профессору и членам комиссии протестировать поведение AeroTerra H2 во вкладке <strong>«🎮 ПОЛЁТ (MSFS Sim)»</strong> в режиме реального времени на спутниковых картах Узбекистана, Дубая и США.</p>
-              <button class="btn-pres-launch-sim" id="btn-pres-to-sim"><i class="fa-solid fa-gamepad"></i> <span>Перейти к Тестовому Полёту в Симуляторе</span></button>
+            <div class="slide-card-glass">
+              <h4><i class="fa-solid fa-gamepad emerald"></i> 6-DOF Физика и 3D WebGL</h4>
+              <ul class="slide-list-small">
+                <li>Собственный 6-DOF физический движок на Three.js</li>
+                <li>Реалистичная аэродинамика с эффектом экрана McCormick</li>
+                <li>Генерация процедурного спутникового рельефа и ВПП</li>
+                <li>Пространственный Web Audio синтез звука пропеллеров</li>
+              </ul>
+            </div>
+            <div class="slide-card-glass">
+              <h4><i class="fa-solid fa-shield-halved gold"></i> Программная Архитектура</h4>
+              <ul class="slide-list-small">
+                <li>Fullstack веб-приложение PWA с поддержкой офлайн-игры</li>
+                <li>Ролевая безопасность RBAC с солевым SHA-256 хешированием</li>
+                <li>Встроенная визуальная CMS для редактирования узлов</li>
+                <li>Генератор официального инженерного паспорта PDF</li>
+              </ul>
             </div>
           </div>
 
           <!-- Download App Suite (Pitch Deck & Defense) -->
           <div class="pres-download-hero-banner">
             <div class="pres-download-info">
-              <h4><i class="fa-solid fa-crown gold"></i> <span>📲 СКАЧАТЬ ПРИЛОЖЕНИЕ И ИГРУ AEROTERRA H2 (Created by Musayev Sardor)</span></h4>
-              <p>Официальные автономные билды для смартфонов (PWA iOS/Android), компьютеров (macOS/Windows) и PDF-паспорт создателя</p>
+              <h4><i class="fa-solid fa-crown gold"></i> <span>📲 СКАЧАТЬ АВТОНОМНЫЕ БИЛДЫ (Created by Musayev Sardor)</span></h4>
+              <p>Готовые автономные однофайловые игры (.html) и официальный инженерный паспорт в PDF</p>
             </div>
             <div class="pres-download-btns">
               <button class="btn-download-action btn-dl-pwa" id="btn-dl-phone-app">
-                <i class="fa-solid fa-mobile-screen-button"></i> <span>📱 Скачать на Телефон (iOS / Android)</span>
+                <i class="fa-solid fa-mobile-screen-button"></i> <span>📱 Скачать на Телефон</span>
               </button>
               <button class="btn-download-action" id="btn-dl-offline-game">
-                <i class="fa-solid fa-laptop-code"></i> <span>💻 Скачать полную 3D-Игру (.html)</span>
+                <i class="fa-solid fa-laptop-code"></i> <span>💻 Скачать полную 3D-Игру</span>
               </button>
               <button class="btn-download-action" id="btn-dl-creator-pdf">
                 <i class="fa-solid fa-file-pdf"></i> <span>📄 Паспорт Создателя (PDF)</span>
               </button>
-            </div>
-          </div>
-
-          <div class="download-app-suite glass-panel">
-            <div class="download-suite-header">
-              <div class="download-suite-badge"><i class="fa-solid fa-cloud-arrow-down cyan"></i> AEROTERRA SUITE</div>
-              <h3>📥 Скачать AeroTerra H2 Flight Simulator (Desktop &amp; Mobile App / Web App)</h3>
-              <p>Кросс-платформенное приложение симулятора и автономный клиент для демонстрации на защите</p>
-            </div>
-            <div class="download-cards-grid">
-              <!-- Desktop App -->
-              <div class="download-card glass-panel highlight">
-                <div class="dl-card-icon"><i class="fa-brands fa-apple"></i> / <i class="fa-brands fa-windows"></i></div>
-                <h4>Desktop App (macOS &amp; Windows)</h4>
-                <p>Автономный нативный билд симулятора с максимальной частотой кадров (120 FPS Metal/DirectX) и поддержкой USB-джойстиков.</p>
-                <div class="dl-card-tags">
-                  <span class="badge-tag">macOS .app</span>
-                  <span class="badge-tag">Windows .exe</span>
-                  <span class="badge-tag">v2.4 LTS</span>
-                </div>
-                <a href="#" class="btn-download-action" id="btn-dl-desktop-pkg">
-                  <i class="fa-solid fa-download"></i> <span>Скачать для macOS / Windows (.zip)</span>
-                </a>
-              </div>
-
-              <!-- PWA Mobile App -->
-              <div class="download-card glass-panel emerald">
-                <div class="dl-card-icon"><i class="fa-brands fa-android"></i> / <i class="fa-brands fa-app-store-ios"></i></div>
-                <h4>PWA Mobile App (iOS / Android)</h4>
-                <p>Установка в 1 клик на домашний экран смартфона. Работает офлайн с сенсорными джойстиками и гироскопом.</p>
-                <div class="dl-card-tags">
-                  <span class="badge-tag">PWA 3.0</span>
-                  <span class="badge-tag">Add to Homescreen</span>
-                  <span class="badge-tag">Offline Ready</span>
-                </div>
-                <button class="btn-download-action btn-dl-pwa" id="btn-dl-pwa-app">
-                  <i class="fa-solid fa-mobile-screen-button"></i> <span>Установить PWA на смартфон</span>
-                </button>
-              </div>
-
-              <!-- Web App / Play Online -->
-              <div class="download-card glass-panel">
-                <div class="dl-card-icon"><i class="fa-solid fa-globe"></i> / <i class="fa-solid fa-gamepad"></i></div>
-                <h4>Web Sim Online (MSFS Engine)</h4>
-                <p>Мгновенный запуск в браузере с 3D картами Google Satellite, PBR шейдерами и 3D-глиссадой ILS.</p>
-                <div class="dl-card-tags">
-                  <span class="badge-tag">WebGL 2.0</span>
-                  <span class="badge-tag">Zero Install</span>
-                  <span class="badge-tag">Live Cloud</span>
-                </div>
-                <button class="btn-download-action" id="btn-dl-play-sim">
-                  <i class="fa-solid fa-play"></i> <span>Играть онлайн в браузере (MSFS Sim)</span>
-                </button>
-              </div>
             </div>
           </div>
         </div>
@@ -2726,10 +2841,11 @@
           <span class="slide-dot" data-slide="5"></span>
           <span class="slide-dot" data-slide="6"></span>
           <span class="slide-dot" data-slide="7"></span>
+          <span class="slide-dot" data-slide="8"></span>
         </div>
 
         <div class="slide-counter-display">
-          Слайд <strong id="pres-current-slide-num">1</strong> из <strong>7</strong>
+          Слайд <strong id="pres-current-slide-num">1</strong> из <strong id="pres-total-slides-num">8</strong>
         </div>
 
         <button class="btn-slide-nav primary" id="btn-slide-next" title="Следующий слайд (Стрелка вправо / Пробел)">

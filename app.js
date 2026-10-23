@@ -4278,7 +4278,7 @@
   }
 
   // --------------------------------------------------------------------------
-  // 18. IN-APP PRESENTATION MODAL VIEWER (7-SLIDE PITCH DECK & LANDING VIEW)
+  // 18. IN-APP PRESENTATION MODAL VIEWER (8-SLIDE APPLE KEYNOTE 60 FPS)
   // --------------------------------------------------------------------------
   function setupPresentationModal() {
     const btnPres = document.getElementById('btn-presentation-link');
@@ -4293,13 +4293,25 @@
     const btnPrev = document.getElementById('btn-slide-prev');
     const btnNext = document.getElementById('btn-slide-next');
     const currentNumEl = document.getElementById('pres-current-slide-num');
+    const totalNumEl = document.getElementById('pres-total-slides-num');
     const dots = document.querySelectorAll('.slide-dot');
     const slides = document.querySelectorAll('.pres-slide');
     const btnToSim = document.getElementById('btn-pres-to-sim');
 
+    // Auto-Play Controls
+    const btnAutoPlay = document.getElementById('btn-pres-autoplay');
+    const autoPlayIcon = document.getElementById('pres-autoplay-icon');
+    const autoPlayText = document.getElementById('pres-autoplay-text');
+    const autoPlayProgress = document.getElementById('pres-autoplay-progress');
+
     let currentSlide = 1;
-    const totalSlides = slides.length || 7;
+    const totalSlides = slides.length || 8;
+    if (totalNumEl) totalNumEl.textContent = totalSlides;
     let isIframeMode = false;
+    let isAutoPlaying = false;
+    let autoPlayTimer = null;
+    let autoPlayStartTime = 0;
+    const slideDurationMs = 5500;
 
     function showSlide(index) {
       if (index < 1) index = 1;
@@ -4327,11 +4339,91 @@
         }
       }
       if (slidesViewport) slidesViewport.scrollTop = 0;
+
+      // Reset auto-play timer on slide change if active
+      if (isAutoPlaying) {
+        restartAutoPlayTimer();
+      }
+    }
+
+    // Auto-Play 60 FPS Engine
+    function startAutoPlay() {
+      isAutoPlaying = true;
+      if (autoPlayIcon) {
+        autoPlayIcon.className = 'fa-solid fa-pause';
+      }
+      if (autoPlayText) {
+        autoPlayText.textContent = '⏸️ Пауза';
+      }
+      if (btnAutoPlay) {
+        btnAutoPlay.classList.add('active');
+      }
+      restartAutoPlayTimer();
+    }
+
+    function stopAutoPlay() {
+      isAutoPlaying = false;
+      if (autoPlayIcon) {
+        autoPlayIcon.className = 'fa-solid fa-play';
+      }
+      if (autoPlayText) {
+        autoPlayText.textContent = '▶️ Авто 60 FPS';
+      }
+      if (btnAutoPlay) {
+        btnAutoPlay.classList.remove('active');
+      }
+      if (autoPlayProgress) {
+        autoPlayProgress.style.width = '0%';
+      }
+      if (autoPlayTimer) {
+        cancelAnimationFrame(autoPlayTimer);
+        autoPlayTimer = null;
+      }
+    }
+
+    function restartAutoPlayTimer() {
+      if (autoPlayTimer) cancelAnimationFrame(autoPlayTimer);
+      autoPlayStartTime = performance.now();
+
+      function tickAutoPlay(now) {
+        if (!isAutoPlaying || presModal.style.display !== 'flex') {
+          stopAutoPlay();
+          return;
+        }
+        const elapsed = now - autoPlayStartTime;
+        const progressPct = Math.min(100, (elapsed / slideDurationMs) * 100);
+        if (autoPlayProgress) {
+          autoPlayProgress.style.width = progressPct + '%';
+        }
+
+        if (elapsed >= slideDurationMs) {
+          if (currentSlide === totalSlides) {
+            showSlide(1);
+          } else {
+            showSlide(currentSlide + 1);
+          }
+          return;
+        }
+        autoPlayTimer = requestAnimationFrame(tickAutoPlay);
+      }
+      autoPlayTimer = requestAnimationFrame(tickAutoPlay);
+    }
+
+    if (btnAutoPlay) {
+      btnAutoPlay.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (isAutoPlaying) {
+          stopAutoPlay();
+        } else {
+          startAutoPlay();
+        }
+      });
     }
 
     function toggleMode() {
       isIframeMode = !isIframeMode;
       if (isIframeMode) {
+        stopAutoPlay();
         if (slidesViewport) slidesViewport.style.display = 'none';
         if (bottomNav) bottomNav.style.display = 'none';
         if (iframeWrap) iframeWrap.style.display = 'block';
@@ -4347,12 +4439,94 @@
       }
     }
 
+    // Interactive Hydrogen Glow Particle Canvas (60 FPS)
+    const particleCanvas = document.getElementById('pres-particle-canvas');
+    let particleAnimId = null;
+    let particles = [];
+
+    function initParticleCanvas() {
+      if (!particleCanvas) return;
+      const ctx = particleCanvas.getContext('2d');
+      if (!ctx) return;
+
+      const resize = () => {
+        particleCanvas.width = particleCanvas.clientWidth || window.innerWidth;
+        particleCanvas.height = particleCanvas.clientHeight || window.innerHeight;
+      };
+      resize();
+      window.addEventListener('resize', resize);
+
+      const numParticles = 42;
+      particles = [];
+      for (let i = 0; i < numParticles; i++) {
+        particles.push({
+          x: Math.random() * particleCanvas.width,
+          y: Math.random() * particleCanvas.height,
+          vx: (Math.random() - 0.5) * 0.6,
+          vy: (Math.random() - 0.5) * 0.6,
+          r: Math.random() * 2.2 + 1.2,
+          color: Math.random() > 0.35 ? '#00e5ff' : '#10b981',
+          alpha: Math.random() * 0.5 + 0.3
+        });
+      }
+
+      function drawParticles() {
+        if (presModal.style.display !== 'flex') {
+          particleAnimId = null;
+          return;
+        }
+        ctx.clearRect(0, 0, particleCanvas.width, particleCanvas.height);
+
+        // Draw connections
+        for (let i = 0; i < particles.length; i++) {
+          for (let j = i + 1; j < particles.length; j++) {
+            const dx = particles[i].x - particles[j].x;
+            const dy = particles[i].y - particles[j].y;
+            const dist = Math.hypot(dx, dy);
+            if (dist < 95) {
+              const lineAlpha = (1 - dist / 95) * 0.22;
+              ctx.strokeStyle = `rgba(0, 229, 255, ${lineAlpha})`;
+              ctx.lineWidth = 1;
+              ctx.beginPath();
+              ctx.moveTo(particles[i].x, particles[i].y);
+              ctx.lineTo(particles[j].x, particles[j].y);
+              ctx.stroke();
+            }
+          }
+        }
+
+        // Draw nodes
+        particles.forEach(p => {
+          p.x += p.vx;
+          p.y += p.vy;
+          if (p.x < 0) p.x = particleCanvas.width;
+          if (p.x > particleCanvas.width) p.x = 0;
+          if (p.y < 0) p.y = particleCanvas.height;
+          if (p.y > particleCanvas.height) p.y = 0;
+
+          ctx.fillStyle = p.color;
+          ctx.globalAlpha = p.alpha;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fill();
+        });
+        ctx.globalAlpha = 1.0;
+
+        particleAnimId = requestAnimationFrame(drawParticles);
+      }
+
+      if (!particleAnimId) {
+        particleAnimId = requestAnimationFrame(drawParticles);
+      }
+    }
+
     if (btnPres && presModal) {
       btnPres.addEventListener('click', (e) => {
         e.preventDefault();
         presModal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
         showSlide(currentSlide);
+        initParticleCanvas();
       });
     }
 
@@ -4383,8 +4557,38 @@
       });
     });
 
+    // Touch Swipe Gestures for Mobile
+    let touchStartX = 0;
+    let touchStartY = 0;
+    if (slidesViewport) {
+      slidesViewport.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1) {
+          touchStartX = e.touches[0].clientX;
+          touchStartY = e.touches[0].clientY;
+        }
+      }, { passive: true });
+
+      slidesViewport.addEventListener('touchend', (e) => {
+        if (e.changedTouches.length === 1) {
+          const dx = e.changedTouches[0].clientX - touchStartX;
+          const dy = e.changedTouches[0].clientY - touchStartY;
+          if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+            if (dx < 0) {
+              // Swipe left -> next slide
+              if (currentSlide < totalSlides) showSlide(currentSlide + 1);
+              else showSlide(1);
+            } else {
+              // Swipe right -> prev slide
+              if (currentSlide > 1) showSlide(currentSlide - 1);
+            }
+          }
+        }
+      }, { passive: true });
+    }
+
     if (btnToSim && presModal) {
       btnToSim.addEventListener('click', () => {
+        stopAutoPlay();
         presModal.style.display = 'none';
         document.body.style.overflow = '';
         const simTab = document.getElementById('nav-simulator-tab');
@@ -4394,6 +4598,7 @@
 
     if (btnClosePres && presModal) {
       btnClosePres.addEventListener('click', () => {
+        stopAutoPlay();
         presModal.style.display = 'none';
         document.body.style.overflow = '';
       });
@@ -4403,6 +4608,7 @@
     if (presModal) {
       presModal.addEventListener('click', (e) => {
         if (e.target === presModal) {
+          stopAutoPlay();
           presModal.style.display = 'none';
           document.body.style.overflow = '';
         }
@@ -4413,6 +4619,7 @@
     window.addEventListener('keydown', (e) => {
       if (!presModal || presModal.style.display !== 'flex') return;
       if (e.key === 'Escape') {
+        stopAutoPlay();
         presModal.style.display = 'none';
         document.body.style.overflow = '';
       } else if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') {
@@ -4432,6 +4639,7 @@
     // Listen for postMessage from inside landing iframe
     window.addEventListener('message', (event) => {
       if (event.data && (event.data.type === 'CLOSE_PRESENTATION' || event.data.type === 'GO_TO_HANGAR')) {
+        stopAutoPlay();
         if (presModal) {
           presModal.style.display = 'none';
           document.body.style.overflow = '';

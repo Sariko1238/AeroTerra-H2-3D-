@@ -33,6 +33,9 @@
     sensitivity: 1.0,
     touchControlsActive: false,
     gyroActive: false,
+    autoTakeoffActive: false,
+    autoTakeoffStage: 'done',
+    autoTakeoffTargetAlt: 150.0,
     apMode: {
       level: false,
       alt: false,
@@ -2318,6 +2321,72 @@
       return;
     }
 
+    // 0. Auto-Takeoff Assist State Machine
+    if (SIM.autoTakeoffActive) {
+      flight.throttle = 1.0;
+      flight.flapsStage = 1; // 15° STOL flaps
+      flight.spoilersActive = false;
+
+      if (SIM.autoTakeoffStage === 'accelerate') {
+        flight.pitchInput = 0.0;
+        flight.rollInput = 0.0;
+        flight.yawInput = (Math.abs(flight.pos.x) > 0.5) ? -THREE.MathUtils.clamp(flight.pos.x * 0.1, -0.2, 0.2) : 0.0;
+
+        if (flight.ias >= 52.0) {
+          SIM.autoTakeoffStage = 'rotate';
+          if (window.ILSAutopilot) {
+            window.ILSAutopilot.speak('Rotate. Pitch up twelve degrees.', 'Скорость отрыва. Подъём носа!');
+          }
+          showToast('🛫 ОТРЫВ ОТ ВПП (ROTATE): ПОДЪЁМ НОСА +12°');
+        }
+      } else if (SIM.autoTakeoffStage === 'rotate') {
+        flight.pitchInput = 0.55;
+        flight.rollInput = 0.0;
+        flight.yawInput = 0.0;
+        flight.vel.y = Math.max(flight.vel.y, 4.2 + (flight.ias - 50.0) * 0.08);
+
+        if (flight.altAGL > 10.0) {
+          SIM.autoTakeoffStage = 'climb';
+        }
+      } else if (SIM.autoTakeoffStage === 'climb') {
+        flight.pitchInput = 0.32;
+        flight.rollInput = 0.0;
+        flight.yawInput = 0.0;
+
+        // Auto retract gear at safe climb height > 30m AGL
+        if (flight.altAGL > 30.0 && flight.gearTarget > 0.1) {
+          flight.gearTarget = 0.0;
+          const gearLbl = document.getElementById('lbl-gear');
+          if (gearLbl) gearLbl.textContent = '⚪ Шасси УБРАНЫ (G)';
+          const gearBtn = document.getElementById('btn-act-gear');
+          if (gearBtn) gearBtn.classList.remove('active');
+          if (window.ILSAutopilot) {
+            window.ILSAutopilot.speak('Gear up. Positive rate of climb.', 'Шасси убраны. Набор высоты.');
+          }
+          showToast('🛞 ШАССИ АВТОМАТИЧЕСКИ УБРАНЫ (ALT > 30 м)');
+        }
+
+        // Target 150m AGL reached -> level off into cruise
+        if (flight.altAGL >= (SIM.autoTakeoffTargetAlt || 150.0)) {
+          SIM.autoTakeoffActive = false;
+          SIM.autoTakeoffStage = 'done';
+          flight.pitchInput = 0.0;
+          flight.throttle = 0.75;
+          flight.flapsStage = 0;
+
+          ['btn-sim-auto-takeoff', 'btn-act-takeoff', 'btn-touch-auto-takeoff'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.classList.remove('active');
+          });
+
+          if (window.ILSAutopilot) {
+            window.ILSAutopilot.speak('Takeoff complete. Aircraft leveled at 150 meters. Cruise speed 180 kilometers per hour.', 'Взлёт завершён! Самолёт на высоте 150 м. Крейсерский режим.');
+          }
+          showToast('✅ ВЗЛЁТ ВЫПОЛНЕН: ВЫСОТА 150 М, КРЕЙСЕРСКИЙ РЕЖИМ 180 КМ/Ч');
+        }
+      }
+    }
+
     // 1. Throttle & Propeller dynamics
     let effectiveThrottle = flight.throttle;
     if (SIM.boostActive) {
@@ -2387,7 +2456,7 @@
         flight.pitchInput = THREE.MathUtils.clamp((flight.rot.x - targetPitch) * 2.8, -1.0, 1.0);
       }
       if (SIM.apMode.hdg) {
-        const curHdg = ((-flight.rot.y * 180 / Math.PI) % 360 + 360) % 360;
+        const curHdg = ((flight.rot.y * 180 / Math.PI) % 360 + 360) % 360;
         let hdgDiff = SIM.apMode.targetHdg - curHdg;
         if (hdgDiff > 180) hdgDiff -= 360;
         if (hdgDiff < -180) hdgDiff += 360;
@@ -2614,23 +2683,37 @@
         showToast('💥 КРУШЕНИЕ: САМОЛЁТ РАЗБИТ! НАЖМИТЕ «СБРОС В ПОЛЁТ»');
       } else if (!flight.crashed) {
         if (flight.pos.y <= groundLevel) {
-          flight.pos.y = groundLevel;
-          flight.vel.y = Math.max(0, flight.vel.y);
-          flight.rot.z *= 0.8;
-          flight.rot.x = Math.max(-0.21, Math.min(0.02, flight.rot.x));
-          flight.altAGL = 0;
+          // Check if pilot or auto-takeoff is executing takeoff rotation
+          const isTakeoffSpeed = (flight.flapsStage > 0 && flight.ias >= 42.0) || (flight.flapsStage === 0 && flight.ias >= 60.0);
+          const isRotatingUp = (flight.pitchInput > 0.08 || flight.rot.x < -0.03 || SIM.autoTakeoffActive);
+          const isTakingOff = (flight.throttle > 0.5) && isTakeoffSpeed && isRotatingUp;
 
-          if (!flight._touchdownAnnounced && flight.vsi < -0.8) {
-            flight._touchdownAnnounced = true;
-            if (window.ILSAutopilot) {
-              window.ILSAutopilot.calloutTouchdown();
+          if (isTakingOff) {
+            // Blown-wing DEP thrust vector and high STOL lift boost vertical climb velocity
+            const liftVelocity = 3.4 + (flight.ias - 42.0) * 0.08 + (flight.flapsStage * 0.8);
+            flight.vel.y = Math.max(flight.vel.y, liftVelocity);
+            flight.pos.y += flight.vel.y * dt;
+            flight.altAGL = Math.max(0, flight.pos.y - groundLevel);
+            flight._touchdownAnnounced = false;
+          } else {
+            flight.pos.y = groundLevel;
+            flight.vel.y = Math.max(0, flight.vel.y);
+            flight.rot.z *= 0.8;
+            flight.rot.x = Math.max(-0.21, Math.min(0.02, flight.rot.x));
+            flight.altAGL = 0;
+
+            if (!flight._touchdownAnnounced && flight.vsi < -0.8) {
+              flight._touchdownAnnounced = true;
+              if (window.ILSAutopilot) {
+                window.ILSAutopilot.calloutTouchdown();
+              }
+              showToast('🛬 МЯГКАЯ ПОСАДКА (TOUCHDOWN): ШАССИ ВЫПУЩЕНЫ, ПЕРЕГРУЗКА В НОРМЕ');
             }
-            showToast('🛬 МЯГКАЯ ПОСАДКА (TOUCHDOWN): ШАССИ ВЫПУЩЕНЫ, ПЕРЕГРУЗКА В НОРМЕ');
-          }
 
-          flight.vel.x *= Math.max(0, 1.0 - 1.5 * dt);
-          if (flight.throttle < 0.1 || flight.spoilersActive) {
-            flight.vel.z *= Math.max(0, 1.0 - 1.2 * dt);
+            flight.vel.x *= Math.max(0, 1.0 - 1.5 * dt);
+            if (flight.throttle < 0.1 || flight.spoilersActive) {
+              flight.vel.z *= Math.max(0, 1.0 - 1.2 * dt);
+            }
           }
         }
       }
@@ -3352,15 +3435,57 @@
   // ----------------------------------------------------------------------------
   // 15. UI BINDINGS & KEYBOARD INPUT
   // ----------------------------------------------------------------------------
+  // ----------------------------------------------------------------------------
+  // AUTO-TAKEOFF ASSIST & RUNWAY DISPATCH ENGINE
+  // ----------------------------------------------------------------------------
+  function triggerAutoTakeoff() {
+    initAudioEngine();
+
+    if (flight.crashed) {
+      flight.crashed = false;
+      const crashBanner = document.getElementById('sim-crash-warning');
+      if (crashBanner) crashBanner.style.display = 'none';
+      flight.pos.set(0, 1.25, 0);
+      flight.vel.set(0, 0, 5);
+      flight.rot.set(0, 0, 0, 'YXZ');
+      flight.quat.setFromEuler(flight.rot);
+    }
+
+    SIM.autoTakeoffActive = true;
+    SIM.autoTakeoffStage = 'accelerate';
+    SIM.autoTakeoffTargetAlt = 150.0;
+
+    // 100% full takeoff power
+    flight.throttle = 1.0;
+    // STOL Takeoff Flaps (15°)
+    flight.flapsStage = 1;
+    flight.spoilersActive = false;
+    flight.gearTarget = 1.0;
+    flight.rollInput = 0;
+    flight.yawInput = 0;
+    flight.pitchInput = 0;
+
+    // Update buttons UI
+    ['btn-sim-auto-takeoff', 'btn-act-takeoff', 'btn-touch-auto-takeoff'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.classList.add('active');
+    });
+
+    if (window.ILSAutopilot) {
+      window.ILSAutopilot.speak('Auto takeoff initiated. Maximum thrust set. Flaps fifteen degrees.', 'Автоматический взлёт активирован! Тяга 100%, закрылки 15°. Разбег по полосе.');
+    }
+    showToast('🛫 АВТО-ВЗЛЁТ С ВПП: 100% ТЯГА, ЗАКРЫЛКИ 15°, РАЗБЕГ!');
+  }
+  window.triggerAutoTakeoff = triggerAutoTakeoff;
+
   // Touch Controls & Sensor Handlers
   function initTouchControls() {
     const joyZone = document.getElementById('virtual-joystick-zone');
     const joyKnob = document.getElementById('virtual-joystick-knob');
     const thrTrack = document.getElementById('touch-throttle-track');
     const thrHandle = document.getElementById('touch-throttle-handle');
+    const thrFill = document.getElementById('touch-throttle-fill');
     const thrPctLabel = document.getElementById('touch-throttle-pct');
-    const rudLeft = document.getElementById('touch-rudder-left');
-    const rudRight = document.getElementById('touch-rudder-right');
     const touchOverlay = document.getElementById('sim-touch-controls');
     const touchToggleBtn = document.getElementById('btn-sim-touch-toggle');
     const touchToggleLabel = document.getElementById('sim-touch-label');
@@ -3386,19 +3511,19 @@
       });
     }
 
-    // 1. Virtual 3D Flight Stick (Pitch & Roll) with Independent Pointer & Touch Identifier Tracking
+    // 1. Right 3D Virtual Flight Stick (Pitch & Roll) with Multi-Touch Tracking
     if (joyZone && joyKnob) {
       let joyActive = false;
-      let joyPointerId = null;
       let joyTouchId = null;
-      const maxR = 55;
+      let joyPointerId = null;
+      const maxR = 55; // 135px box / 2 - knob radius
 
       const resetJoy = () => {
         joyActive = false;
-        joyPointerId = null;
         joyTouchId = null;
+        joyPointerId = null;
         SIM.isJoyDragging = false;
-        joyKnob.style.transition = 'transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+        joyKnob.style.transition = 'transform 0.28s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
         joyKnob.style.transform = 'translate(-50%, -50%)';
         flight.pitchInput = 0;
         flight.rollInput = 0;
@@ -3418,48 +3543,21 @@
         }
         joyKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
 
-        // dx < 0 -> drag left -> turn left; dx > 0 -> drag right -> turn right
+        // dx < 0 -> drag left -> rollInput < 0 (roll left, nose turns left)
+        // dx > 0 -> drag right -> rollInput > 0 (roll right, nose turns right)
         const stickX = THREE.MathUtils.clamp(dx / maxR, -1.0, 1.0);
+        // dy > 0 -> pull down/back on stick -> pitchInput > 0 (climb / nose up)
+        // dy < 0 -> push up/forward on stick -> pitchInput < 0 (dive / nose down)
         const stickY = THREE.MathUtils.clamp(dy / maxR, -1.0, 1.0);
         flight.rollInput = stickX;
         flight.yawInput = stickX * 0.75;
         flight.pitchInput = SIM.invertPitch ? -stickY : stickY;
       };
 
-      // Pointer Events (supports stylus, mouse, and multi-touch)
-      joyZone.addEventListener('pointerdown', (e) => {
-        e.preventDefault();
-        joyActive = true;
-        SIM.isJoyDragging = true;
-        joyPointerId = e.pointerId;
-        joyKnob.style.transition = 'none';
-        try { joyZone.setPointerCapture(e.pointerId); } catch (_) {}
-        updateJoyCoords(e.clientX, e.clientY);
-        initAudioEngine();
-      });
-
-      const onJoyPointerMove = (e) => {
-        if (joyActive && e.pointerId === joyPointerId) {
-          e.preventDefault();
-          updateJoyCoords(e.clientX, e.clientY);
-        }
-      };
-
-      const onJoyPointerEnd = (e) => {
-        if (e.pointerId === joyPointerId) {
-          e.preventDefault();
-          try { joyZone.releasePointerCapture(e.pointerId); } catch (_) {}
-          resetJoy();
-        }
-      };
-
-      window.addEventListener('pointermove', onJoyPointerMove);
-      window.addEventListener('pointerup', onJoyPointerEnd);
-      window.addEventListener('pointercancel', onJoyPointerEnd);
-
-      // Native Touch Events Fallback
+      // Native Multi-Touch Events (Highest reliability on iOS Safari & Android)
       joyZone.addEventListener('touchstart', (e) => {
         e.preventDefault();
+        e.stopPropagation();
         if (joyTouchId === null && e.changedTouches.length > 0) {
           const t = e.changedTouches[0];
           joyTouchId = t.identifier;
@@ -3497,13 +3595,45 @@
 
       window.addEventListener('touchend', onJoyTouchEnd, { passive: false });
       window.addEventListener('touchcancel', onJoyTouchEnd, { passive: false });
+
+      // Pointer events for desktop testing / mouse emulation
+      joyZone.addEventListener('pointerdown', (e) => {
+        if (e.pointerType === 'touch') return; // Handled by TouchEvents
+        e.preventDefault();
+        joyActive = true;
+        SIM.isJoyDragging = true;
+        joyPointerId = e.pointerId;
+        joyKnob.style.transition = 'none';
+        try { joyZone.setPointerCapture(e.pointerId); } catch (_) {}
+        updateJoyCoords(e.clientX, e.clientY);
+        initAudioEngine();
+      });
+
+      const onJoyPointerMove = (e) => {
+        if (joyActive && e.pointerId === joyPointerId) {
+          e.preventDefault();
+          updateJoyCoords(e.clientX, e.clientY);
+        }
+      };
+
+      const onJoyPointerEnd = (e) => {
+        if (e.pointerId === joyPointerId) {
+          e.preventDefault();
+          try { joyZone.releasePointerCapture(e.pointerId); } catch (_) {}
+          resetJoy();
+        }
+      };
+
+      window.addEventListener('pointermove', onJoyPointerMove);
+      window.addEventListener('pointerup', onJoyPointerEnd);
+      window.addEventListener('pointercancel', onJoyPointerEnd);
     }
 
-    // 2. Touch Throttle Slider with Independent Multi-Hand Tracking
+    // 2. Left Throttle Slider with Multi-Touch Tracking
     if (thrTrack && thrHandle) {
       let thrActive = false;
-      let thrPointerId = null;
       let thrTouchId = null;
+      let thrPointerId = null;
 
       const updateThrCoords = (clientY) => {
         const rect = thrTrack.getBoundingClientRect();
@@ -3512,43 +3642,14 @@
         flight.throttle = relY;
         const pct = Math.round(relY * 100);
         thrHandle.style.bottom = `${pct * 0.72}%`;
-        const thrFill = document.getElementById('touch-throttle-fill');
         if (thrFill) thrFill.style.height = `${pct}%`;
         if (thrPctLabel) thrPctLabel.textContent = `${pct}%`;
         initAudioEngine();
       };
 
-      thrTrack.addEventListener('pointerdown', (e) => {
-        e.preventDefault();
-        thrActive = true;
-        thrPointerId = e.pointerId;
-        try { thrTrack.setPointerCapture(e.pointerId); } catch (_) {}
-        updateThrCoords(e.clientY);
-      });
-
-      const onThrPointerMove = (e) => {
-        if (thrActive && e.pointerId === thrPointerId) {
-          e.preventDefault();
-          updateThrCoords(e.clientY);
-        }
-      };
-
-      const onThrPointerEnd = (e) => {
-        if (e.pointerId === thrPointerId) {
-          e.preventDefault();
-          try { thrTrack.releasePointerCapture(e.pointerId); } catch (_) {}
-          thrActive = false;
-          thrPointerId = null;
-        }
-      };
-
-      window.addEventListener('pointermove', onThrPointerMove);
-      window.addEventListener('pointerup', onThrPointerEnd);
-      window.addEventListener('pointercancel', onThrPointerEnd);
-
-      // Touch fallback
       thrTrack.addEventListener('touchstart', (e) => {
         e.preventDefault();
+        e.stopPropagation();
         if (thrTouchId === null && e.changedTouches.length > 0) {
           const t = e.changedTouches[0];
           thrTouchId = t.identifier;
@@ -3585,99 +3686,148 @@
 
       window.addEventListener('touchend', onThrTouchEnd, { passive: false });
       window.addEventListener('touchcancel', onThrTouchEnd, { passive: false });
-    }
 
-    // Touch Throttle Step Buttons [- 10%] and [+ 10%]
-    const btnTouchThrInc = document.getElementById('btn-touch-thr-inc');
-    const btnTouchThrDec = document.getElementById('btn-touch-thr-dec');
-    if (btnTouchThrInc) {
-      btnTouchThrInc.addEventListener('pointerdown', (e) => {
+      // Pointer fallback
+      thrTrack.addEventListener('pointerdown', (e) => {
+        if (e.pointerType === 'touch') return;
         e.preventDefault();
-        flight.throttle = safeClamp(flight.throttle + 0.10, 0, 1.0, 0.65);
-        initAudioEngine();
+        thrActive = true;
+        thrPointerId = e.pointerId;
+        try { thrTrack.setPointerCapture(e.pointerId); } catch (_) {}
+        updateThrCoords(e.clientY);
       });
+
+      const onThrPointerMove = (e) => {
+        if (thrActive && e.pointerId === thrPointerId) {
+          e.preventDefault();
+          updateThrCoords(e.clientY);
+        }
+      };
+
+      const onThrPointerEnd = (e) => {
+        if (e.pointerId === thrPointerId) {
+          e.preventDefault();
+          try { thrTrack.releasePointerCapture(e.pointerId); } catch (_) {}
+          thrActive = false;
+          thrPointerId = null;
+        }
+      };
+
+      window.addEventListener('pointermove', onThrPointerMove);
+      window.addEventListener('pointerup', onThrPointerEnd);
+      window.addEventListener('pointercancel', onThrPointerEnd);
     }
-    if (btnTouchThrDec) {
-      btnTouchThrDec.addEventListener('pointerdown', (e) => {
+
+    // Throttle 100% and 0% Quick Thumb Buttons
+    const btnTouchThrMax = document.getElementById('btn-touch-thr-max');
+    const btnTouchThrZero = document.getElementById('btn-touch-thr-zero');
+    if (btnTouchThrMax) {
+      const setMaxThr = (e) => {
         e.preventDefault();
-        flight.throttle = safeClamp(flight.throttle - 0.10, 0, 1.0, 0.65);
+        flight.throttle = 1.0;
         initAudioEngine();
-      });
+        showToast('🔥 100% ВЗЛЁТНЫЙ ГАЗ АКТИВИРОВАН');
+      };
+      btnTouchThrMax.addEventListener('click', setMaxThr);
+      btnTouchThrMax.addEventListener('touchstart', setMaxThr, { passive: false });
+    }
+    if (btnTouchThrZero) {
+      const setZeroThr = (e) => {
+        e.preventDefault();
+        flight.throttle = 0.0;
+        initAudioEngine();
+        showToast('🛑 0% СБРОС ГАЗА (ХОЛОСТОЙ ХОД)');
+      };
+      btnTouchThrZero.addEventListener('click', setZeroThr);
+      btnTouchThrZero.addEventListener('touchstart', setZeroThr, { passive: false });
     }
 
-    // Touch Rudder Buttons
-    if (rudLeft) {
-      const startRudL = (e) => { e.preventDefault(); flight.yawInput = -1.0; flight.rollInput = -0.5; };
-      const stopRudL = (e) => { e.preventDefault(); flight.yawInput = 0; flight.rollInput = 0; };
-      rudLeft.addEventListener('pointerdown', startRudL);
-      rudLeft.addEventListener('pointerup', stopRudL);
-      rudLeft.addEventListener('pointercancel', stopRudL);
-      rudLeft.addEventListener('touchstart', startRudL, { passive: false });
-      rudLeft.addEventListener('touchend', stopRudL, { passive: false });
-      rudLeft.addEventListener('touchcancel', stopRudL, { passive: false });
-    }
-    if (rudRight) {
-      const startRudR = (e) => { e.preventDefault(); flight.yawInput = 1.0; flight.rollInput = 0.5; };
-      const stopRudR = (e) => { e.preventDefault(); flight.yawInput = 0; flight.rollInput = 0; };
-      rudRight.addEventListener('pointerdown', startRudR);
-      rudRight.addEventListener('pointerup', stopRudR);
-      rudRight.addEventListener('pointercancel', stopRudR);
-      rudRight.addEventListener('touchstart', startRudR, { passive: false });
-      rudRight.addEventListener('touchend', stopRudR, { passive: false });
-      rudRight.addEventListener('touchcancel', stopRudR, { passive: false });
-    }
+    // Auto-Takeoff Buttons
+    const btnTouchAutoTakeoff = document.getElementById('btn-touch-auto-takeoff');
+    const btnSimAutoTakeoff = document.getElementById('btn-sim-auto-takeoff');
+    const btnActTakeoff = document.getElementById('btn-act-takeoff');
 
-    // Action buttons
-    const btnTouchSpray = document.getElementById('btn-touch-spray');
-    if (btnTouchSpray) {
-      btnTouchSpray.addEventListener('click', () => {
-        const btn = document.getElementById('btn-act-spray');
+    [btnTouchAutoTakeoff, btnSimAutoTakeoff, btnActTakeoff].forEach(btn => {
+      if (btn) {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          triggerAutoTakeoff();
+        });
+        btn.addEventListener('touchstart', (e) => {
+          e.preventDefault();
+          triggerAutoTakeoff();
+        }, { passive: false });
+      }
+    });
+
+    // Center Action Buttons
+    const btnTouchGear = document.getElementById('btn-touch-gear');
+    if (btnTouchGear) {
+      const toggleGear = (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('btn-act-gear');
         if (btn) btn.click();
-      });
-    }
-
-    const btnTouchSalvo = document.getElementById('btn-touch-salvo');
-    if (btnTouchSalvo) {
-      btnTouchSalvo.addEventListener('click', () => {
-        const btn = document.getElementById('btn-act-water');
-        if (btn) btn.click();
-      });
+      };
+      btnTouchGear.addEventListener('click', toggleGear);
+      btnTouchGear.addEventListener('touchstart', toggleGear, { passive: false });
     }
 
     const btnTouchFlaps = document.getElementById('btn-touch-flaps');
     if (btnTouchFlaps) {
-      btnTouchFlaps.addEventListener('click', () => {
+      const cycleFlaps = (e) => {
+        e.preventDefault();
         const btn = document.getElementById('btn-act-flaps');
         if (btn) btn.click();
-      });
+      };
+      btnTouchFlaps.addEventListener('click', cycleFlaps);
+      btnTouchFlaps.addEventListener('touchstart', cycleFlaps, { passive: false });
     }
 
-    const btnTouchAp = document.getElementById('btn-touch-ap');
-    if (btnTouchAp) {
-      btnTouchAp.addEventListener('click', () => {
-        const btn = document.getElementById('btn-ap-level');
+    const btnTouchWater = document.getElementById('btn-touch-water');
+    if (btnTouchWater) {
+      const salvoWater = (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('btn-act-water');
         if (btn) btn.click();
-      });
+      };
+      btnTouchWater.addEventListener('click', salvoWater);
+      btnTouchWater.addEventListener('touchstart', salvoWater, { passive: false });
+    }
+
+    const btnTouchSpray = document.getElementById('btn-touch-spray');
+    if (btnTouchSpray) {
+      const toggleSpray = (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('btn-act-spray');
+        if (btn) btn.click();
+      };
+      btnTouchSpray.addEventListener('click', toggleSpray);
+      btnTouchSpray.addEventListener('touchstart', toggleSpray, { passive: false });
     }
 
     const btnTouchCam = document.getElementById('btn-touch-cam');
     if (btnTouchCam) {
-      btnTouchCam.addEventListener('click', () => {
+      const cycleCam = (e) => {
+        e.preventDefault();
         const modes = ['chase', 'cockpit', 'satellite', 'orbit'];
         const curIdx = modes.indexOf(SIM.cameraMode);
         const nextMode = modes[(curIdx + 1) % modes.length];
         const btn = document.getElementById(`btn-cam-${nextMode === 'cockpit' ? 'fpv' : (nextMode === 'satellite' ? 'sat' : nextMode)}`);
         if (btn) btn.click();
-      });
+      };
+      btnTouchCam.addEventListener('click', cycleCam);
+      btnTouchCam.addEventListener('touchstart', cycleCam, { passive: false });
     }
 
-    // Touch Reset 700m button (Mobile action bar)
     const btnTouchReset700 = document.getElementById('btn-touch-reset-700');
     if (btnTouchReset700) {
-      btnTouchReset700.addEventListener('click', () => {
+      const reset700 = (e) => {
+        e.preventDefault();
         resetToAirFlight700();
         showToast('🔄 СБРОС НА 700 М ВЫПОЛНЕН');
-      });
+      };
+      btnTouchReset700.addEventListener('click', reset700);
+      btnTouchReset700.addEventListener('touchstart', reset700, { passive: false });
     }
 
     // Mobile Flight Menu Toggle Button
