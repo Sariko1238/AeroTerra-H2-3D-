@@ -777,6 +777,25 @@
           <div class="prof-data-row"><span>LiPo буфер буст:</span> <b id="prof-pbuf">0.0 kW (STOL off)</b></div>
           <div class="prof-data-row highlight"><span>Удельный расход H2:</span> <b id="prof-h2flow">2.4 кг/ч</b></div>
         </div>
+        <div class="prof-card">
+          <h5>5. ДЕФОРМАЦИЯ И НАПРЯЖЕНИЯ КРЫЛА (EULER-BERNOULLI WING FLEX)</h5>
+          <div class="prof-formula">δ_tip = (L · b³) / (24 · E · I) &nbsp;|&nbsp; M_root = (L · b) / 4</div>
+          <div class="prof-data-row"><span>Прогиб законцовки δ_tip:</span> <b id="prof-wing-flex">+0.00 см</b></div>
+          <div class="prof-data-row"><span>Изгибающий момент M_root:</span> <b id="prof-wing-moment">44.8 кН·м</b></div>
+          <div class="prof-data-row"><span>Эксплуатационная перегрузка Ny:</span> <b id="prof-wing-gload">1.00 G</b></div>
+          <div class="prof-data-row highlight"><span>Состояние лонжерона:</span> <b id="prof-spar-status" style="color: #10b981;">НОРМА (Эластичный диапазон)</b></div>
+        </div>
+        <div class="prof-card">
+          <h5>6. СИМУЛЯТОР АВАРИЙ И СМУ (1-CLICK FAILURE SIMULATION)</h5>
+          <div class="prof-formula">Dryden Turbulence · Asymmetric Thrust · PEMFC Overheat</div>
+          <div class="prof-failure-actions" style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px;">
+            <button class="prof-fail-btn" id="btn-prof-eng1"><i class="fa-solid fa-triangle-exclamation"></i> Отказ Двиг. #1</button>
+            <button class="prof-fail-btn" id="btn-prof-crosswind"><i class="fa-solid fa-wind"></i> Боковой ветер 18 м/с</button>
+            <button class="prof-fail-btn" id="btn-prof-pemfc"><i class="fa-solid fa-fire-burner"></i> Перегрев Ballard FC</button>
+            <button class="prof-fail-btn" id="btn-prof-icing"><i class="fa-solid fa-snowflake"></i> Обледенение крыла</button>
+            <button class="prof-fail-btn reset" id="btn-prof-reset-failures" style="grid-column: 1 / -1;"><i class="fa-solid fa-rotate-left"></i> Сброс всех отказов (НОРМА)</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -3331,6 +3350,17 @@
   <script src="physics/aero-dynamics.js"></script>
   <script src="avionics/ils-autopilot.js"></script>
   <script src="missions/flight-recorder.js"></script>
+
+  <!-- 6-DOF Modular Simulator Architecture (Airbus / MSFS Grade) -->
+  <script src="src/physics/flight-dynamics-6dof.js"></script>
+  <script src="src/physics/wind-turbulence-failures.js"></script>
+  <script src="src/aircraft/fleet-models-3d.js"></script>
+  <script src="src/aircraft/ai-sky-traffic.js"></script>
+  <script src="src/cockpit/garmin-g3000-cockpit.js"></script>
+  <script src="src/cockpit/ils-glideslope-atc.js"></script>
+  <script src="src/graphics/world-scenery-3d.js"></script>
+  <script src="src/graphics/crash-vfx-particles.js"></script>
+  <script src="src/controls/mobile-multitouch-pad.js"></script>
 
   <!-- Flight Simulator 6-DOF Engine & Sound Synthesis -->
   <script src="sim-engine.js"></script>

@@ -281,6 +281,7 @@
   let gearMeshes = [];
   let flapMeshes = [];
   let spoilerMeshes = [];
+  let wingFlexLeftPivot = null, wingFlexRightPivot = null;
   let aeroVectorGroup;
   let waterParticleSystem, sprayParticleSystem, vortexParticleSystem;
   let runwayGroup, terrainGroup, cloudsGroup, sunSprite;
@@ -605,6 +606,23 @@
     buildParticleSystems();
     initRadar();
 
+    // Advanced 6-DOF Modular Simulator Subsystems
+    if (window.WorldScenery3D && terrainGroup) {
+      window.WorldScenery3D.init(terrainGroup, THREE);
+    }
+    if (window.AISkyTraffic && terrainGroup) {
+      window.AISkyTraffic.init(terrainGroup, THREE);
+    }
+    if (window.ILSGlideslopeATC && scene) {
+      window.ILSGlideslopeATC.init(scene, THREE);
+    }
+    if (window.CrashVfxParticles && scene) {
+      window.CrashVfxParticles.init(scene, THREE);
+    }
+    if (window.GarminG3000Cockpit && planeGroup) {
+      window.GarminG3000Cockpit.init(planeGroup, THREE);
+    }
+
     // Initial position & tiles
     teleportToLocation(SIM.locationId, 700);
 
@@ -634,6 +652,9 @@
     if (window.AeroDynamics) {
       window.AeroDynamics.initWingtipVortices(scene, planeGroup);
     }
+    if (window.AeroTerra6DOF) {
+      window.AeroTerra6DOF.setAircraftModel(modelKey);
+    }
     showToast(`САМОЛЁТ: ${cfg.name.toUpperCase()}`);
   }
 
@@ -652,6 +673,32 @@
     flapMeshes = [];
     spoilerMeshes = [];
     gearMeshes = [];
+    wingFlexLeftPivot = null;
+    wingFlexRightPivot = null;
+
+    if (window.FleetModels3D) {
+      let fleetData = null;
+      if (modelKey === 'a380') {
+        fleetData = window.FleetModels3D.createAirbusA380(THREE);
+      } else if (modelKey === 'b777') {
+        fleetData = window.FleetModels3D.createBoeing777(THREE);
+      } else {
+        fleetData = window.FleetModels3D.createAeroTerraH2(THREE);
+      }
+      if (fleetData && fleetData.group) {
+        planeGroup.add(fleetData.group);
+        if (fleetData.propMeshes) propMeshes = fleetData.propMeshes;
+        if (fleetData.propBlurMeshes) propBlurMeshes = fleetData.propBlurMeshes;
+        if (fleetData.gearPivots) gearMeshes = fleetData.gearPivots.map(g => ({ pivot: g.pivot, retractRotX: g.rotX || -Math.PI / 2 }));
+        wingFlexLeftPivot = fleetData.wingLeftPivot || null;
+        wingFlexRightPivot = fleetData.wingRightPivot || null;
+        if (window.GarminG3000Cockpit) {
+          window.GarminG3000Cockpit.init(planeGroup, THREE);
+        }
+        buildAeroVectorHelpers();
+        return;
+      }
+    }
 
     if (modelKey === 'a380') {
       buildA380Mesh();
@@ -2321,6 +2368,33 @@
       return;
     }
 
+    // MultiTouch & Gamepad API Inputs Integration
+    if (window.MobileMultiTouchPad) {
+      const padInputs = window.MobileMultiTouchPad.getInputs();
+      if (window.MobileMultiTouchPad.joyTouchId !== null || window.MobileMultiTouchPad.gyroActive || window.MobileMultiTouchPad.gamepadConnected) {
+        flight.pitchInput = padInputs.pitch;
+        flight.rollInput = padInputs.roll;
+        flight.yawInput = padInputs.yaw;
+      }
+      if (window.MobileMultiTouchPad.thrTouchId !== null || window.MobileMultiTouchPad.gamepadConnected) {
+        flight.throttle = padInputs.throttle;
+      }
+    }
+
+    // Atmosphere & Failures Injection (Engine #1 cut, Crosswind, PEMFC Overheat, Icing)
+    if (window.AeroTerraAtmosphere) {
+      if (window.AeroTerraAtmosphere.failures.engine1Out) {
+        flight.rot.y -= 0.12 * dt; // Asymmetric yaw moment towards inoperative engine
+      }
+      if (window.AeroTerraAtmosphere.crosswindActive) {
+        flight.pos.x += 18.0 * dt; // 18 m/s crosswind crab drift
+      }
+      if (window.AeroTerraAtmosphere.failures.wingIcing) {
+        flight.vel.z *= Math.max(0, 1.0 - 0.06 * dt);
+        flight.rot.x += 0.02 * dt;
+      }
+    }
+
     // 0. Auto-Takeoff Assist State Machine
     if (SIM.autoTakeoffActive) {
       flight.throttle = 1.0;
@@ -2423,8 +2497,19 @@
 
     flight.gearPos += (flight.gearTarget - flight.gearPos) * 2 * dt;
     gearMeshes.forEach((g) => {
-      g.pivot.rotation.x = g.retractRotX * (1.0 - flight.gearPos);
+      if (g.pivot) {
+        g.pivot.rotation.x = (g.retractRotX || -Math.PI / 2) * (1.0 - flight.gearPos);
+      }
     });
+
+    // Euler-Bernoulli Wing Flex Live Deflection
+    const wingFlexAngle = (flight.gLoad - 1.0) * 0.042;
+    if (wingFlexLeftPivot) {
+      wingFlexLeftPivot.rotation.z = Math.max(-0.06, Math.min(0.14, wingFlexAngle));
+    }
+    if (wingFlexRightPivot) {
+      wingFlexRightPivot.rotation.z = -Math.max(-0.06, Math.min(0.14, wingFlexAngle));
+    }
 
     // 3. Autopilot logic (Stable PD control without unbounded integrator!)
     if (SIM.apMode.demo) {
@@ -2680,6 +2765,11 @@
           window.ILSAutopilot.calloutCrash(gearRetracted ? 'Gear not extended' : 'Hard landing');
         }
 
+        if (window.CrashVfxParticles) {
+          window.CrashVfxParticles.triggerCrashExplosion(planeGroup.position, gearRetracted ? 'Gear not extended at 0m' : 'Hard impact (VSI exceeded)');
+          window.CrashVfxParticles.showBlackBoxReport(gearRetracted ? '💥 КРУШЕНИЕ (0 м): ШАССИ НЕ ВЫПУЩЕНЫ! АВАРИЙНАЯ ПОСАДКА НА ФЮЗЕЛЯЖ' : '💥 АВАРИЙНАЯ ЖЁСТКАЯ ПОСАДКА (0 м): VSI = ' + flight.vsi.toFixed(1) + ' м/с (ПРЕВЫШЕН ЛИМИТ -4.5 м/с)');
+        }
+
         showToast('💥 КРУШЕНИЕ: САМОЛЁТ РАЗБИТ! НАЖМИТЕ «СБРОС В ПОЛЁТ»');
       } else if (!flight.crashed) {
         if (flight.pos.y <= groundLevel) {
@@ -2706,6 +2796,9 @@
               flight._touchdownAnnounced = true;
               if (window.ILSAutopilot) {
                 window.ILSAutopilot.calloutTouchdown();
+              }
+              if (window.CrashVfxParticles) {
+                window.CrashVfxParticles.triggerTouchdownPuff(planeGroup.position);
               }
               showToast('🛬 МЯГКАЯ ПОСАДКА (TOUCHDOWN): ШАССИ ВЫПУЩЕНЫ, ПЕРЕГРУЗКА В НОРМЕ');
             }
@@ -2800,6 +2893,11 @@
       if (lArrow) lArrow.setLength(Math.min(7, Math.max(0.5, (liftForceN / currentMass) * 0.35)));
       if (tArrow) tArrow.setLength(Math.min(7, Math.max(0.5, (thrustN / currentMass) * 0.35)));
       if (dArrow) dArrow.setLength(Math.min(7, Math.max(0.5, (dragForceN / currentMass) * 0.35)));
+    }
+
+    // Modular ILS & ATC Voice / GPWS Altitude Callouts
+    if (window.ILSGlideslopeATC) {
+      window.ILSGlideslopeATC.update(flight.pos, flight.altAGL, flight.gearPos > 0.5, flight.vsi);
     }
   }
 
@@ -2961,22 +3059,26 @@
       }
     });
 
-    // AI Traffic Aircraft Blips
-    aiTrafficList.forEach(ai => {
+    // AI Traffic Aircraft & TCAS Radar Blips
+    const tcasTargets = (window.AISkyTraffic && window.AISkyTraffic.getTcasTargets && window.AISkyTraffic.getTcasTargets().length > 0)
+      ? window.AISkyTraffic.getTcasTargets()
+      : aiTrafficList;
+
+    tcasTargets.forEach(ai => {
       const scale = r / 6000;
       const relX = (ai.pos.x - flight.pos.x) * scale;
       const relZ = -(ai.pos.z - flight.pos.z) * scale;
       const dist = Math.hypot(relX, relZ);
 
       if (dist < r - 5) {
-        ctx.fillStyle = ai.color;
+        ctx.fillStyle = ai.color || '#00e5ff';
         ctx.beginPath();
         ctx.arc(relX, relZ, 4.0, 0, Math.PI * 2);
         ctx.fill();
 
         ctx.font = 'bold 8px monospace';
-        ctx.fillStyle = ai.color;
-        ctx.fillText(ai.callsign + ' ' + Math.round(ai.pos.y) + 'm', relX, relZ - 8);
+        ctx.fillStyle = ai.color || '#00e5ff';
+        ctx.fillText((ai.callsign || 'TCAS') + ' ' + Math.round(ai.pos.y) + 'm', relX, relZ - 8);
       }
     });
 
@@ -3152,6 +3254,85 @@
     if (elPfc) elPfc.textContent = `${(flight.throttle * 42.0).toFixed(1)} kW`;
     if (elPbuf) elPbuf.textContent = SIM.boostActive ? '35.0 kW (BOOST ON)' : '0.0 kW (STOL off)';
     if (elH2flow) elH2flow.textContent = `${(flight.throttle * 2.4).toFixed(1)} кг/ч`;
+
+    // Card 5: Euler-Bernoulli Wing Flex
+    const elFlex = document.getElementById('prof-wing-flex');
+    const elMoment = document.getElementById('prof-wing-moment');
+    const elWingGload = document.getElementById('prof-wing-gload');
+    const elSparStatus = document.getElementById('prof-spar-status');
+
+    const wingFlexMm = (flight.gLoad - 1.0) * 85.0;
+    const wingMomentKnm = (flight.liveLiftN / 1000.0 * 12.4) / 4.0;
+
+    if (elFlex) elFlex.textContent = `${wingFlexMm >= 0 ? '+' : ''}${(wingFlexMm / 10).toFixed(2)} см`;
+    if (elMoment) elMoment.textContent = `${wingMomentKnm.toFixed(1)} кН·м`;
+    if (elWingGload) elWingGload.textContent = `${flight.gLoad.toFixed(2)} G`;
+    if (elSparStatus) {
+      if (flight.gLoad > 3.8) {
+        elSparStatus.textContent = 'КРИТИЧЕСКАЯ НАГРУЗКА (ПЛАСТИЧНОСТЬ)';
+        elSparStatus.style.color = '#ef4444';
+      } else if (flight.gLoad > 2.5) {
+        elSparStatus.textContent = 'ПОВЫШЕННОЕ НАПРЯЖЕНИЕ';
+        elSparStatus.style.color = '#eab308';
+      } else {
+        elSparStatus.textContent = 'НОРМА (Эластичный диапазон)';
+        elSparStatus.style.color = '#10b981';
+      }
+    }
+  }
+
+  // 1-Click Failure Simulation Controls (Professor Lab)
+  function initProfessorFailureControls() {
+    const btnEng1 = document.getElementById('btn-prof-eng1');
+    const btnCrosswind = document.getElementById('btn-prof-crosswind');
+    const btnPemfc = document.getElementById('btn-prof-pemfc');
+    const btnIcing = document.getElementById('btn-prof-icing');
+    const btnReset = document.getElementById('btn-prof-reset-failures');
+
+    if (btnEng1) {
+      btnEng1.addEventListener('click', () => {
+        if (!window.AeroTerraAtmosphere) return;
+        const active = window.AeroTerraAtmosphere.toggleEngine1Failure();
+        btnEng1.classList.toggle('active', active);
+        showToast(active ? '⚠️ ОТКАЗ ДВИГАТЕЛЯ #1: АСИММЕТРИЯ ТЯГИ И УВОД НОСА' : '✅ ДВИГАТЕЛЬ #1 В НОРМЕ');
+      });
+    }
+
+    if (btnCrosswind) {
+      btnCrosswind.addEventListener('click', () => {
+        if (!window.AeroTerraAtmosphere) return;
+        const active = window.AeroTerraAtmosphere.toggleCrosswind18ms();
+        btnCrosswind.classList.toggle('active', active);
+        showToast(active ? '💨 БОКОВОЙ ВЕТЕР 18 М/С (УГОЛ СНОСА НА ВПП)' : '✅ ВЕТЕР СБРОШЕН (ШТИЛЬ)');
+      });
+    }
+
+    if (btnPemfc) {
+      btnPemfc.addEventListener('click', () => {
+        if (!window.AeroTerraAtmosphere) return;
+        const active = window.AeroTerraAtmosphere.togglePemfcOverheat();
+        btnPemfc.classList.toggle('active', active);
+        showToast(active ? '🔥 ПЕРЕГРЕВ BALLARD FC (>90°C): ПЕРЕХОД НА LIPO БУФЕР' : '✅ ТЕМПЕРАТУРА PEMFC В НОРМЕ (64°C)');
+      });
+    }
+
+    if (btnIcing) {
+      btnIcing.addEventListener('click', () => {
+        if (!window.AeroTerraAtmosphere) return;
+        const active = window.AeroTerraAtmosphere.toggleWingIcing();
+        btnIcing.classList.toggle('active', active);
+        showToast(active ? '❄️ ОБЛЕДЕНЕНИЕ КРЫЛА: РОСТ СОПРОТИВЛЕНИЯ И ПОТЕРЯ СКОРОСТИ' : '✅ ПРОТИВООБЛЕДЕНИТЕЛЬНАЯ СИСТЕМА ВКЛ (КРЫЛО ЧИСТОЕ)');
+      });
+    }
+
+    if (btnReset) {
+      btnReset.addEventListener('click', () => {
+        if (!window.AeroTerraAtmosphere) return;
+        window.AeroTerraAtmosphere.resetAllFailures();
+        [btnEng1, btnCrosswind, btnPemfc, btnIcing].forEach(b => b?.classList.remove('active'));
+        showToast('🔄 ВСЕ СИСТЕМЫ САМОЛЁТА И АТМОСФЕРА В НОРМЕ');
+      });
+    }
   }
 
   // ----------------------------------------------------------------------------
@@ -4795,6 +4976,18 @@
     updateCrashParticles(dt);
     updateParticles(dt);
 
+    // Modular Subsystems Updates
+    if (window.WorldScenery3D) window.WorldScenery3D.update(dt);
+    if (window.AISkyTraffic) window.AISkyTraffic.update(dt, flight.pos);
+    if (window.CrashVfxParticles) window.CrashVfxParticles.update(dt);
+    if (window.GarminG3000Cockpit) {
+      window.GarminG3000Cockpit.update(dt, flight, window.AeroTerraAtmosphere, {
+        pitch: flight.pitchInput,
+        roll: flight.rollInput,
+        yaw: flight.yawInput
+      });
+    }
+
     // 3. Dynamic Slippy Map Tile Streaming
     updateSatelliteTiles();
 
@@ -4823,6 +5016,10 @@
 
     init3DWorld();
     initControls();
+    initProfessorFailureControls();
+    if (window.MobileMultiTouchPad) {
+      window.MobileMultiTouchPad.init();
+    }
 
     SIM.initialized = true;
     SIM.running = true;
