@@ -229,12 +229,13 @@
   let ambientLight, sunLight, hemiLight;
   let planeGroup, fuselageMesh, wingMesh, leftBoom, rightBoom, tailGroup;
   let propMeshes = [];
+  let propBlurMeshes = [];
   let gearMeshes = [];
   let flapMeshes = [];
   let spoilerMeshes = [];
   let aeroVectorGroup;
-  let waterParticleSystem, sprayParticleSystem;
-  let runwayGroup, terrainGroup;
+  let waterParticleSystem, sprayParticleSystem, vortexParticleSystem;
+  let runwayGroup, terrainGroup, cloudsGroup, sunSprite;
 
   // Slippy Map Tile System
   const mapTiles = new Map();
@@ -354,6 +355,113 @@
     return tex;
   }
 
+  // Procedural Daylight Sky PMREM Environment Map Generator
+  function createSimSkyEnvironment(renderer) {
+    const pmremGenerator = new THREE.PMREMGenerator(renderer);
+    pmremGenerator.compileEquirectangularShader();
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+
+    const grad = ctx.createLinearGradient(0, 0, 0, 512);
+    grad.addColorStop(0.0, '#1d4ed8'); // Deep sky blue
+    grad.addColorStop(0.38, '#60a5fa'); // Mid sky
+    grad.addColorStop(0.48, '#bfdbfe'); // Horizon haze
+    grad.addColorStop(0.52, '#64748b'); // Terrain ground
+    grad.addColorStop(1.0, '#1e293b'); // Nadir
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 1024, 512);
+
+    // Sun disc highlight in sky environment
+    const sunG = ctx.createRadialGradient(680, 110, 10, 680, 110, 160);
+    sunG.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
+    sunG.addColorStop(0.25, 'rgba(255, 245, 210, 0.85)');
+    sunG.addColorStop(0.6, 'rgba(255, 220, 140, 0.3)');
+    sunG.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
+    ctx.fillStyle = sunG;
+    ctx.fillRect(480, 0, 400, 260);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.mapping = THREE.EquirectangularReflectionMapping;
+    const skyEnv = pmremGenerator.fromEquirectangular(tex).texture;
+    pmremGenerator.dispose();
+    tex.dispose();
+    return skyEnv;
+  }
+
+  // Volumetric 3D Cumulus Clouds (Plane can fly through them)
+  function buildVolumetricClouds() {
+    cloudsGroup = new THREE.Group();
+    cloudsGroup.name = 'VolumetricClouds';
+
+    const cloudCount = 18;
+    const cloudMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      roughness: 0.92,
+      metalness: 0.05,
+      transparent: true,
+      opacity: 0.72,
+      flatShading: false
+    });
+
+    for (let c = 0; c < cloudCount; c++) {
+      const cluster = new THREE.Group();
+      const angle = (c / cloudCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.35;
+      const dist = 650 + Math.random() * 2600;
+      const alt = 550 + Math.random() * 450;
+      cluster.position.set(Math.sin(angle) * dist, alt, Math.cos(angle) * dist);
+
+      const puffCount = 5 + Math.floor(Math.random() * 5);
+      for (let p = 0; p < puffCount; p++) {
+        const radius = 45 + Math.random() * 50;
+        const puffGeo = new THREE.SphereGeometry(radius, 8, 8);
+        const puff = new THREE.Mesh(puffGeo, cloudMat);
+        puff.position.set(
+          (Math.random() - 0.5) * 140,
+          (Math.random() - 0.5) * 35,
+          (Math.random() - 0.5) * 140
+        );
+        puff.scale.set(1.4, 0.75, 1.2);
+        cluster.add(puff);
+      }
+      cloudsGroup.add(cluster);
+    }
+
+    if (terrainGroup) terrainGroup.add(cloudsGroup);
+    else scene.add(cloudsGroup);
+  }
+
+  // Atmospheric Sun Billboard with Flare
+  function buildAtmosphericSun() {
+    const sunCanvas = document.createElement('canvas');
+    sunCanvas.width = 256;
+    sunCanvas.height = 256;
+    const sCtx = sunCanvas.getContext('2d');
+    const sGrad = sCtx.createRadialGradient(128, 128, 15, 128, 128, 120);
+    sGrad.addColorStop(0.0, 'rgba(255, 255, 255, 1.0)');
+    sGrad.addColorStop(0.2, 'rgba(255, 248, 220, 0.95)');
+    sGrad.addColorStop(0.5, 'rgba(255, 220, 140, 0.45)');
+    sGrad.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
+    sCtx.fillStyle = sGrad;
+    sCtx.beginPath();
+    sCtx.arc(128, 128, 120, 0, Math.PI * 2);
+    sCtx.fill();
+
+    const sunTex = new THREE.CanvasTexture(sunCanvas);
+    const sunMat = new THREE.SpriteMaterial({
+      map: sunTex,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
+    sunSprite = new THREE.Sprite(sunMat);
+    sunSprite.position.set(2400, 4500, 3000);
+    sunSprite.scale.set(1400, 1400, 1);
+    scene.add(sunSprite);
+  }
+
   // ----------------------------------------------------------------------------
   // 5. GUARANTEED 3D WORLD INITIALIZATION (NO BLACK SCREEN!)
   // ----------------------------------------------------------------------------
@@ -375,7 +483,7 @@
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.setSize(w, h, false);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.15;
+    renderer.toneMappingExposure = 1.25;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -383,6 +491,10 @@
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x9ec5fe); // Sky blue
     scene.fog = new THREE.FogExp2(0xcbd5e1, 0.00018); // Horizon haze
+
+    // Sky Environment Map for PBR Reflections
+    const skyEnv = createSimSkyEnvironment(renderer);
+    scene.environment = skyEnv;
 
     // Camera
     camera = new THREE.PerspectiveCamera(54, w / h, 0.5, 20000);
@@ -421,6 +533,8 @@
     // Build Subsystems
     buildAircraftModel();
     buildSTOLRunway();
+    buildVolumetricClouds();
+    buildAtmosphericSun();
     buildParticleSystems();
     initRadar();
 
@@ -441,41 +555,56 @@
     planeGroup = new THREE.Group();
     planeGroup.name = 'AeroTerraH2';
 
-    // Materials
-    const carbonWhiteMat = new THREE.MeshStandardMaterial({
+    // Materials (High-End PBR Clearcoat & Aerospace Composites)
+    const carbonWhiteMat = new THREE.MeshPhysicalMaterial({
       color: 0xf8fafc,
-      roughness: 0.28,
-      metalness: 0.12
+      roughness: 0.12,
+      metalness: 0.15,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.06,
+      reflectivity: 1.0,
+      envMapIntensity: 1.8
     });
 
-    const cyanAccentMat = new THREE.MeshStandardMaterial({
+    const cyanAccentMat = new THREE.MeshPhysicalMaterial({
       color: 0x00e5ff,
-      roughness: 0.2,
-      metalness: 0.4,
-      emissive: 0x003344
+      roughness: 0.15,
+      metalness: 0.45,
+      clearcoat: 1.0,
+      emissive: 0x003344,
+      emissiveIntensity: 0.5
     });
 
-    const darkTrimMat = new THREE.MeshStandardMaterial({
-      color: 0x0f172a,
-      roughness: 0.4,
-      metalness: 0.5
+    const darkTrimMat = new THREE.MeshPhysicalMaterial({
+      color: 0x141822,
+      roughness: 0.22,
+      metalness: 0.45,
+      clearcoat: 0.9,
+      clearcoatRoughness: 0.1,
+      envMapIntensity: 1.5
     });
 
     const canopyGlassMat = new THREE.MeshPhysicalMaterial({
-      color: 0x0284c7,
-      transparent: true,
-      opacity: 0.72,
-      roughness: 0.1,
+      color: 0x38bdf8,
       metalness: 0.1,
-      transmission: 0.75,
-      ior: 1.5
+      roughness: 0.05,
+      transmission: 0.85,
+      opacity: 0.95,
+      transparent: true,
+      ior: 1.52,
+      iridescence: 0.6,
+      iridescenceIOR: 1.3,
+      envMapIntensity: 2.2
     });
 
-    const h2TankMat = new THREE.MeshStandardMaterial({
-      color: 0x06b6d4,
-      metalness: 0.6,
-      roughness: 0.2,
-      emissive: 0x083344
+    const h2TankMat = new THREE.MeshPhysicalMaterial({
+      color: 0x00d2ff,
+      metalness: 0.85,
+      roughness: 0.15,
+      clearcoat: 1.0,
+      emissive: 0x083344,
+      emissiveIntensity: 0.4,
+      envMapIntensity: 2.0
     });
 
     // 1. Aerodynamic Fuselage Pod (Length: 7.2m, Width: 1.2m, Height: 1.1m)
@@ -583,6 +712,7 @@
 
     // 3. 4 Distributed Electric Propulsion (DEP) Motors & Spinning Propellers
     propMeshes = [];
+    propBlurMeshes = [];
     const motorPositions = [-4.2, -1.8, 1.8, 4.2];
     motorPositions.forEach((posX) => {
       // Nacelle
@@ -610,6 +740,20 @@
         bladeMesh.rotation.z = (b * Math.PI * 2) / 3;
         propGroup.add(bladeMesh);
       }
+
+      // Propeller Motion Blur Disc (fades in at RPM > 40%)
+      const blurGeo = new THREE.RingGeometry(0.12, 0.76, 32);
+      const blurMat = new THREE.MeshBasicMaterial({
+        color: 0x00e5ff,
+        transparent: true,
+        opacity: 0.0,
+        side: THREE.DoubleSide,
+        depthWrite: false
+      });
+      const blurDisc = new THREE.Mesh(blurGeo, blurMat);
+      blurDisc.position.z = -0.02;
+      propGroup.add(blurDisc);
+      propBlurMeshes.push(blurDisc);
 
       planeGroup.add(propGroup);
       propMeshes.push(propGroup);
@@ -799,7 +943,7 @@
   }
 
   // ----------------------------------------------------------------------------
-  // 8. 3D PARTICLE SYSTEMS: WATER SALVO & AGRO SPRAY MIST
+  // 8. 3D PARTICLE SYSTEMS: WATER SALVO, AGRO SPRAY & WINGTIP VORTICES
   // ----------------------------------------------------------------------------
   function buildParticleSystems() {
     // 1. Water Cascade Drop (Space / Fire Bombing)
@@ -863,6 +1007,37 @@
     } else {
       scene.add(sprayParticleSystem);
     }
+
+    // 3. Wingtip Vortex Condensation Trails (High AoA / G-Turn Vapor)
+    const vortexCount = 200;
+    const vortexGeo = new THREE.BufferGeometry();
+    const vortexPos = new Float32Array(vortexCount * 3);
+    const vortexVels = new Float32Array(vortexCount * 3);
+
+    for (let i = 0; i < vortexCount; i++) {
+      vortexPos[i * 3 + 0] = 0;
+      vortexPos[i * 3 + 1] = -9999;
+      vortexPos[i * 3 + 2] = 0;
+      vortexVels[i * 3 + 0] = (Math.random() - 0.5) * 0.8;
+      vortexVels[i * 3 + 1] = (Math.random() - 0.5) * 0.8;
+      vortexVels[i * 3 + 2] = -18 - Math.random() * 12;
+    }
+
+    vortexGeo.setAttribute('position', new THREE.BufferAttribute(vortexPos, 3));
+    const vortexMat = new THREE.PointsMaterial({
+      color: 0xe0f2fe,
+      size: 2.8,
+      transparent: true,
+      opacity: 0.65,
+      blending: THREE.AdditiveBlending
+    });
+    vortexParticleSystem = new THREE.Points(vortexGeo, vortexMat);
+    vortexParticleSystem.userData = { vels: vortexVels, count: vortexCount };
+    if (terrainGroup) {
+      terrainGroup.add(vortexParticleSystem);
+    } else {
+      scene.add(vortexParticleSystem);
+    }
   }
 
   function updateParticles(dt) {
@@ -924,6 +1099,32 @@
         flight.fluidRemaining = Math.max(0, flight.fluidRemaining - 25 * dt);
         if (flight.fluidRemaining <= 0) flight.agroSpraying = false;
       }
+    }
+
+    // 3. Wingtip Vortex Condensation (Maneuvers, G-load > 1.25, AoA > 6 deg)
+    if (vortexParticleSystem) {
+      const posAttr = vortexParticleSystem.geometry.attributes.position;
+      const vels = vortexParticleSystem.userData.vels;
+      const count = vortexParticleSystem.userData.count;
+      const highVortex = Math.abs(flight.aoa) > 6.0 || Math.abs(flight.gForce - 1.0) > 0.25;
+
+      for (let i = 0; i < count; i++) {
+        const idx = i * 3;
+        if (highVortex && Math.random() < 0.35) {
+          const side = (i % 2 === 0 ? -6.2 : 6.2);
+          const tipPos = new THREE.Vector3(side, 0.85, 0.1).applyQuaternion(flight.quat).add(flight.pos);
+          posAttr.array[idx + 0] = tipPos.x;
+          posAttr.array[idx + 1] = tipPos.y;
+          posAttr.array[idx + 2] = tipPos.z;
+        } else if (posAttr.array[idx + 1] > 0) {
+          posAttr.array[idx + 0] += vels[idx + 0] * dt;
+          posAttr.array[idx + 1] += vels[idx + 1] * dt;
+          posAttr.array[idx + 2] += vels[idx + 2] * dt;
+        } else {
+          posAttr.array[idx + 1] = -9999;
+        }
+      }
+      posAttr.needsUpdate = true;
     }
   }
 
@@ -1077,8 +1278,13 @@
     flight.propRpm += (targetRPM - flight.propRpm) * 4 * dt;
     flight.propAngle += (flight.propRpm * (Math.PI * 2) / 60) * dt;
 
-    propMeshes.forEach((p) => {
-      p.rotation.z = flight.propAngle;
+    propMeshes.forEach((p, idx) => {
+      p.rotation.z = flight.propAngle * (idx % 2 === 0 ? 1 : -1);
+    });
+
+    const blurAlpha = Math.min(Math.max((effectiveThrottle - 0.25) / 0.6, 0), 0.42);
+    propBlurMeshes.forEach(m => {
+      m.material.opacity = blurAlpha;
     });
 
     // 2. Mechanization Animations

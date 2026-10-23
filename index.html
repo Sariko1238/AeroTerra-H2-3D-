@@ -83,14 +83,14 @@
 
       <!-- Developer Console Trigger Button -->
       <button class="btn-dev-console-trigger" id="btn-open-dev-console" title="Открыть инженерную консоль разработчика (~ / Ctrl+Shift+D)">
-        <i class="fa-solid fa-terminal"></i> <span>🛠️ Dev Console</span>
+        <i class="fa-solid fa-terminal"></i> <span>🛠️ Консоль (~)</span>
         <span class="dev-status-indicator-dot" id="header-dev-dot"></span>
       </button>
 
       <!-- User Auth Profile Widget (Neon Postgres) -->
       <div class="auth-header-widget" id="auth-header-widget">
         <button class="btn-auth-trigger" id="btn-open-auth">
-          <i class="fa-solid fa-user-astronaut"></i> <span id="auth-btn-label">👤 Кабинет / Вход</span>
+          <i class="fa-solid fa-user-astronaut"></i> <span id="auth-btn-label">👤 Аккаунт</span>
         </button>
         <div class="user-profile-badge" id="user-profile-badge" style="display: none;">
           <div class="user-avatar" id="header-user-avatar">П</div>
@@ -155,6 +155,18 @@
         </div>
       </div>
 
+      <!-- Quick Component Selection Ribbon (Nodes 1..8) -->
+      <div class="hangar-nodes-ribbon" id="hangar-nodes-ribbon">
+        <button class="node-ribbon-btn active" data-node="wing" title="Узел #1: Несущее крыло NACA 64-215"><span class="node-num">1</span> <span>Крыло NACA</span></button>
+        <button class="node-ribbon-btn" data-node="tank" title="Узел #2: Криогенный бак LH2 Type-IV"><span class="node-num">2</span> <span>Крио-бак H2</span></button>
+        <button class="node-ribbon-btn" data-node="fuelcell" title="Узел #3: Топливная ячейка PEM 120 кВт"><span class="node-num">3</span> <span>Ячейка PEM</span></button>
+        <button class="node-ribbon-btn" data-node="payload" title="Узел #4: Модульная капсула 800л"><span class="node-num">4</span> <span>Капсула 800л</span></button>
+        <button class="node-ribbon-btn" data-node="motors" title="Узел #5: 4x Моторы DEP Blown-Wing"><span class="node-num">5</span> <span>4x Моторы DEP</span></button>
+        <button class="node-ribbon-btn" data-node="gimbal" title="Узел #6: ИИ-Оптическая турель NDVI"><span class="node-num">6</span> <span>ИИ-Турель NDVI</span></button>
+        <button class="node-ribbon-btn" data-node="tail" title="Узел #7: Двухбалочное оперение и авионика"><span class="node-num">7</span> <span>Хвост & Авионика</span></button>
+        <button class="node-ribbon-btn" data-node="gear" title="Узел #8: Шасси STOL повышенной энергоёмкости"><span class="node-num">8</span> <span>Шасси STOL</span></button>
+      </div>
+
       <!-- Bottom Row: 3D Toolbar & Camera Angles -->
       <div class="hud-bottom-bar">
         <!-- Camera View Presets -->
@@ -166,26 +178,38 @@
           <button class="preset-btn" data-view="pilot" title="Вид из кокпита">COCKPIT</button>
         </div>
 
-        <!-- Engineering View Buttons -->
+        <!-- Engineering View Buttons & Shader Switcher -->
         <div class="hangar-tools-floating">
-          <button class="hangar-tool-btn" id="btn-exploded-view" title="Разобрать самолёт в 3D на узлы">
-            <i class="fa-solid fa-cubes-stacked"></i> <span data-i18n="btn_exploded">3D Разбор (Exploded)</span>
+          <button class="hangar-tool-btn active" id="btn-shader-pbr" title="Фотореалистичный композит (PBR Clearcoat + HDRI Отражения)">
+            <i class="fa-solid fa-gem"></i> <span>✨ PBR Лак</span>
           </button>
           <button class="hangar-tool-btn" id="btn-zebra-shader" title="Проверка кривизны поверхностей класса А CATIA V5">
-            <i class="fa-solid fa-barcode"></i> <span data-i18n="btn_zebra">CATIA Zebra Shader</span>
+            <i class="fa-solid fa-barcode"></i> <span>🦓 CATIA Zebra</span>
+          </button>
+          <button class="hangar-tool-btn" id="btn-shader-pressure" title="Карта аэродинамического давления Cp">
+            <i class="fa-solid fa-fire-flame-curved"></i> <span>🌈 Давление Cp</span>
+          </button>
+          <button class="hangar-tool-btn" id="btn-shader-xray" title="Рентген силового набора и светящегося бака H2">
+            <i class="fa-solid fa-bone"></i> <span>🦴 Рентген X-Ray</span>
+          </button>
+          <button class="hangar-tool-btn" id="btn-laser-scan" title="Лазерное сканирование сечений профиля NACA 64-215">
+            <i class="fa-solid fa-crosshairs"></i> <span>📐 Лазер NACA</span>
+          </button>
+          <button class="hangar-tool-btn" id="btn-exploded-view" title="Разобрать самолёт в 3D на узлы">
+            <i class="fa-solid fa-cubes-stacked"></i> <span data-i18n="btn_exploded">3D Разбор</span>
           </button>
           <button class="hangar-tool-btn" id="btn-wind-tunnel" title="Включить обдув крыла и вихревые линии CFD">
             <i class="fa-solid fa-wind"></i> <span data-i18n="btn_cfd">Обдув CFD</span>
           </button>
           <button class="hangar-tool-btn success" id="btn-spray-anim" title="Запустить распыление удобрений из форсунок">
-            <i class="fa-solid fa-spray-can"></i> <span data-i18n="btn_spray">Распыление</span>
+            <i class="fa-solid fa-spray-can"></i> <span data-i18n="btn_spray">Спрей</span>
           </button>
           <button class="hangar-tool-btn danger" id="btn-water-dump" title="Запустить залповый сброс воды на очаг пожара">
-            <i class="fa-solid fa-water"></i> <span data-i18n="btn_dump">Сброс Воды</span>
+            <i class="fa-solid fa-water"></i> <span data-i18n="btn_dump">Сброс</span>
           </button>
           <div class="cad-upload-wrapper">
             <button class="hangar-tool-btn" title="Загрузить свой .STL / .OBJ / .GLB файл из CATIA V5">
-              <i class="fa-solid fa-folder-open"></i> <span data-i18n="btn_upload_cad">Загрузить CAD</span>
+              <i class="fa-solid fa-folder-open"></i> <span data-i18n="btn_upload_cad">CAD</span>
             </button>
             <input type="file" id="cad-file-input" accept=".stl,.obj,.glb,.gltf">
           </div>

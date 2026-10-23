@@ -596,7 +596,7 @@
   };
 
   // --------------------------------------------------------------------------
-  // 5. THREE.JS 3D HANGAR ENGINE
+  // 5. THREE.JS 3D HANGAR ENGINE (Airbus / Pininfarina Aerospace Expo Pavilion)
   // --------------------------------------------------------------------------
   let scene, camera, renderer, controls;
   let aircraftGroup, explodedGroups = {};
@@ -610,13 +610,123 @@
   let waterBayDoorL = null, waterBayDoorR = null;
   let sprayNozzleMeshes = [];
   let zebraMaterial = null;
+  let pressureMaterial = null;
+  let xrayMaterial = null;
   let standardMaterials = [];
+  let turntableGroup = null;
+  let laserScannerGroup = null;
+  let laserPlaneMesh = null;
+  let laserScannerActive = false;
+  let propBlurDiscs = [];
+  let carbonTexture = null;
+  let propBlurTexture = null;
 
   // Dedicated Particle Physics Arrays for high-precision simulation
   let cfdData = [];
   let sprayData = [];
   let waterDumpData = [];
   let waterSplashData = [];
+
+  // Procedural Studio Equirectangular HDRI Environment Map Generator
+  function createStudioEnvironment(renderer) {
+    const pmremGenerator = new THREE.PMREMGenerator(renderer);
+    pmremGenerator.compileEquirectangularShader();
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+
+    // Sky to Ground Studio Gradient
+    const grad = ctx.createLinearGradient(0, 0, 0, 512);
+    grad.addColorStop(0.0, '#070f1e');
+    grad.addColorStop(0.44, '#15253d');
+    grad.addColorStop(0.56, '#0a101b');
+    grad.addColorStop(1.0, '#04070e');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 1024, 512);
+
+    // Overhead Main Luminaire Bank (bright white softbox)
+    const g1 = ctx.createRadialGradient(512, 110, 20, 512, 110, 220);
+    g1.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
+    g1.addColorStop(0.35, 'rgba(235, 245, 255, 0.9)');
+    g1.addColorStop(0.7, 'rgba(100, 180, 255, 0.35)');
+    g1.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = g1;
+    ctx.fillRect(180, 10, 664, 200);
+
+    // Front-Left Specular Softbox
+    const g2 = ctx.createRadialGradient(220, 190, 10, 220, 190, 130);
+    g2.addColorStop(0, 'rgba(240, 250, 255, 0.95)');
+    g2.addColorStop(0.5, 'rgba(0, 229, 255, 0.45)');
+    g2.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = g2;
+    ctx.fillRect(90, 110, 260, 160);
+
+    // Front-Right Specular Softbox
+    const g3 = ctx.createRadialGradient(804, 190, 10, 804, 190, 130);
+    g3.addColorStop(0, 'rgba(240, 250, 255, 0.95)');
+    g3.addColorStop(0.5, 'rgba(0, 255, 157, 0.45)');
+    g3.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = g3;
+    ctx.fillRect(674, 110, 260, 160);
+
+    // Cyan Horizon Rim Streak
+    ctx.fillStyle = 'rgba(0, 229, 255, 0.28)';
+    ctx.fillRect(0, 248, 1024, 16);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.mapping = THREE.EquirectangularReflectionMapping;
+    const envMap = pmremGenerator.fromEquirectangular(tex).texture;
+    pmremGenerator.dispose();
+    tex.dispose();
+    return envMap;
+  }
+
+  // Procedural 2x2 Twill Weave Carbon Fiber Texture
+  function createCarbonTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#111620';
+    ctx.fillRect(0, 0, 64, 64);
+    const size = 8;
+    for (let y = 0; y < 64; y += size) {
+      for (let x = 0; x < 64; x += size) {
+        const isEven = ((x / size) + (y / size)) % 2 === 0;
+        ctx.fillStyle = isEven ? '#1e2838' : '#0e141d';
+        ctx.fillRect(x, y, size, size);
+        ctx.fillStyle = isEven ? 'rgba(255, 255, 255, 0.09)' : 'rgba(0, 0, 0, 0.2)';
+        ctx.fillRect(x, y + 1, size, 2);
+      }
+    }
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(24, 24);
+    return texture;
+  }
+
+  // Procedural Propeller Motion Blur Disc Texture
+  function createPropBlurTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 128;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    const g = ctx.createRadialGradient(64, 64, 12, 64, 64, 64);
+    g.addColorStop(0.0, 'rgba(0, 229, 255, 0.0)');
+    g.addColorStop(0.2, 'rgba(0, 229, 255, 0.06)');
+    g.addColorStop(0.7, 'rgba(0, 229, 255, 0.32)');
+    g.addColorStop(0.92, 'rgba(0, 229, 255, 0.48)');
+    g.addColorStop(0.95, 'rgba(255, 214, 0, 0.6)');
+    g.addColorStop(1.0, 'rgba(255, 214, 0, 0.0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(64, 64, 64, 0, Math.PI * 2);
+    ctx.fill();
+    return new THREE.CanvasTexture(canvas);
+  }
 
   function initThree() {
     const canvas = document.getElementById('webgl-canvas');
@@ -634,12 +744,19 @@
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.15;
+    renderer.toneMappingExposure = 1.25;
 
-    // Scene
+    // Scene with Procedural Studio HDRI Environment Map
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x060b16);
-    scene.fog = new THREE.FogExp2(0x060b16, 0.022);
+    scene.background = new THREE.Color(0x060b14);
+    scene.fog = new THREE.FogExp2(0x060b14, 0.02);
+
+    const studioEnv = createStudioEnvironment(renderer);
+    scene.environment = studioEnv;
+
+    // Initialize Procedural Textures
+    carbonTexture = createCarbonTexture();
+    propBlurTexture = createPropBlurTexture();
 
     // Camera
     camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
@@ -661,10 +778,10 @@
     // Lighting (Enhanced High-Luminance Aerospace Rig)
     setupLighting();
 
-    // Hangar Floor & Holographic Runway Grid
+    // Luxury Aerospace Exhibition Pavilion (Mirrored Epoxy Floor, Turntable, Truss, Softboxes, Laser)
     buildHangarEnvironment();
 
-    // Procedural 3D AeroTerra H2 Aircraft (CATIA V5 Class-A Lofting)
+    // Procedural 3D AeroTerra H2 Aircraft (CATIA V5 Class-A Lofting + MeshPhysicalMaterials)
     buildAeroTerraModel();
 
     // 8 Interactive 3D Hotspot Sprites
@@ -673,8 +790,8 @@
     // Particle Systems (CFD, Spray 6-Nozzles, Water Dump + Splash)
     createParticleSystems();
 
-    // Custom Zebra Shader for Class-A Surface Continuity
-    initZebraShader();
+    // 4-Shader Switcher Engine (PBR Clearcoat, CATIA Zebra, Cp Heatmap, X-Ray)
+    initAircraftShaders();
 
     // Select Node #1 (Wing) by default so the inspector panel is open on load
     selectHotspot('wing');
@@ -729,36 +846,222 @@
   }
 
   function buildHangarEnvironment() {
-    // Floor Geometry with holographic grid
+    // 1. High-Gloss Epoxy Mirrored Floor with Specular Clearcoat Reflections
     const floorGeo = new THREE.PlaneGeometry(120, 120, 60, 60);
-    const floorMat = new THREE.MeshStandardMaterial({
-      color: 0x070e1c,
-      roughness: 0.8,
-      metalness: 0.2
+    const floorMat = new THREE.MeshPhysicalMaterial({
+      color: 0x060b16,
+      roughness: 0.12,
+      metalness: 0.75,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.05,
+      reflectivity: 0.9,
+      envMapIntensity: 1.5
     });
     const floor = new THREE.Mesh(floorGeo, floorMat);
     floor.rotation.x = -Math.PI / 2;
-    floor.position.y = -1.6;
+    floor.position.y = -1.60;
     floor.receiveShadow = true;
     scene.add(floor);
 
-    // Neon Runway Grid Rings
-    const gridHelper = new THREE.GridHelper(60, 40, 0x00e5ff, 0x0d2346);
-    gridHelper.position.y = -1.59;
+    // Floor Cybernetic Grid
+    const gridHelper = new THREE.GridHelper(60, 40, 0x00e5ff, 0x091830);
+    gridHelper.position.y = -1.595;
     scene.add(gridHelper);
 
-    // Holographic Circular Landing Reticle on floor
-    const ringGeo = new THREE.RingGeometry(5.8, 6.0, 64);
-    const ringMat = new THREE.MeshBasicMaterial({
+    // 2. Exhibition Rotating Turntable Dais (Airbus/Pininfarina Showcase)
+    turntableGroup = new THREE.Group();
+    turntableGroup.position.set(0, -1.59, 0);
+    scene.add(turntableGroup);
+
+    // Elevated Platform Plinth
+    const daisGeo = new THREE.CylinderGeometry(7.2, 7.5, 0.2, 64);
+    const daisMat = new THREE.MeshPhysicalMaterial({
+      color: 0x0e1726,
+      roughness: 0.22,
+      metalness: 0.8,
+      clearcoat: 0.8,
+      clearcoatRoughness: 0.08
+    });
+    const dais = new THREE.Mesh(daisGeo, daisMat);
+    dais.position.y = 0.1;
+    dais.receiveShadow = true;
+    turntableGroup.add(dais);
+
+    // Glowing Neon Cyan LED Perimeter Ring
+    const ledRingGeo = new THREE.RingGeometry(7.15, 7.3, 64);
+    const ledRingMat = new THREE.MeshBasicMaterial({
       color: 0x00e5ff,
+      side: THREE.DoubleSide
+    });
+    const ledRing = new THREE.Mesh(ledRingGeo, ledRingMat);
+    ledRing.rotation.x = -Math.PI / 2;
+    ledRing.position.y = 0.205;
+    turntableGroup.add(ledRing);
+
+    // Inner Concentric Ring
+    const innerRingGeo = new THREE.RingGeometry(4.8, 4.88, 48);
+    const innerRingMat = new THREE.MeshBasicMaterial({
+      color: 0x00ff9d,
       side: THREE.DoubleSide,
       transparent: true,
-      opacity: 0.45
+      opacity: 0.65
     });
-    const ring = new THREE.Mesh(ringGeo, ringMat);
-    ring.rotation.x = -Math.PI / 2;
-    ring.position.y = -1.58;
-    scene.add(ring);
+    const innerRing = new THREE.Mesh(innerRingGeo, innerRingMat);
+    innerRing.rotation.x = -Math.PI / 2;
+    innerRing.position.y = 0.206;
+    turntableGroup.add(innerRing);
+
+    // Turntable Degree Ticks (0° to 360° every 30°)
+    for (let deg = 0; deg < 360; deg += 30) {
+      const rad = (deg * Math.PI) / 180;
+      const isCardinal = deg % 90 === 0;
+      const tickLen = isCardinal ? 0.45 : 0.25;
+      const tickWidth = isCardinal ? 0.06 : 0.03;
+      const tickGeo = new THREE.PlaneGeometry(tickWidth, tickLen);
+      tickGeo.rotateX(-Math.PI / 2);
+      const tickMat = new THREE.MeshBasicMaterial({
+        color: isCardinal ? 0x00e5ff : 0x64748b,
+        side: THREE.DoubleSide
+      });
+      const tickMesh = new THREE.Mesh(tickGeo, tickMat);
+      const r = 6.75;
+      tickMesh.position.set(Math.sin(rad) * r, 0.208, Math.cos(rad) * r);
+      tickMesh.rotation.y = rad;
+      turntableGroup.add(tickMesh);
+    }
+
+    // Safety Hazard Chevron Border (Yellow/Black striped outer ring)
+    const hazardRingGeo = new THREE.RingGeometry(7.32, 7.48, 48);
+    const hazardCanvas = document.createElement('canvas');
+    hazardCanvas.width = 256;
+    hazardCanvas.height = 32;
+    const hCtx = hazardCanvas.getContext('2d');
+    for (let x = 0; x < 256; x += 32) {
+      hCtx.fillStyle = '#ffcc00';
+      hCtx.fillRect(x, 0, 16, 32);
+      hCtx.fillStyle = '#111827';
+      hCtx.fillRect(x + 16, 0, 16, 32);
+    }
+    const hazardTex = new THREE.CanvasTexture(hazardCanvas);
+    hazardTex.wrapS = THREE.RepeatWrapping;
+    hazardTex.repeat.set(12, 1);
+    const hazardMat = new THREE.MeshBasicMaterial({
+      map: hazardTex,
+      side: THREE.DoubleSide
+    });
+    const hazardMesh = new THREE.Mesh(hazardRingGeo, hazardMat);
+    hazardMesh.rotation.x = -Math.PI / 2;
+    hazardMesh.position.y = 0.204;
+    turntableGroup.add(hazardMesh);
+
+    // 3. Overhead Aerospace Space Truss Ceiling Structure (at y = 8.5 .. 9.2)
+    const trussGroup = new THREE.Group();
+    scene.add(trussGroup);
+
+    const trussBeamMat = new THREE.MeshPhysicalMaterial({
+      color: 0x1e293b,
+      metalness: 0.9,
+      roughness: 0.25
+    });
+
+    // Longitudinal truss chords
+    for (const x of [-6, -2, 2, 6]) {
+      const chordGeo = new THREE.CylinderGeometry(0.045, 0.045, 24, 12);
+      chordGeo.rotateX(Math.PI / 2);
+      const chord = new THREE.Mesh(chordGeo, trussBeamMat);
+      chord.position.set(x, 8.8, 0);
+      trussGroup.add(chord);
+    }
+    // Transverse crossbeams
+    for (const z of [-10, -5, 0, 5, 10]) {
+      const crossGeo = new THREE.CylinderGeometry(0.04, 0.04, 13, 12);
+      crossGeo.rotateZ(Math.PI / 2);
+      const cross = new THREE.Mesh(crossGeo, trussBeamMat);
+      cross.position.set(0, 8.8, z);
+      trussGroup.add(cross);
+    }
+
+    // 4 Rectangular Softbox Light Fixtures suspended beneath the truss
+    const softboxPositions = [
+      { x: -4.5, z: -3.2 },
+      { x: 4.5, z: -3.2 },
+      { x: -4.5, z: 3.2 },
+      { x: 4.5, z: 3.2 }
+    ];
+
+    softboxPositions.forEach(pos => {
+      const sbGroup = new THREE.Group();
+      sbGroup.position.set(pos.x, 8.2, pos.z);
+
+      // Softbox housing
+      const sbBoxGeo = new THREE.BoxGeometry(4.0, 0.15, 1.4);
+      const sbBoxMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.7 });
+      const sbBox = new THREE.Mesh(sbBoxGeo, sbBoxMat);
+      sbGroup.add(sbBox);
+
+      // Emissive diffuser face (facing DOWNwards)
+      const diffGeo = new THREE.PlaneGeometry(3.8, 1.2);
+      diffGeo.rotateX(Math.PI / 2);
+      const diffMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      const diffuser = new THREE.Mesh(diffGeo, diffMat);
+      diffuser.position.y = -0.08;
+      sbGroup.add(diffuser);
+
+      // Downward spot / point light
+      const pLight = new THREE.PointLight(0xffffff, 1.8, 16);
+      pLight.position.set(0, -0.2, 0);
+      sbGroup.add(pLight);
+
+      trussGroup.add(sbGroup);
+    });
+
+    // 4. Animated 3D Laser Scanner (CATIA Class-A Laser Scanner)
+    laserScannerGroup = new THREE.Group();
+    laserScannerGroup.visible = false;
+    scene.add(laserScannerGroup);
+
+    // Overhead emitter bar
+    const laserBarGeo = new THREE.CylinderGeometry(0.04, 0.04, 15.0, 16);
+    laserBarGeo.rotateZ(Math.PI / 2);
+    const laserBarMat = new THREE.MeshBasicMaterial({ color: 0x00e5ff });
+    const laserBar = new THREE.Mesh(laserBarGeo, laserBarMat);
+    laserBar.position.set(0, 3.6, 0);
+    laserScannerGroup.add(laserBar);
+
+    // Vertical Slicing Laser Sheet (Plane)
+    const scanPlaneGeo = new THREE.PlaneGeometry(14.8, 4.5);
+    const scanCanvas = document.createElement('canvas');
+    scanCanvas.width = 64;
+    scanCanvas.height = 256;
+    const sCtx = scanCanvas.getContext('2d');
+    const sGrad = sCtx.createLinearGradient(0, 0, 0, 256);
+    sGrad.addColorStop(0.0, 'rgba(0, 229, 255, 0.95)');
+    sGrad.addColorStop(0.15, 'rgba(0, 229, 255, 0.35)');
+    sGrad.addColorStop(0.85, 'rgba(0, 229, 255, 0.15)');
+    sGrad.addColorStop(1.0, 'rgba(0, 255, 157, 0.95)');
+    sCtx.fillStyle = sGrad;
+    sCtx.fillRect(0, 0, 64, 256);
+    // Grid horizontal scan lines
+    sCtx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+    sCtx.lineWidth = 2;
+    for (let y = 0; y < 256; y += 16) {
+      sCtx.beginPath();
+      sCtx.moveTo(0, y);
+      sCtx.lineTo(64, y);
+      sCtx.stroke();
+    }
+    const scanTex = new THREE.CanvasTexture(scanCanvas);
+    const scanPlaneMat = new THREE.MeshBasicMaterial({
+      map: scanTex,
+      transparent: true,
+      opacity: 0.55,
+      side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
+    laserPlaneMesh = new THREE.Mesh(scanPlaneGeo, scanPlaneMat);
+    laserPlaneMesh.position.set(0, 1.4, 0);
+    laserScannerGroup.add(laserPlaneMesh);
   }
 
   // --------------------------------------------------------------------------
@@ -770,77 +1073,99 @@
     aircraftGroup.position.set(0, 0, 0);
     scene.add(aircraftGroup);
 
-    // 1. Primary Airframe: Pearl-White / Titanium Aerospace Composite (Class-A)
-    const pearlCompositeMat = new THREE.MeshStandardMaterial({
-      color: 0xf4f7fa, // Pearl white/silver titanium
-      roughness: 0.22,
-      metalness: 0.38
+    // 1. Primary Airframe: Pearl-White Titanium Composite (Class-A PBR Clearcoat)
+    const pearlCompositeMat = new THREE.MeshPhysicalMaterial({
+      color: 0xf8fafc,
+      roughness: 0.12,
+      metalness: 0.15,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.06,
+      reflectivity: 1.0,
+      envMapIntensity: 1.8
     });
 
-    // 2. Dark Carbon Composite (for structural spars, leading edge boots, tires)
-    const carbonDarkMat = new THREE.MeshStandardMaterial({
-      color: 0x141a24,
-      roughness: 0.28,
-      metalness: 0.75
+    // 2. Dark Carbon Composite (2x2 Twill Weave)
+    const carbonDarkMat = new THREE.MeshPhysicalMaterial({
+      color: 0x141822,
+      map: carbonTexture,
+      roughness: 0.22,
+      metalness: 0.45,
+      clearcoat: 0.9,
+      clearcoatRoughness: 0.1,
+      envMapIntensity: 1.5
     });
 
     // 3. Neon Cyan Aerodynamic Accent / Racing Stripe
-    const cyanGlowMat = new THREE.MeshStandardMaterial({
+    const cyanGlowMat = new THREE.MeshPhysicalMaterial({
       color: 0x00e5ff,
       emissive: 0x00e5ff,
-      emissiveIntensity: 0.65,
-      roughness: 0.2,
-      metalness: 0.4
+      emissiveIntensity: 0.75,
+      roughness: 0.15,
+      metalness: 0.45,
+      clearcoat: 1.0
     });
 
     // 4. Neon Emerald Aerodynamic Accent / Wingtips
-    const emeraldGlowMat = new THREE.MeshStandardMaterial({
+    const emeraldGlowMat = new THREE.MeshPhysicalMaterial({
       color: 0x00ff9d,
       emissive: 0x00ff9d,
-      emissiveIntensity: 0.65,
-      roughness: 0.2,
-      metalness: 0.4
+      emissiveIntensity: 0.75,
+      roughness: 0.15,
+      metalness: 0.45,
+      clearcoat: 1.0
     });
 
     // 5. Translucent X-Ray Composite Dorsal Shell (allows viewing H2 Tank & Fuel Cell inside!)
     const translucentDorsalMat = new THREE.MeshPhysicalMaterial({
       color: 0x0e2438,
-      metalness: 0.2,
-      roughness: 0.12,
-      transmission: 0.68,
+      metalness: 0.25,
+      roughness: 0.08,
+      transmission: 0.72,
       transparent: true,
-      opacity: 0.58,
-      ior: 1.45
+      opacity: 0.62,
+      ior: 1.48,
+      envMapIntensity: 1.6
     });
 
-    // 6. Polarized Aviation Cockpit Glass
+    // 6. Polarized Aviation Dichroic Cockpit Glass
     const glassCockpitMat = new THREE.MeshPhysicalMaterial({
-      color: 0x001d36,
-      metalness: 0.3,
-      roughness: 0.08,
-      transmission: 0.75,
+      color: 0x38bdf8,
+      metalness: 0.1,
+      roughness: 0.05,
+      transmission: 0.85,
       transparent: true,
-      opacity: 0.8
+      opacity: 0.95,
+      ior: 1.52,
+      iridescence: 0.6,
+      iridescenceIOR: 1.3,
+      envMapIntensity: 2.2
     });
 
     // 7. Aeronautical CNC 7075-T6 Titanium Alloy
-    const metalMat = new THREE.MeshStandardMaterial({
-      color: 0xd8e2ec,
-      roughness: 0.22,
-      metalness: 0.92
-    });
-
-    const tankMat = new THREE.MeshStandardMaterial({
-      color: 0x00b4d8,
+    const metalMat = new THREE.MeshPhysicalMaterial({
+      color: 0xe2e8f0,
       roughness: 0.18,
-      metalness: 0.88,
-      emissive: 0x003344
+      metalness: 0.95,
+      clearcoat: 0.4,
+      envMapIntensity: 2.0
     });
 
-    const fcMat = new THREE.MeshStandardMaterial({
-      color: 0x1c2b42,
+    const tankMat = new THREE.MeshPhysicalMaterial({
+      color: 0x00d2ff,
+      roughness: 0.15,
+      metalness: 0.85,
+      clearcoat: 1.0,
+      emissive: 0x003355,
+      emissiveIntensity: 0.35,
+      envMapIntensity: 2.0
+    });
+
+    const fcMat = new THREE.MeshPhysicalMaterial({
+      color: 0x1a2638,
       roughness: 0.25,
-      metalness: 0.82
+      metalness: 0.8,
+      clearcoat: 0.5,
+      envMapIntensity: 1.5
     });
 
     standardMaterials.push(pearlCompositeMat, carbonDarkMat, cyanGlowMat, emeraldGlowMat, metalMat, tankMat, fcMat);
@@ -1248,16 +1573,18 @@
       }
 
       // Propeller Motion Blur Disc
-      const diskGeo = new THREE.CircleGeometry(0.85, 24);
+      const diskGeo = new THREE.RingGeometry(0.18, 0.85, 32);
       const diskMat = new THREE.MeshBasicMaterial({
-        color: 0x00e5ff,
+        map: propBlurTexture,
         transparent: true,
-        opacity: 0.16,
-        side: THREE.DoubleSide
+        opacity: 0.22,
+        side: THREE.DoubleSide,
+        depthWrite: false
       });
       const blurDisk = new THREE.Mesh(diskGeo, diskMat);
-      blurDisk.position.z = -0.05;
+      blurDisk.position.z = -0.02;
       propGroup.add(blurDisk);
+      propBlurDiscs.push(blurDisk);
 
       propBlades.push(propGroup);
     });
@@ -1531,6 +1858,11 @@
     document.querySelectorAll('.hotspot-chip').forEach(chip => {
       chip.classList.toggle('active', chip.dataset.hotspot === key);
     });
+
+    // Synchronize Quick Component Selection Ribbon (Nodes 1..8)
+    document.querySelectorAll('.node-ribbon-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.node === key);
+    });
   }
 
   function smoothMoveCamera(targetCamPos, targetLookAt) {
@@ -1660,7 +1992,8 @@
     document.getElementById('btn-exploded-view').classList.toggle('active', STATE.exploded);
   }
 
-  function initZebraShader() {
+  function initAircraftShaders() {
+    // 1. CATIA V5 Class-A Zebra Stripe Reflection Shader
     const zebraVertexShader = `
       varying vec3 vNormal;
       varying vec3 vViewPosition;
@@ -1694,23 +2027,118 @@
       fragmentShader: zebraFragmentShader,
       side: THREE.DoubleSide
     });
+
+    // 2. Aerodynamic Pressure Coefficient (Cp) Heatmap Shader
+    const pressureVertexShader = `
+      varying vec3 vNormal;
+      varying vec3 vWorldPosition;
+      void main() {
+        vNormal = normalize(normalMatrix * normal);
+        vec4 worldPos = modelMatrix * vec4(position, 1.0);
+        vWorldPosition = worldPos.xyz;
+        gl_Position = projectionMatrix * viewMatrix * worldPos;
+      }
+    `;
+
+    const pressureFragmentShader = `
+      varying vec3 vNormal;
+      varying vec3 vWorldPosition;
+
+      vec3 getCpColor(float cp) {
+        float t = clamp((cp + 2.5) / 3.5, 0.0, 1.0);
+        if (t < 0.2) return mix(vec3(0.35, 0.0, 0.75), vec3(0.0, 0.2, 0.95), t / 0.2);
+        if (t < 0.4) return mix(vec3(0.0, 0.2, 0.95), vec3(0.0, 0.85, 0.9), (t - 0.2) / 0.2);
+        if (t < 0.6) return mix(vec3(0.0, 0.85, 0.9), vec3(0.1, 0.9, 0.2), (t - 0.4) / 0.2);
+        if (t < 0.8) return mix(vec3(0.1, 0.9, 0.2), vec3(1.0, 0.85, 0.0), (t - 0.6) / 0.2);
+        return mix(vec3(1.0, 0.85, 0.0), vec3(0.95, 0.08, 0.08), (t - 0.8) / 0.2);
+      }
+
+      void main() {
+        vec3 n = normalize(vNormal);
+        float forwardStagnation = clamp(n.z, 0.0, 1.0);
+        float upperSuction = clamp(n.y, 0.0, 1.0);
+        float cp = -2.0 * upperSuction + 1.0 * forwardStagnation + 0.1;
+        if (abs(vWorldPosition.x) > 0.8 && vWorldPosition.y > 0.7 && vWorldPosition.z > 0.2) {
+          cp -= 0.6; // Suction peak at upper leading edge of NACA 64-215 airfoil
+        }
+        vec3 col = getCpColor(cp);
+        gl_FragColor = vec4(col, 1.0);
+      }
+    `;
+
+    pressureMaterial = new THREE.ShaderMaterial({
+      vertexShader: pressureVertexShader,
+      fragmentShader: pressureFragmentShader,
+      side: THREE.DoubleSide
+    });
+
+    // 3. X-Ray Blueprint Wireframe Shader Material
+    xrayMaterial = new THREE.MeshPhysicalMaterial({
+      color: 0x00e5ff,
+      emissive: 0x002244,
+      emissiveIntensity: 0.4,
+      wireframe: true,
+      transparent: true,
+      opacity: 0.35,
+      roughness: 0.1,
+      metalness: 0.9
+    });
   }
 
-  function toggleZebraShader() {
-    STATE.zebraShader = !STATE.zebraShader;
-    audio.playClick();
-    document.getElementById('btn-zebra-shader').classList.toggle('active', STATE.zebraShader);
+  function setAircraftShaderMode(mode) {
+    STATE.shaderMode = mode;
+    STATE.zebraShader = (mode === 'zebra');
+
+    const btnMap = {
+      pbr: 'btn-shader-pbr',
+      zebra: 'btn-zebra-shader',
+      pressure: 'btn-shader-pressure',
+      xray: 'btn-shader-xray'
+    };
+    Object.entries(btnMap).forEach(([m, id]) => {
+      const el = document.getElementById(id);
+      if (el) el.classList.toggle('active', m === mode);
+    });
+
+    if (!aircraftGroup) return;
 
     aircraftGroup.traverse(child => {
       if (child.isMesh && child.name !== 'sprayBoomMesh') {
-        if (STATE.zebraShader) {
-          if (!child.userData.origMaterial) child.userData.origMaterial = child.material;
+        if (!child.userData.pbrMaterial) {
+          child.userData.pbrMaterial = child.material;
+        }
+
+        if (mode === 'pbr') {
+          child.material = child.userData.pbrMaterial;
+        } else if (mode === 'zebra') {
           child.material = zebraMaterial;
-        } else {
-          if (child.userData.origMaterial) child.material = child.userData.origMaterial;
+        } else if (mode === 'pressure') {
+          child.material = pressureMaterial;
+        } else if (mode === 'xray') {
+          const isInternal = (
+            child.parent === explodedGroups.tank ||
+            child.parent === explodedGroups.fuelcell ||
+            child.name === 'spar' ||
+            child.name === 'missionPodMesh'
+          );
+          child.material = isInternal ? child.userData.pbrMaterial : xrayMaterial;
         }
       }
     });
+
+    if (typeof audio !== 'undefined' && audio.playClick) audio.playClick();
+  }
+
+  function toggleZebraShader() {
+    setAircraftShaderMode(STATE.shaderMode === 'zebra' ? 'pbr' : 'zebra');
+  }
+
+  function toggleLaserScanner() {
+    laserScannerActive = !laserScannerActive;
+    if (laserScannerGroup) laserScannerGroup.visible = laserScannerActive;
+    const btn = document.getElementById('btn-laser-scan');
+    if (btn) btn.classList.toggle('active', laserScannerActive);
+    if (typeof audio !== 'undefined' && audio.playWhoosh) audio.playWhoosh();
   }
 
   function createParticleSystems() {
@@ -1882,12 +2310,27 @@
   function animate() {
     requestAnimationFrame(animate);
 
-    // 1. Counter-Rotating DEP Propellers
+    // 1. Counter-Rotating DEP Propellers & Propeller Blur Discs
     const propSpeed = STATE.isFlying ? 0.38 : 0.09;
     propBlades.forEach((prop, i) => {
       // Counter-rotating pairs for zero P-factor torque
       prop.rotation.z += (i % 2 === 0 ? 1 : -1) * propSpeed;
     });
+
+    const blurAlpha = STATE.isFlying ? 0.45 : 0.18;
+    propBlurDiscs.forEach(disc => {
+      disc.material.opacity = blurAlpha;
+    });
+
+    // Turntable Ambient Showcase Rotation
+    if (turntableGroup) {
+      turntableGroup.rotation.y += 0.0006;
+    }
+
+    // Animated 3D Laser Scanner Sweep
+    if (laserScannerGroup && laserScannerActive) {
+      laserScannerGroup.position.z = Math.sin(performance.now() * 0.0018) * 4.4;
+    }
 
     // 2. Exploded View Smooth Interpolation
     const targetExp = STATE.exploded ? 1 : 0;
@@ -2812,12 +3255,40 @@
     document.getElementById('btn-mode-agro').addEventListener('click', () => setMissionMode('agro'));
     document.getElementById('btn-mode-fire').addEventListener('click', () => setMissionMode('fire'));
 
-    // Engineering 3D Buttons
-    document.getElementById('btn-exploded-view').addEventListener('click', toggleExplodedView);
-    document.getElementById('btn-zebra-shader').addEventListener('click', toggleZebraShader);
-    document.getElementById('btn-wind-tunnel').addEventListener('click', toggleWindTunnel);
-    document.getElementById('btn-spray-anim').addEventListener('click', triggerSprayAnimation);
-    document.getElementById('btn-water-dump').addEventListener('click', triggerWaterDumpAnimation);
+    // Engineering 3D Buttons & 4-Shader Switcher
+    const btnExploded = document.getElementById('btn-exploded-view');
+    if (btnExploded) btnExploded.addEventListener('click', toggleExplodedView);
+
+    const btnShaderPbr = document.getElementById('btn-shader-pbr');
+    if (btnShaderPbr) btnShaderPbr.addEventListener('click', () => setAircraftShaderMode('pbr'));
+
+    const btnShaderZebra = document.getElementById('btn-zebra-shader');
+    if (btnShaderZebra) btnShaderZebra.addEventListener('click', () => setAircraftShaderMode(STATE.shaderMode === 'zebra' ? 'pbr' : 'zebra'));
+
+    const btnShaderPressure = document.getElementById('btn-shader-pressure');
+    if (btnShaderPressure) btnShaderPressure.addEventListener('click', () => setAircraftShaderMode('pressure'));
+
+    const btnShaderXray = document.getElementById('btn-shader-xray');
+    if (btnShaderXray) btnShaderXray.addEventListener('click', () => setAircraftShaderMode('xray'));
+
+    const btnLaserScan = document.getElementById('btn-laser-scan');
+    if (btnLaserScan) btnLaserScan.addEventListener('click', toggleLaserScanner);
+
+    const btnWindTunnel = document.getElementById('btn-wind-tunnel');
+    if (btnWindTunnel) btnWindTunnel.addEventListener('click', toggleWindTunnel);
+
+    const btnSprayAnim = document.getElementById('btn-spray-anim');
+    if (btnSprayAnim) btnSprayAnim.addEventListener('click', triggerSprayAnimation);
+
+    const btnWaterDump = document.getElementById('btn-water-dump');
+    if (btnWaterDump) btnWaterDump.addEventListener('click', triggerWaterDumpAnimation);
+
+    // Quick Component Selection Ribbon (Nodes 1..8)
+    document.querySelectorAll('.node-ribbon-btn').forEach(btn => {
+      btn.addEventListener('click', function () {
+        selectHotspot(this.dataset.node);
+      });
+    });
 
     // Camera Preset Buttons
     document.querySelectorAll('.preset-btn').forEach(btn => {
