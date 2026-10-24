@@ -285,6 +285,10 @@
   let aeroVectorGroup;
   let waterParticleSystem, sprayParticleSystem, vortexParticleSystem;
   let runwayGroup, terrainGroup, cloudsGroup, sunSprite;
+  let worldGroup, groundCanvasTexture, groundGridMesh;
+  let speedLinesGroup, speedLinesVelocities;
+  const NUM_SPEED_LINES = 280;
+  let joyActive = false, joyX = 0, joyY = 0, joyTouchId = null;
 
   // 3D World Scenery & Atmosphere
   let sceneryGroup, atcRadarDish, fireEmbersLight, fireParticlePoints, smokeParticlePoints;
@@ -587,6 +591,7 @@
     terrainGroup = new THREE.Group();
     terrainGroup.name = 'TerrainGroup';
     scene.add(terrainGroup);
+    worldGroup = terrainGroup;
 
     // Texture Loader
     textureLoader = new THREE.TextureLoader();
@@ -595,6 +600,8 @@
     // Build Subsystems
     buildAircraftModel();
     buildSTOLRunway();
+    initProceduralGroundPlane();
+    initSpeedLines();
     build3DWorldScenery();
     initAITraffic();
     initDynamicShadow();
@@ -1477,6 +1484,175 @@
     }
   }
 
+  // ----------------------------------------------------------------------------
+  // 7A-2. PROCEDURAL INFINITE GROUND & HIGH-SPEED AIRFLOW SPEED LINES
+  // ----------------------------------------------------------------------------
+  function initProceduralGroundPlane() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024;
+    canvas.height = 1024;
+    const ctx = canvas.getContext('2d');
+
+    // Rich emerald green agricultural base
+    ctx.fillStyle = '#224d20';
+    ctx.fillRect(0, 0, 1024, 1024);
+
+    // Patchwork farm fields with high optical contrast
+    const colors = ['#2d5e2b', '#1a421b', '#3b6f22', '#4d7c0f', '#365314', '#15803d', '#ca8a04', '#a16207', '#14532d'];
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        ctx.fillStyle = colors[(r * 5 + c * 3) % colors.length];
+        ctx.fillRect(c * 128 + 2, r * 128 + 2, 124, 124);
+
+        // Crop furrows / grid texture
+        ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+        ctx.lineWidth = 2;
+        for (let f = 10; f < 120; f += 14) {
+          ctx.beginPath();
+          if ((r + c) % 2 === 0) {
+            ctx.moveTo(c * 128 + f, r * 128 + 2);
+            ctx.lineTo(c * 128 + f, r * 128 + 126);
+          } else {
+            ctx.moveTo(c * 128 + 2, r * 128 + f);
+            ctx.lineTo(c * 128 + 126, r * 128 + f);
+          }
+          ctx.stroke();
+        }
+      }
+    }
+
+    // Asphalt Roads
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 12;
+    ctx.beginPath();
+    ctx.moveTo(0, 512); ctx.lineTo(1024, 512);
+    ctx.moveTo(512, 0); ctx.lineTo(512, 1024);
+    ctx.stroke();
+
+    // Road dashed white centerlines
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([8, 8]);
+    ctx.beginPath();
+    ctx.moveTo(0, 512); ctx.lineTo(1024, 512);
+    ctx.moveTo(512, 0); ctx.lineTo(512, 1024);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Water Canal / River
+    ctx.strokeStyle = '#0284c7';
+    ctx.lineWidth = 16;
+    ctx.beginPath();
+    ctx.moveTo(0, 180);
+    ctx.bezierCurveTo(280, 120, 680, 260, 1024, 160);
+    ctx.stroke();
+
+    groundCanvasTexture = new THREE.CanvasTexture(canvas);
+    groundCanvasTexture.wrapS = THREE.RepeatWrapping;
+    groundCanvasTexture.wrapT = THREE.RepeatWrapping;
+    groundCanvasTexture.repeat.set(80, 80);
+
+    const groundGeo = new THREE.PlaneGeometry(35000, 35000);
+    groundGeo.rotateX(-Math.PI / 2);
+    const groundMat = new THREE.MeshStandardMaterial({
+      map: groundCanvasTexture,
+      roughness: 0.85,
+      metalness: 0.05
+    });
+    groundGridMesh = new THREE.Mesh(groundGeo, groundMat);
+    groundGridMesh.position.set(0, -0.2, 0);
+    groundGridMesh.receiveShadow = true;
+    if (terrainGroup) {
+      terrainGroup.add(groundGridMesh);
+    }
+  }
+
+  function initSpeedLines() {
+    speedLinesGroup = new THREE.Group();
+    speedLinesGroup.name = 'SpeedLinesGroup';
+
+    const geo = new THREE.BufferGeometry();
+    const positions = new Float32Array(NUM_SPEED_LINES * 2 * 3);
+    const colors = new Float32Array(NUM_SPEED_LINES * 2 * 3);
+    speedLinesVelocities = new Float32Array(NUM_SPEED_LINES);
+
+    for (let i = 0; i < NUM_SPEED_LINES; i++) {
+      const x = (Math.random() - 0.5) * 60;
+      const y = (Math.random() - 0.5) * 30;
+      const z = (Math.random() - 0.5) * 120;
+      const len = 4.0 + Math.random() * 8.0;
+
+      positions[i * 6 + 0] = x;
+      positions[i * 6 + 1] = y;
+      positions[i * 6 + 2] = z;
+
+      positions[i * 6 + 3] = x;
+      positions[i * 6 + 4] = y;
+      positions[i * 6 + 5] = z - len;
+
+      const br = 0.6 + Math.random() * 0.4;
+      colors[i * 6 + 0] = 0.0 * br;
+      colors[i * 6 + 1] = 0.9 * br;
+      colors[i * 6 + 2] = 1.0 * br;
+
+      colors[i * 6 + 3] = 0.8 * br;
+      colors[i * 6 + 4] = 1.0 * br;
+      colors[i * 6 + 5] = 1.0 * br;
+
+      speedLinesVelocities[i] = 1.0 + Math.random() * 0.6;
+    }
+
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+    const mat = new THREE.LineBasicMaterial({
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.75,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
+
+    const lines = new THREE.LineSegments(geo, mat);
+    speedLinesGroup.add(lines);
+    scene.add(speedLinesGroup);
+  }
+
+  function updateSpeedLines(dt, speedMs) {
+    if (!speedLinesGroup || !speedLinesGroup.children.length) return;
+    const positions = speedLinesGroup.children[0].geometry.attributes.position.array;
+    const planeY = planeGroup ? planeGroup.position.y : 0;
+    speedLinesGroup.position.set(0, planeY, 0);
+
+    const fwdSpeed = Math.max(speedMs * 3.5, 15.0);
+
+    for (let i = 0; i < NUM_SPEED_LINES; i++) {
+      const v = speedLinesVelocities[i];
+      const shift = fwdSpeed * v * dt;
+
+      positions[i * 6 + 2] -= shift;
+      positions[i * 6 + 5] -= shift;
+
+      if (positions[i * 6 + 5] < -40) {
+        const x = (Math.random() - 0.5) * 60;
+        const y = (Math.random() - 0.5) * 25;
+        const z = 80 + Math.random() * 50;
+        const len = 4.0 + Math.random() * 8.0;
+
+        positions[i * 6 + 0] = x;
+        positions[i * 6 + 1] = y;
+        positions[i * 6 + 2] = z;
+
+        positions[i * 6 + 3] = x;
+        positions[i * 6 + 4] = y;
+        positions[i * 6 + 5] = z - len;
+      }
+    }
+
+    speedLinesGroup.children[0].geometry.attributes.position.needsUpdate = true;
+    speedLinesGroup.children[0].material.opacity = Math.min(0.85, (speedMs / 20.0) * 0.85);
+  }
+
 
   // ----------------------------------------------------------------------------
   // 7B. COMPREHENSIVE 3D WORLD SCENERY: AIRPORT, HANGAR, ATC, TREES, MOUNTAINS, LAKE, FIRE
@@ -1897,7 +2073,7 @@
 
   function updateDynamicShadow() {
     if (!planeShadowMesh) return;
-    const h = Math.max(0, flight.pos.y - 1.25);
+    const h = Math.max(0, flight.altAGL);
     if (h < 75) {
       planeShadowMesh.visible = true;
       const alpha = Math.max(0, 0.65 * (1 - h / 75));
@@ -1905,7 +2081,7 @@
       const s = 1.0 + (h / 75) * 1.8;
       planeShadowMesh.scale.set(s, 1, s);
       planeShadowMesh.rotation.y = flight.rot.y;
-      planeShadowMesh.position.set(0, 1.28, 0);
+      planeShadowMesh.position.set(0, -flight.altAGL + 0.05, 0);
     } else {
       planeShadowMesh.visible = false;
     }
@@ -2369,7 +2545,11 @@
     }
 
     // MultiTouch & Gamepad API Inputs Integration
-    if (window.MobileMultiTouchPad) {
+    if (joyActive) {
+      flight.pitchInput = joyY;
+      flight.rollInput = joyX;
+      flight.yawInput = joyX * 0.75;
+    } else if (window.MobileMultiTouchPad) {
       const padInputs = window.MobileMultiTouchPad.getInputs();
       if (window.MobileMultiTouchPad.joyTouchId !== null || window.MobileMultiTouchPad.gyroActive || window.MobileMultiTouchPad.gamepadConnected) {
         flight.pitchInput = padInputs.pitch;
@@ -2732,7 +2912,7 @@
 
     // Ground collision & Touchdown / Crash physics
     const groundLevel = 1.25;
-    if (flight.pos.y <= groundLevel + 0.25) {
+    if (flight.altAGL <= 0.05 || flight.pos.y <= groundLevel + 0.15) {
       const gearRetracted = (flight.gearPos < 0.5);
       const hardImpact = (flight.vsi < -4.5);
 
@@ -2745,19 +2925,28 @@
         flight.tas = 0;
         flight.altAGL = 0;
         flight.altMSL = 0;
+        flight.vsi = 0;
 
-        SIM.cameraShakeTimer = 1.5;
+        SIM.cameraShakeTimer = 2.0;
 
         const crashBanner = document.getElementById('sim-crash-warning');
         const crashText = document.getElementById('sim-crash-text');
+        const crashModal = document.getElementById('sim-crash-modal');
+        const crashReason = document.getElementById('sim-crash-modal-reason');
         if (crashBanner) {
           crashBanner.style.display = 'flex';
           if (crashText) {
-            if (gearRetracted) {
-              crashText.textContent = '💥 КРУШЕНИЕ (0 м): ШАССИ НЕ ВЫПУЩЕНЫ! АВАРИЙНАЯ ПОСАДКА НА ФЮЗЕЛЯЖ';
-            } else {
-              crashText.textContent = '💥 АВАРИЙНАЯ ЖЁСТКАЯ ПОСАДКА (0 м): VSI = ' + flight.vsi.toFixed(1) + ' м/с (ПРЕВЫШЕН ЛИМИТ -4.5 м/с)';
-            }
+            crashText.textContent = gearRetracted
+              ? '💥 КРУШЕНИЕ (0 м): ШАССИ НЕ ВЫПУЩЕНЫ! АВАРИЙНАЯ ПОСАДКА НА ФЮЗЕЛЯЖ'
+              : '💥 АВАРИЙНАЯ ЖЁСТКАЯ ПОСАДКА (0 м): VSI = ' + flight.vsi.toFixed(1) + ' м/с (ПРЕВЫШЕН ЛИМИТ -4.5 м/с)';
+          }
+        }
+        if (crashModal) {
+          crashModal.style.display = 'flex';
+          if (crashReason) {
+            crashReason.textContent = gearRetracted
+              ? '💥 КРУШЕНИЕ НА 0 М: ШАССИ НЕ ВЫПУЩЕНЫ! САМОЛЁТ УПАЛ НА БРЮХО'
+              : '💥 ЖЁСТКАЯ ПОСАДКА: СКОРОСТЬ СНИЖЕНИЯ VSI ПРЕВЫСИЛА КРИТИЧЕСКИЙ ЛИМИТ (-4.5 м/с)';
           }
         }
 
@@ -2772,46 +2961,74 @@
 
         showToast('💥 КРУШЕНИЕ: САМОЛЁТ РАЗБИТ! НАЖМИТЕ «СБРОС В ПОЛЁТ»');
       } else if (!flight.crashed) {
-        if (flight.pos.y <= groundLevel) {
-          // Check if pilot or auto-takeoff is executing takeoff rotation
-          const isTakeoffSpeed = (flight.flapsStage > 0 && flight.ias >= 42.0) || (flight.flapsStage === 0 && flight.ias >= 60.0);
-          const isRotatingUp = (flight.pitchInput > 0.08 || flight.rot.x < -0.03 || SIM.autoTakeoffActive);
-          const isTakingOff = (flight.throttle > 0.5) && isTakeoffSpeed && isRotatingUp;
+        // Ground roll acceleration on runway
+        if (flight.throttle > 0.1) {
+          flight.ias += (flight.throttle * 55.0 - flight.ias * 0.12) * dt;
+        } else {
+          flight.ias = Math.max(0, flight.ias - 18.0 * dt);
+        }
+        flight.tas = flight.ias / 3.6;
+        flight.kts = flight.ias * 0.539957;
 
-          if (isTakingOff) {
-            // Blown-wing DEP thrust vector and high STOL lift boost vertical climb velocity
-            const liftVelocity = 3.4 + (flight.ias - 42.0) * 0.08 + (flight.flapsStage * 0.8);
-            flight.vel.y = Math.max(flight.vel.y, liftVelocity);
-            flight.pos.y += flight.vel.y * dt;
-            flight.altAGL = Math.max(0, flight.pos.y - groundLevel);
-            flight._touchdownAnnounced = false;
-          } else {
-            flight.pos.y = groundLevel;
-            flight.vel.y = Math.max(0, flight.vel.y);
-            flight.rot.z *= 0.8;
-            flight.rot.x = Math.max(-0.21, Math.min(0.02, flight.rot.x));
-            flight.altAGL = 0;
+        // Takeoff rotation check
+        const isTakeoffSpeed = (flight.flapsStage > 0 && flight.ias >= 45.0) || (flight.ias >= 60.0);
+        const isRotatingUp = (flight.pitchInput > 0.05 || flight.rot.x < -0.02 || SIM.autoTakeoffActive);
+        const isTakingOff = (flight.throttle > 0.4) && isTakeoffSpeed && isRotatingUp;
 
-            if (!flight._touchdownAnnounced && flight.vsi < -0.8) {
-              flight._touchdownAnnounced = true;
-              if (window.ILSAutopilot) {
-                window.ILSAutopilot.calloutTouchdown();
-              }
-              if (window.CrashVfxParticles) {
-                window.CrashVfxParticles.triggerTouchdownPuff(planeGroup.position);
-              }
-              showToast('🛬 МЯГКАЯ ПОСАДКА (TOUCHDOWN): ШАССИ ВЫПУЩЕНЫ, ПЕРЕГРУЗКА В НОРМЕ');
+        if (isTakingOff) {
+          const liftVelocity = 3.8 + (flight.ias - 45.0) * 0.1 + (flight.flapsStage * 1.0);
+          flight.vel.y = Math.max(flight.vel.y, liftVelocity);
+          flight.vsi = flight.vel.y;
+          flight.altAGL += flight.vel.y * dt;
+          flight.altMSL = flight.altAGL;
+          flight.pos.y = groundLevel + flight.altAGL;
+          flight._touchdownAnnounced = false;
+        } else {
+          flight.altAGL = 0;
+          flight.altMSL = 0;
+          flight.pos.y = groundLevel;
+          flight.vsi = 0;
+          flight.rot.z *= 0.8;
+          flight.rot.x = Math.max(-0.21, Math.min(0.02, flight.rot.x));
+
+          if (!flight._touchdownAnnounced && flight.vsi < -0.8) {
+            flight._touchdownAnnounced = true;
+            if (window.ILSAutopilot) {
+              window.ILSAutopilot.calloutTouchdown();
             }
-
-            flight.vel.x *= Math.max(0, 1.0 - 1.5 * dt);
-            if (flight.throttle < 0.1 || flight.spoilersActive) {
-              flight.vel.z *= Math.max(0, 1.0 - 1.2 * dt);
+            if (window.CrashVfxParticles) {
+              window.CrashVfxParticles.triggerTouchdownPuff(planeGroup.position);
             }
+            showToast('🛬 МЯГКАЯ ПОСАДКА (TOUCHDOWN): ШАССИ ВЫПУЩЕНЫ, ПЕРЕГРУЗКА В НОРМЕ');
+          }
+
+          flight.vel.x *= Math.max(0, 1.0 - 1.5 * dt);
+          if (flight.throttle < 0.1 || flight.spoilersActive) {
+            flight.vel.z *= Math.max(0, 1.0 - 1.2 * dt);
           }
         }
       }
     } else {
-      flight.altAGL = flight.pos.y - groundLevel;
+      // In-flight altitude integration
+      if (!flight.crashed) {
+        const targetVsi = flight.pitchInput * 20.0;
+        flight.vsi += (targetVsi - flight.vsi) * 2.5 * dt;
+        flight.altAGL += flight.vsi * dt;
+
+        const targetIas = Math.max(40.0, flight.throttle * 240.0);
+        flight.ias += (targetIas - flight.ias) * 1.5 * dt;
+        flight.ias = safeClamp(flight.ias, 0, 340.0, 180.0);
+        flight.tas = flight.ias / 3.6;
+        flight.kts = flight.ias * 0.539957;
+
+        if (flight.altAGL <= 0) {
+          flight.altAGL = 0;
+          flight.pos.y = groundLevel;
+        } else {
+          flight.altMSL = flight.altAGL;
+          flight.pos.y = groundLevel + flight.altAGL;
+        }
+      }
       flight._touchdownAnnounced = false;
     }
 
@@ -2820,9 +3037,10 @@
     if (flight.pos.y >= 6500.0) {
       flight.pos.y = 6500.0;
       flight.vel.y = Math.min(0, flight.vel.y);
+      flight.vsi = Math.min(0, flight.vsi);
     }
-    flight.altMSL = safeClamp(flight.pos.y, 0, 6500.0, 700.0);
-    flight.altAGL = Math.max(0, flight.altMSL - groundLevel);
+    flight.altMSL = safeClamp(flight.altAGL, 0, 6500.0, 700.0);
+    flight.altAGL = flight.altMSL;
 
     flight.gLoad = safeClamp(1.0 + (acc.y / 9.80665), -4.0, 9.0, 1.0);
 
@@ -2833,14 +3051,9 @@
       stallBanner.style.display = isStall ? 'flex' : 'none';
     }
 
-    // Update 3D mesh transforms (Origin-Centric: Plane is at (0, flight.pos.y, 0))
-    planeGroup.position.set(0, flight.pos.y, 0);
+    // Update 3D mesh transforms (Origin-Centric: Plane is at (0, 1.25, 0))
+    planeGroup.position.set(0, 1.25, 0);
     planeGroup.quaternion.copy(flight.quat);
-
-    // Shift terrain & satellite tiles in opposition to aircraft motion
-    if (terrainGroup) {
-      terrainGroup.position.set(-flight.pos.x, 0, -flight.pos.z);
-    }
 
     // Consumables consumption
     flight.h2MassRemaining = Math.max(0, flight.h2MassRemaining - (effectiveThrottle * 0.0008 * dt));
@@ -2907,7 +3120,7 @@
   function updateCamera() {
     if (!camera || !planeGroup) return;
 
-    const planeCenter = new THREE.Vector3(0, flight.pos.y, 0);
+    const planeCenter = new THREE.Vector3(0, 1.25, 0);
 
     if (SIM.cameraMode === 'chase') {
       // Smooth third-person chase camera elevated so plane hovers clearly above HUD cards
@@ -2936,7 +3149,7 @@
 
     } else if (SIM.cameraMode === 'satellite') {
       // Top-down satellite view looking directly at the terrain & plane
-      camera.position.set(0, flight.pos.y + 1200, -200);
+      camera.position.set(0, 1.25 + 1200, -200);
       camera.lookAt(planeCenter);
 
     } else if (SIM.cameraMode === 'orbit') {
@@ -2945,7 +3158,7 @@
       const ox = dist * Math.sin(orbitYaw) * Math.cos(orbitPitch);
       const oy = dist * Math.sin(orbitPitch);
       const oz = dist * Math.cos(orbitYaw) * Math.cos(orbitPitch);
-      camera.position.set(ox, flight.pos.y + oy, oz);
+      camera.position.set(ox, 1.25 + oy, oz);
       camera.lookAt(planeCenter);
     }
   }
@@ -3453,17 +3666,19 @@
   // 14. TELEPORT & SCENARIO RESET
   // ----------------------------------------------------------------------------
   function resetToAirFlight700() {
-    flight.pos.set(0, 700, 0);
-    const speedMs = 140 / 3.6; // 140 km/h = 38.89 m/s
+    flight.pos.set(0, 1.25, 0);
+    flight.altMSL = 650;
+    flight.altAGL = 650;
+    const speedMs = 180 / 3.6; // 180 km/h = 50 m/s
     flight.vel.set(0, 0, speedMs);
     flight.rot.set(0, 0, 0);
     flight.vsi = 0;
-    flight.throttle = 0.65; // 65%
-    flight.propRpm = 600 + 0.65 * 2400;
+    flight.throttle = 0.75; // 75%
+    flight.propRpm = 600 + 0.75 * 2400;
     flight.aoa = 0;
-    flight.ias = 140;
+    flight.ias = 180;
     flight.tas = speedMs;
-    flight.kts = 140 * 0.539957;
+    flight.kts = 180 * 0.539957;
     flight.pitchInput = 0;
     flight.rollInput = 0;
     flight.yawInput = 0;
@@ -3480,6 +3695,8 @@
     SIM.cameraShakeTimer = 0;
     const crashBanner = document.getElementById('sim-crash-warning');
     if (crashBanner) crashBanner.style.display = 'none';
+    const crashModal = document.getElementById('sim-crash-modal');
+    if (crashModal) crashModal.style.display = 'none';
     if (window.ILSAutopilot) window.ILSAutopilot.resetGates();
     flight.agroSpraying = false;
     SIM.boostActive = false;
@@ -3489,25 +3706,33 @@
     SIM.apMode.demo = false;
 
     if (planeGroup) {
-      planeGroup.position.set(0, 700, 0);
+      planeGroup.position.set(0, 1.25, 0);
       planeGroup.quaternion.setFromEuler(flight.rot);
     }
-    if (terrainGroup) {
-      terrainGroup.position.set(0, 0, 0);
+    if (worldGroup) {
+      worldGroup.position.set(0, -650, 0);
+    } else if (terrainGroup) {
+      terrainGroup.position.set(0, -650, 0);
     }
     if (camera) {
       SIM.cameraMode = 'chase';
-      camera.position.set(0, 703.2, -12.5);
-      camera.lookAt(0, 700.8, 8.0);
+      camera.position.set(0, 4.8, -13.5);
+      camera.lookAt(0, 0.6, 6.0);
     }
 
     const thrSlider = document.getElementById('sim-slider-throttle');
     const thrValEl = document.getElementById('sim-throttle-val');
-    if (thrSlider) thrSlider.value = 65;
-    if (thrValEl) thrValEl.textContent = '65%';
+    if (thrSlider) thrSlider.value = 75;
+    if (thrValEl) thrValEl.textContent = '75%';
+    const thrFill = document.getElementById('touch-throttle-fill');
+    const thrHandle = document.getElementById('touch-throttle-handle');
+    const thrPctLabel = document.getElementById('touch-throttle-pct');
+    if (thrFill) thrFill.style.height = '75%';
+    if (thrHandle) thrHandle.style.bottom = '75%';
+    if (thrPctLabel) thrPctLabel.textContent = '75%';
     document.querySelectorAll('.btn-thr-preset').forEach(b => b.classList.remove('active'));
 
-    showToast('🔄 СБРОС В ПОЛЁТ: ВЫСОТА 700 М, СКОРОСТЬ 140 КМ/Ч, ТЯГА 65%');
+    showToast('✈️ В ПОЛЁТЕ: ВЫСОТА 650 М, СКОРОСТЬ 180 КМ/Ч, ТЯГА 75%');
   }
 
   function teleportToLocation(locKey, targetAlt = 700) {
@@ -3517,7 +3742,9 @@
     currentOriginLon = loc.lon;
 
     // Reset local coordinates
-    flight.pos.set(0, targetAlt, 0);
+    flight.pos.set(0, 1.25, 0);
+    flight.altMSL = targetAlt;
+    flight.altAGL = targetAlt;
     flight.vel.set(0, 0, 50); // 180 km/h forward
     flight.rot.set(0, 0, 0);
     flight.throttle = 0.75;
@@ -3528,11 +3755,13 @@
     flight.agroSpraying = false;
 
     if (planeGroup) {
-      planeGroup.position.set(0, targetAlt, 0);
+      planeGroup.position.set(0, 1.25, 0);
       planeGroup.quaternion.setFromEuler(flight.rot);
     }
-    if (terrainGroup) {
-      terrainGroup.position.set(0, 0, 0);
+    if (worldGroup) {
+      worldGroup.position.set(0, -targetAlt, 0);
+    } else if (terrainGroup) {
+      terrainGroup.position.set(0, -targetAlt, 0);
     }
 
     // Clear and reload satellite tiles
@@ -3543,10 +3772,16 @@
   }
 
   function startFromRunway() {
-    flight.pos.set(0, 1.25, -340); // Beginning of runway threshold
+    flight.pos.set(0, 1.25, 0);
+    flight.altMSL = 0;
+    flight.altAGL = 0;
     flight.vel.set(0, 0, 0);
     flight.rot.set(0, 0, 0);
-    flight.throttle = 0.0;
+    flight.throttle = 1.0;
+    flight.ias = 0;
+    flight.tas = 0;
+    flight.kts = 0;
+    flight.vsi = 0;
     flight.gearTarget = 1.0; // Gear down
     flight.gearPos = 1.0;
     flight.flapsStage = 1;  // Flaps 15° for STOL takeoff
@@ -3556,17 +3791,32 @@
     SIM.cameraShakeTimer = 0;
     const crashBanner = document.getElementById('sim-crash-warning');
     if (crashBanner) crashBanner.style.display = 'none';
+    const crashModal = document.getElementById('sim-crash-modal');
+    if (crashModal) crashModal.style.display = 'none';
     if (window.ILSAutopilot) window.ILSAutopilot.resetGates();
 
     if (planeGroup) {
       planeGroup.position.set(0, 1.25, 0);
       planeGroup.quaternion.setFromEuler(flight.rot);
     }
-    if (terrainGroup) {
-      terrainGroup.position.set(0, 0, 340);
+    if (worldGroup) {
+      worldGroup.position.set(0, 0, 0);
+    } else if (terrainGroup) {
+      terrainGroup.position.set(0, 0, 0);
     }
 
-    showToast('СТАРТ С ВПП: ДАЙТЕ ГАЗ SHIFT / Q ДО 100%!');
+    const thrSlider = document.getElementById('sim-slider-throttle');
+    const thrValEl = document.getElementById('sim-throttle-val');
+    if (thrSlider) thrSlider.value = 100;
+    if (thrValEl) thrValEl.textContent = '100%';
+    const thrFill = document.getElementById('touch-throttle-fill');
+    const thrHandle = document.getElementById('touch-throttle-handle');
+    const thrPctLabel = document.getElementById('touch-throttle-pct');
+    if (thrFill) thrFill.style.height = '100%';
+    if (thrHandle) thrHandle.style.bottom = '100%';
+    if (thrPctLabel) thrPctLabel.textContent = '100%';
+
+    showToast('🛫 СТАРТ С ВПП: 100% ВЗЛЁТНЫЙ ГАЗ! РАЗГОН ДО 60 КМ/Ч И ОТРЫВ!');
   }
 
   function setTimeOfDay(timeKey) {
@@ -3661,17 +3911,17 @@
 
   // Touch Controls & Sensor Handlers
   function initTouchControls() {
-    const joyZone = document.getElementById('virtual-joystick-zone');
-    const joyKnob = document.getElementById('virtual-joystick-knob');
-    const thrTrack = document.getElementById('touch-throttle-track');
-    const thrHandle = document.getElementById('touch-throttle-handle');
-    const thrFill = document.getElementById('touch-throttle-fill');
-    const thrPctLabel = document.getElementById('touch-throttle-pct');
+    const joyZone = document.getElementById('sim-virtual-joystick') || document.getElementById('virtual-joystick-zone');
+    const joyKnob = document.getElementById('virtual-joystick-knob') || (joyZone ? joyZone.querySelector('.virtual-joystick-knob') : null);
+    const thrTrack = document.getElementById('sim-throttle-slider') || document.getElementById('touch-throttle-track');
+    const thrHandle = document.getElementById('touch-throttle-handle') || (thrTrack ? thrTrack.querySelector('.touch-throttle-handle') : null);
+    const thrFill = document.getElementById('touch-throttle-fill') || (thrTrack ? thrTrack.querySelector('.touch-throttle-fill') : null);
+    const thrPctLabel = document.getElementById('touch-throttle-pct') || (thrTrack ? thrTrack.querySelector('#touch-throttle-pct') : null);
     const touchOverlay = document.getElementById('sim-touch-controls');
     const touchToggleBtn = document.getElementById('btn-sim-touch-toggle');
     const touchToggleLabel = document.getElementById('sim-touch-label');
 
-    // Auto-detect touchscreen device
+    // Auto-detect touchscreen device or mobile viewport
     const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (window.innerWidth <= 1024);
     if (isTouchDevice && touchOverlay) {
       touchOverlay.classList.add('active');
@@ -3692,17 +3942,19 @@
       });
     }
 
-    // 1. Right 3D Virtual Flight Stick (Pitch & Roll) with Multi-Touch Tracking
+    // 1. Right 3D Virtual Flight Stick (Pitch & Roll) with Multi-Touch & Mouse Tracking
     if (joyZone && joyKnob) {
-      let joyActive = false;
-      let joyTouchId = null;
       let joyPointerId = null;
+      let isJoyMouseDown = false;
       const maxR = 55; // 135px box / 2 - knob radius
 
       const resetJoy = () => {
         joyActive = false;
         joyTouchId = null;
         joyPointerId = null;
+        isJoyMouseDown = false;
+        joyX = 0;
+        joyY = 0;
         SIM.isJoyDragging = false;
         joyKnob.style.transition = 'transform 0.28s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
         joyKnob.style.transform = 'translate(-50%, -50%)';
@@ -3724,15 +3976,18 @@
         }
         joyKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
 
-        // dx < 0 -> drag left -> rollInput < 0 (roll left, nose turns left)
-        // dx > 0 -> drag right -> rollInput > 0 (roll right, nose turns right)
+        // dx < 0 -> drag left -> rollInput < 0 (bank left, nose turns left)
+        // dx > 0 -> drag right -> rollInput > 0 (bank right, nose turns right)
         const stickX = THREE.MathUtils.clamp(dx / maxR, -1.0, 1.0);
         // dy > 0 -> pull down/back on stick -> pitchInput > 0 (climb / nose up)
         // dy < 0 -> push up/forward on stick -> pitchInput < 0 (dive / nose down)
         const stickY = THREE.MathUtils.clamp(dy / maxR, -1.0, 1.0);
+        joyActive = true;
+        joyX = stickX;
+        joyY = SIM.invertPitch ? -stickY : stickY;
         flight.rollInput = stickX;
         flight.yawInput = stickX * 0.75;
-        flight.pitchInput = SIM.invertPitch ? -stickY : stickY;
+        flight.pitchInput = joyY;
       };
 
       // Native Multi-Touch Events (Highest reliability on iOS Safari & Android)
@@ -3777,9 +4032,34 @@
       window.addEventListener('touchend', onJoyTouchEnd, { passive: false });
       window.addEventListener('touchcancel', onJoyTouchEnd, { passive: false });
 
-      // Pointer events for desktop testing / mouse emulation
+      // Direct Mouse Events (Immediate support on desktop / laptop)
+      joyZone.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        isJoyMouseDown = true;
+        joyActive = true;
+        SIM.isJoyDragging = true;
+        joyKnob.style.transition = 'none';
+        updateJoyCoords(e.clientX, e.clientY);
+        initAudioEngine();
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        if (isJoyMouseDown) {
+          e.preventDefault();
+          updateJoyCoords(e.clientX, e.clientY);
+        }
+      });
+
+      window.addEventListener('mouseup', (e) => {
+        if (isJoyMouseDown) {
+          e.preventDefault();
+          resetJoy();
+        }
+      });
+
+      // Pointer fallback
       joyZone.addEventListener('pointerdown', (e) => {
-        if (e.pointerType === 'touch') return; // Handled by TouchEvents
+        if (e.pointerType === 'touch') return;
         e.preventDefault();
         joyActive = true;
         SIM.isJoyDragging = true;
@@ -3810,11 +4090,12 @@
       window.addEventListener('pointercancel', onJoyPointerEnd);
     }
 
-    // 2. Left Throttle Slider with Multi-Touch Tracking
+    // 2. Left Throttle Slider with Multi-Touch & Mouse Tracking
     if (thrTrack && thrHandle) {
       let thrActive = false;
       let thrTouchId = null;
       let thrPointerId = null;
+      let isThrMouseDown = false;
 
       const updateThrCoords = (clientY) => {
         const rect = thrTrack.getBoundingClientRect();
@@ -3822,7 +4103,7 @@
         const relY = THREE.MathUtils.clamp((rect.bottom - clientY) / trackH, 0.0, 1.0);
         flight.throttle = relY;
         const pct = Math.round(relY * 100);
-        thrHandle.style.bottom = `${pct * 0.72}%`;
+        if (thrHandle) thrHandle.style.bottom = `${pct}%`;
         if (thrFill) thrFill.style.height = `${pct}%`;
         if (thrPctLabel) thrPctLabel.textContent = `${pct}%`;
         initAudioEngine();
@@ -3867,6 +4148,30 @@
 
       window.addEventListener('touchend', onThrTouchEnd, { passive: false });
       window.addEventListener('touchcancel', onThrTouchEnd, { passive: false });
+
+      // Direct Mouse Events on Throttle Track
+      thrTrack.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        isThrMouseDown = true;
+        thrActive = true;
+        updateThrCoords(e.clientY);
+        initAudioEngine();
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        if (isThrMouseDown) {
+          e.preventDefault();
+          updateThrCoords(e.clientY);
+        }
+      });
+
+      window.addEventListener('mouseup', (e) => {
+        if (isThrMouseDown) {
+          e.preventDefault();
+          isThrMouseDown = false;
+          thrActive = false;
+        }
+      });
 
       // Pointer fallback
       thrTrack.addEventListener('pointerdown', (e) => {
@@ -4228,16 +4533,6 @@
     }
 
     // 1. Top Select Dropdowns
-    const selPlane = document.getElementById('sim-select-plane');
-    if (selPlane) {
-      selPlane.addEventListener('change', (e) => {
-        SIM.planeModel = e.target.value;
-        const cfg = PLANE_CONFIGS[SIM.planeModel];
-        if (planeGroup) planeGroup.scale.setScalar(cfg.scale);
-        showToast(`САМОЛЁТ: ${cfg.name}`);
-      });
-    }
-
     const selLoc = document.getElementById('sim-select-location');
     if (selLoc) {
       selLoc.addEventListener('change', (e) => {
@@ -4282,11 +4577,12 @@
     // Aircraft Model Select
     const handleModelChange = (val) => {
       switchAircraftModel(val);
-      const selA = document.getElementById('sim-select-aircraft');
-      const selP = document.getElementById('sim-select-plane');
-      if (selA && selA.value !== val) selA.value = val;
-      if (selP && selP.value !== val) selP.value = val;
+      ['aircraft-selector', 'sim-select-aircraft', 'sim-select-plane'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el && el.value !== val) el.value = val;
+      });
     };
+    document.getElementById('aircraft-selector')?.addEventListener('change', (e) => handleModelChange(e.target.value));
     document.getElementById('sim-select-plane')?.addEventListener('change', (e) => handleModelChange(e.target.value));
     document.getElementById('sim-select-aircraft')?.addEventListener('change', (e) => handleModelChange(e.target.value));
 
@@ -4910,15 +5206,20 @@
   function animate() {
     requestAnimationFrame(animate);
 
-    // If paused (user is on another tab), drain delta clock and skip simulation!
+    // If paused (user is on another tab), verify if simulator-section is active
     if (SIM.paused) {
-      clock.getDelta();
-      return;
+      const simSec = document.getElementById('simulator-section');
+      if (simSec && (simSec.classList.contains('active') || window.location.hash === '#simulator-section')) {
+        SIM.paused = false;
+      } else {
+        clock.getDelta();
+        return;
+      }
     }
 
     const rawDelta = clock.getDelta();
     const dt = (typeof rawDelta === 'number' && isFinite(rawDelta))
-      ? Math.min(Math.max(rawDelta, 0.001), 0.033)
+      ? Math.min(Math.max(rawDelta, 0.004), 0.033)
       : 0.016; // Strict delta time clamping (<= 33ms) to prevent physics explosion
 
     // Gamepad API integration
@@ -4943,19 +5244,46 @@
     if (window.FlightRecorder && window.FlightRecorder.isReplaying) {
       const rep = window.FlightRecorder.getReplayFrame(dt);
       if (rep) {
-        planeGroup.position.set(0, rep.pos.y, 0);
+        planeGroup.position.set(0, 1.25, 0);
         planeGroup.quaternion.setFromEuler(new THREE.Euler(rep.rot.x, rep.rot.y, rep.rot.z, 'YXZ'));
-        if (terrainGroup) terrainGroup.position.set(-rep.pos.x, 0, -rep.pos.z);
+        if (worldGroup) worldGroup.position.set(-rep.pos.x, -rep.pos.y, -rep.pos.z);
         flight.ias = rep.ias;
         flight.vsi = rep.vsi;
         flight.aoa = rep.aoa;
         flight.gLoad = rep.gLoad;
-        flight.pos.y = rep.pos.y;
+        flight.altAGL = rep.pos.y;
         flight.altMSL = rep.pos.y;
         window.FlightRecorder.updateReplayUI();
       }
     } else {
       updatePhysics(dt);
+
+      // Continuous Procedural Flight Motion of Terrain & Speed Lines
+      const speedMs = Math.max(flight.ias, 0) / 3.6;
+      const hdgRad = THREE.MathUtils.degToRad(((-flight.rot.y * 180 / Math.PI) % 360 + 360) % 360);
+      const moveX = Math.sin(hdgRad) * speedMs * dt;
+      const moveZ = Math.cos(hdgRad) * speedMs * dt;
+
+      if (worldGroup) {
+        worldGroup.position.x -= moveX * 3.5;
+        worldGroup.position.z += moveZ * 3.5;
+        worldGroup.position.y = -flight.altAGL;
+
+        const tileStep = 2000;
+        if (Math.abs(worldGroup.position.x) > tileStep) worldGroup.position.x %= tileStep;
+        if (Math.abs(worldGroup.position.z) > tileStep) worldGroup.position.z %= tileStep;
+      } else if (terrainGroup) {
+        terrainGroup.position.x -= moveX * 3.5;
+        terrainGroup.position.z += moveZ * 3.5;
+        terrainGroup.position.y = -flight.altAGL;
+      }
+
+      if (groundCanvasTexture) {
+        groundCanvasTexture.offset.x -= (moveX * 0.005);
+        groundCanvasTexture.offset.y -= (moveZ * 0.005);
+      }
+
+      updateSpeedLines(dt, speedMs);
 
       if (window.FlightRecorder) {
         window.FlightRecorder.recordFrame(flight);

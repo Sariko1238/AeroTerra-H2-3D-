@@ -4263,9 +4263,9 @@ body.is-super-admin #btn-open-dev-console:hover {
 
 /* 1. Left Panel: Telemetry & Propulsion */
 .sim-panel-left {
-  width: 300px !important;
-  max-width: 92vw !important;
-  padding: 12px !important;
+  width: 340px !important;
+  max-width: 95vw !important;
+  padding: 10px 12px !important;
   box-sizing: border-box !important;
   overflow: hidden !important;
   flex-shrink: 0;
@@ -4334,7 +4334,7 @@ body.is-super-admin #btn-open-dev-console:hover {
   background: rgba(0, 0, 0, 0.4);
   border: 1px solid rgba(0, 229, 255, 0.2);
   border-radius: 6px;
-  padding: 8px 10px !important;
+  padding: 6px 8px !important;
   min-width: 0 !important;
   box-sizing: border-box !important;
   overflow: hidden !important;
@@ -4361,7 +4361,7 @@ body.is-super-admin #btn-open-dev-console:hover {
 
 .telem-main {
   font-family: var(--font-mono);
-  font-size: 0.95rem !important;
+  font-size: 0.92rem !important;
   font-weight: 800;
   color: #00ff9d;
   line-height: 1.1;
@@ -4373,7 +4373,6 @@ body.is-super-admin #btn-open-dev-console:hover {
   font-family: var(--font-mono);
   font-size: 0.60rem !important;
   white-space: nowrap !important;
-}
   color: #8b9bb4;
 }
 
@@ -5395,20 +5394,42 @@ body.is-super-admin #btn-open-dev-console:hover {
   border-radius: 2px;
 }
 
-/* Mobile Dual-Stick Touch Controls */
+/* Mobile & Desktop Flight Virtual Controls (100% Guaranteed Pointer & Touch Events) */
 .sim-touch-controls {
-  position: absolute;
-  bottom: 1.5rem;
-  left: 1rem;
-  right: 1rem;
-  display: none;
-  justify-content: space-between;
-  align-items: flex-end;
-  pointer-events: none;
-  z-index: 45;
+  position: absolute !important;
+  bottom: 1.2rem !important;
+  left: 1rem !important;
+  right: 1rem !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: flex-end !important;
+  pointer-events: none !important;
+  z-index: 99990 !important;
 }
 .sim-touch-controls.active {
   display: flex !important;
+}
+
+#sim-virtual-joystick,
+.virtual-joystick-zone,
+#sim-throttle-slider,
+.touch-throttle-track,
+.touch-act-btn,
+.touch-thr-step-btn,
+.touch-takeoff-btn {
+  pointer-events: auto !important;
+  touch-action: none !important;
+  z-index: 99999 !important;
+}
+
+#sim-virtual-joystick,
+.virtual-joystick-zone {
+  cursor: grab !important;
+}
+
+#sim-virtual-joystick:active,
+.virtual-joystick-zone:active {
+  cursor: grabbing !important;
 }
 
 /* Throttle Presets Quick Row */
@@ -7904,19 +7925,19 @@ body.in-simulator-mode .hangar-hud-overlay {
 }
 
 .sim-panel-left {
-  width: 300px !important;
-  max-width: 92vw !important;
-  padding: 12px !important;
+  width: 340px !important;
+  max-width: 95vw !important;
+  padding: 10px 12px !important;
   box-sizing: border-box !important;
   overflow: hidden !important;
   gap: 6px !important;
 }
 
 .sim-telem-item {
-  padding: 8px 10px !important;
+  padding: 6px 8px !important;
   min-width: 0 !important;
   box-sizing: border-box !important;
-  font-size: 0.95rem !important;
+  font-size: 0.90rem !important;
   overflow: hidden !important;
 }
 

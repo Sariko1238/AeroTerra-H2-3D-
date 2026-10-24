@@ -319,13 +319,12 @@
         <!-- 1. Aircraft Selection -->
         <div class="sim-select-wrap" title="Выбор модели самолёта">
           <i class="fa-solid fa-plane"></i>
-          <select class="sim-select" id="sim-select-plane">
-            <option value="full" selected>✈️ AeroTerra H2 (STOL Twin-Boom H2-Hybrid)</option>
-            <option value="a380">🛫 Airbus A380-800 (Super Heavy 4-Jet)</option>
-            <option value="b777">🛩️ Boeing 777-300ER (Twin-Jet Long Range)</option>
+          <select class="sim-select" id="aircraft-selector">
+            <option value="aeroterra" selected>✈️ AeroTerra H2 (STOL Twin-Boom 4x DEP)</option>
+            <option value="a380">🛫 Airbus A380-800 Superjumbo</option>
+            <option value="b777">🛩️ Boeing 777-300ER</option>
             <option value="agro">🌿 AeroTerra Agro-Sprayer (Штанги ULV)</option>
             <option value="fire">💧 AeroTerra Fire-Bomber (Водяной бак 800 л)</option>
-            <option value="rc">🎮 AeroTerra RC Prototype 1:5 (25 кг)</option>
           </select>
         </div>
 
@@ -707,7 +706,7 @@
           <button class="touch-thr-step-btn thr-max-btn" id="btn-touch-thr-max" title="100% Взлётный газ">🔥 100%</button>
           <button class="touch-thr-step-btn thr-zero-btn" id="btn-touch-thr-zero" title="0% Сброс газа">🛑 0%</button>
         </div>
-        <div class="touch-throttle-track" id="touch-throttle-track">
+        <div class="touch-throttle-track" id="sim-throttle-slider">
           <div class="touch-throttle-fill" id="touch-throttle-fill" style="height: 75%;"></div>
           <div class="touch-throttle-handle" id="touch-throttle-handle" style="bottom: 75%;">
             <span id="touch-throttle-pct">75%</span>
@@ -730,7 +729,7 @@
 
       <!-- Right Stick: Large 135px 3D Virtual Flight Stick (Pitch & Roll) -->
       <div class="touch-joystick-block">
-        <div class="virtual-joystick-zone" id="virtual-joystick-zone">
+        <div class="virtual-joystick-zone" id="sim-virtual-joystick">
           <div class="virtual-joystick-ring"></div>
           <div class="virtual-joystick-knob" id="virtual-joystick-knob"></div>
         </div>
